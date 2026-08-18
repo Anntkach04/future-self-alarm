@@ -108,7 +108,7 @@ export const INTRO_SLIDES = [
   },
   {
     label: '',
-    title: 'Keep moving forward',
+    title: 'Keep\nmoving\nforward',
     body: 'The future you want\nstarts today.\nOne morning at a time.',
     card: 'gold' as const,
   },

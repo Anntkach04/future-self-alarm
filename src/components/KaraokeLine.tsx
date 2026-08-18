@@ -35,8 +35,8 @@ export function KaraokeLine({ text, spokenCount }: Props) {
 const styles = StyleSheet.create({
   line: {
     fontFamily: fonts.headingRegular,
-    fontSize: 34,
-    lineHeight: 42,
+    fontSize: 28,
+    lineHeight: 34,
     letterSpacing: 0.2,
     textAlign: 'center',
     ...noFakeBold,

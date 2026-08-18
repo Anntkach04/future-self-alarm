@@ -59,7 +59,8 @@ export function wordsMatch(heard: string, expected: string) {
   const a = NUMBER_WORDS[heard] || heard;
   const b = NUMBER_WORDS[expected] || expected;
   if (a === b) return true;
-  if (a.length >= 4 && b.length >= 4 && levenshtein(a, b) <= 1) return true;
+  if (a.length >= 3 && b.length >= 3 && levenshtein(a, b) <= 1) return true;
+  if (a.length >= 5 && b.length >= 5 && levenshtein(a, b) <= 2) return true;
   return false;
 }
 
@@ -69,7 +70,14 @@ export function matchedPrefixCount(expectedLine: string, heard: string) {
   let i = 0;
   for (const word of got) {
     if (i >= expected.length) break;
-    if (wordsMatch(word, expected[i])) i += 1;
+    if (wordsMatch(word, expected[i])) {
+      i += 1;
+    } else if (
+      i + 1 < expected.length &&
+      wordsMatch(word, expected[i + 1])
+    ) {
+      i += 2;
+    }
   }
   return i;
 }

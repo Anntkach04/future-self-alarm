@@ -29,7 +29,6 @@ import { ProfileFieldEditScreen } from '../screens/ProfileFieldEditScreen';
 import { PlaceholderSettingsScreen } from '../screens/PlaceholderSettingsScreen';
 import { RootStackParamList } from './types';
 import { colors } from '../theme';
-import { stopMusicBedPreview } from '../services/musicBedPreview';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -44,11 +43,7 @@ export function RootNavigator() {
   const initialRoute = onboardingComplete ? 'Home' : 'Intro';
 
   return (
-    <NavigationContainer
-      onStateChange={() => {
-        void stopMusicBedPreview();
-      }}
-    >
+    <NavigationContainer>
       <Stack.Navigator
         key={initialRoute}
         initialRouteName={initialRoute}

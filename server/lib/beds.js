@@ -7,11 +7,11 @@ const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg)$/i;
 
 /** Five under-voice beds — mp3 or m4a in assets/beds. */
 const BEDS = [
-  { id: 'bali-morning', file: 'bali-morning.mp3', label: 'Bali morning' },
-  { id: 'yoga-air', file: 'yoga-air.mp3', label: 'Yoga air' },
-  { id: 'soft-massage', file: 'soft-massage.mp3', label: 'Soft massage' },
-  { id: 'light-water', file: 'light-water.mp3', label: 'Light water' },
-  { id: 'warm-earth', file: 'warm-earth.mp3', label: 'Warm earth' },
+  { id: 'bali-morning', file: 'bali-morning.m4a', label: 'Bali morning' },
+  { id: 'yoga-air', file: 'yoga-air.m4a', label: 'Yoga air' },
+  { id: 'soft-massage', file: 'soft-massage.m4a', label: 'Soft massage' },
+  { id: 'light-water', file: 'light-water.m4a', label: 'Light water' },
+  { id: 'warm-earth', file: 'warm-earth.m4a', label: 'Warm earth' },
 ];
 
 function bedCandidates(bed) {

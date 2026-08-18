@@ -28,8 +28,8 @@ export function MusicBedScreen({ navigation }: Props) {
       onToggle={(label) => {
         const match = MUSIC_BED_OPTIONS.find((item) => item.label === label);
         if (match?.id) {
-          void toggleMusicBedPreview(match.id);
           setMusicBedId(match.id);
+          void toggleMusicBedPreview(match.id).catch(() => undefined);
         }
       }}
       allowAdd={false}

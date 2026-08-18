@@ -111,6 +111,7 @@ app.get('/api/beds/:id/preview', (req, res) => {
   if (!bed?.path) {
     return res.status(404).json({ error: 'Music bed not found' });
   }
+  res.setHeader('Cache-Control', 'public, max-age=3600');
   return res.sendFile(bed.path);
 });
 

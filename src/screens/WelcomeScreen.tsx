@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LogoSpinner } from '../components/LogoSpinner';
+import { useSplashChrome } from '../layout/SplashChromeContext';
 import { RootStackParamList } from '../navigation/types';
 import { fonts, noFakeBold } from '../theme';
 
@@ -23,6 +24,7 @@ const RETRACT_MS = 1000;
  * At start blue is a full rectangle (no cream peeking at rounded corners).
  */
 export function WelcomeScreen({ navigation }: Props) {
+  const { setSplashActive } = useSplashChrome();
   const [fullH, setFullH] = useState(0);
   const [fullW, setFullW] = useState(0);
   const blueHeight = useRef(new Animated.Value(0)).current;
@@ -73,6 +75,11 @@ export function WelcomeScreen({ navigation }: Props) {
 
     return () => anim.stop();
   }, [blueHeight, fullH, fullW, navigation, textOpacity, textScale]);
+
+  useEffect(() => {
+    setSplashActive(true);
+    return () => setSplashActive(false);
+  }, [setSplashActive]);
 
   const pillRadius = Math.max(fullW * 0.55, 180);
   // Radius only appears as the pill shrinks — full height = square corners, no cream leaks

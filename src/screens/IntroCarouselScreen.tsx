@@ -13,12 +13,11 @@ import { OnboardingProgress } from '../components/OnboardingProgress';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import {
   CARD_COLORS,
-  INTRO_CARD_TOP_INSET,
-  INTRO_STAGE_H,
   StackedIntroCards,
 } from '../components/StackedIntroCards';
 import { INTRO_SLIDES } from '../data/onboardingOptions';
 import { RootStackParamList } from '../navigation/types';
+import { useSplashChrome } from '../layout/SplashChromeContext';
 import { colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Intro'>;
@@ -27,15 +26,15 @@ const WELCOME_BLUE = '#BADFFF';
 const HOLD_MS = 2200;
 const RETRACT_MS = 1000;
 const LAST = INTRO_SLIDES.length - 1;
-const HEADING_SIZE = 55;
-const HEADING_LINE = 53;
-const HEADING_GAP = 40;
+const HEADING_SIZE = 44;
+const HEADING_LINE = 48;
 
 /**
  * Splash overlay retracts over a layout that is already final —
  * progress top, cards centered, CTA bottom. Nothing remounts when it lifts.
  */
 export function IntroCarouselScreen({ navigation }: Props) {
+  const { setSplashActive } = useSplashChrome();
   const [index, setIndex] = useState(0);
   const [splashDone, setSplashDone] = useState(false);
   const [frame, setFrame] = useState({ w: 0, h: 0 });
@@ -83,6 +82,11 @@ export function IntroCarouselScreen({ navigation }: Props) {
     return () => anim.stop();
   }, [blueHeight, frame.h, splashDone, textOpacity]);
 
+  useEffect(() => {
+    setSplashActive(!splashDone);
+    return () => setSplashActive(false);
+  }, [setSplashActive, splashDone]);
+
   const pillRadius = Math.max(frame.w * 0.55, 180);
   const bottomRadius =
     frame.h > 0
@@ -121,11 +125,6 @@ export function IntroCarouselScreen({ navigation }: Props) {
   };
 
   const heading = INTRO_SLIDES[index]?.title ?? '';
-  const [stageH, setStageH] = useState(0);
-  const headingBottom =
-    stageH > 0
-      ? stageH / 2 + INTRO_STAGE_H / 2 + HEADING_GAP - INTRO_CARD_TOP_INSET
-      : 0;
 
   return (
     <View style={styles.root} onLayout={onRootLayout}>
@@ -138,21 +137,12 @@ export function IntroCarouselScreen({ navigation }: Props) {
           colors={INTRO_SLIDES.map((slide) => CARD_COLORS[slide.card])}
           onPress={onBarPress}
         />
+        <Text style={styles.heading}>{heading}</Text>
 
         <View
           style={styles.stageWrap}
           pointerEvents={splashDone ? 'auto' : 'none'}
-          onLayout={(e) => setStageH(e.nativeEvent.layout.height)}
         >
-          <Text
-            pointerEvents="none"
-            style={[
-              styles.heading,
-              headingBottom > 0 ? { bottom: headingBottom } : null,
-            ]}
-          >
-            {heading}
-          </Text>
           <StackedIntroCards
             slides={INTRO_SLIDES}
             index={index}
@@ -200,9 +190,18 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
-    paddingHorizontal: spacing.inset,
-    paddingTop: 16,
-    paddingBottom: spacing.inset,
+    padding: spacing.inset,
+  },
+  heading: {
+    fontFamily: fonts.headingRegular,
+    fontSize: HEADING_SIZE,
+    lineHeight: HEADING_LINE,
+    letterSpacing: 0.374,
+    color: '#1A1A1A',
+    textAlign: 'left',
+    marginTop: 20,
+    marginBottom: 12,
+    ...noFakeBold,
   },
   stageWrap: {
     flex: 1,
@@ -211,19 +210,6 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     zIndex: 1,
-  },
-  heading: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    fontFamily: fonts.headingRegular,
-    fontSize: HEADING_SIZE,
-    lineHeight: HEADING_LINE,
-    letterSpacing: 0.374,
-    color: '#1A1A1A',
-    textAlign: 'left',
-    zIndex: 2,
-    ...noFakeBold,
   },
   nextWrap: {
     width: '100%',

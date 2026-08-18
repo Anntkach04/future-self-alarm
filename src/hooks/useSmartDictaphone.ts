@@ -31,7 +31,7 @@ export function useSmartDictaphone(currentLine: string) {
   const spokenRef = useRef(0);
   const lineRef = useRef(currentLine);
   const keepListeningRef = useRef(false);
-  const resultAnchorRef = useRef(-1);
+  const finalsRef = useRef('');
   const recordingRef = useRef<Audio.Recording | null>(null);
   const uriRef = useRef<string | null>(null);
   const usesNativePersistRef = useRef(false);
@@ -42,7 +42,7 @@ export function useSmartDictaphone(currentLine: string) {
   useEffect(() => {
     spokenRef.current = 0;
     setSpokenCount(0);
-    resultAnchorRef.current = -1;
+    finalsRef.current = '';
   }, [currentLine]);
 
   useEffect(() => {
@@ -69,16 +69,18 @@ export function useSmartDictaphone(currentLine: string) {
     const results = event.results;
     if (!results?.length) return;
 
-    if (resultAnchorRef.current < 0) {
-      resultAnchorRef.current = Math.max(0, results.length - 1);
-    }
+    const chunk = results
+      .map((item) => item?.transcript?.trim())
+      .filter(Boolean)
+      .join(' ');
+    if (!chunk) return;
 
-    let heard = '';
-    for (let i = resultAnchorRef.current; i < results.length; i += 1) {
-      const chunk = results[i]?.transcript;
-      if (chunk) heard += `${chunk} `;
+    if (event.isFinal) {
+      finalsRef.current = `${finalsRef.current} ${chunk}`.trim();
+      applyTranscript(finalsRef.current);
+      return;
     }
-    applyTranscript(heard);
+    applyTranscript(`${finalsRef.current} ${chunk}`.trim());
   });
 
   useSpeechRecognitionEvent('volumechange', (event) => {
@@ -95,7 +97,7 @@ export function useSmartDictaphone(currentLine: string) {
       ExpoSpeechRecognitionModule.start({
         lang: 'en-US',
         interimResults: true,
-        continuous: Platform.OS === 'ios',
+        continuous: true,
         androidIntentOptions: {
           EXTRA_LANGUAGE_MODEL: 'web_search',
         },
@@ -174,17 +176,21 @@ export function useSmartDictaphone(currentLine: string) {
   }, []);
 
   const startRecognition = useCallback(async () => {
-    ExpoSpeechRecognitionModule.start({
-      lang: 'en-US',
-      interimResults: true,
-      continuous: Platform.OS === 'ios',
-      androidIntentOptions: {
-        EXTRA_LANGUAGE_MODEL: 'web_search',
-      },
-      recordingOptions: usesNativePersistRef.current
-        ? { persist: true }
-        : undefined,
-    });
+    try {
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: true,
+        continuous: true,
+        androidIntentOptions: {
+          EXTRA_LANGUAGE_MODEL: 'web_search',
+        },
+        recordingOptions: usesNativePersistRef.current
+          ? { persist: true }
+          : undefined,
+      });
+    } catch (e) {
+      if (Platform.OS !== 'web') throw e;
+    }
   }, []);
 
   const requestPermission = useCallback(async () => {
@@ -194,19 +200,22 @@ export function useSmartDictaphone(currentLine: string) {
       return false;
     }
 
-    if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
-      setError(
-        'Smart dictaphone needs a development build on your phone — run npx expo run:ios (Expo Go is not enough).'
-      );
-      return false;
-    }
+    const speechAvailable = (() => {
+      try {
+        return ExpoSpeechRecognitionModule.isRecognitionAvailable();
+      } catch {
+        return false;
+      }
+    })();
 
-    const speech = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-    if (!speech.granted) {
-      setError(
-        'Allow speech recognition so we can check you read the script correctly.'
-      );
-      return false;
+    if (speechAvailable) {
+      const speech = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!speech.granted) {
+        setError(
+          'Allow speech recognition so we can check you read the script correctly.'
+        );
+        return false;
+      }
     }
 
     return true;
@@ -218,10 +227,10 @@ export function useSmartDictaphone(currentLine: string) {
       setUri(null);
       uriRef.current = null;
       setDurationMs(0);
-      resultAnchorRef.current = -1;
       spokenRef.current = 0;
       setSpokenCount(0);
       setHearing(false);
+      finalsRef.current = '';
 
       const granted = await requestPermission();
       if (!granted) return;
@@ -232,6 +241,17 @@ export function useSmartDictaphone(currentLine: string) {
 
       if (usesNativePersistRef.current) {
         await startRecognition();
+      } else if (Platform.OS === 'web') {
+        try {
+          await startRecognition();
+        } catch {
+          /* Chrome may still record via expo-av */
+        }
+        try {
+          await startAvRecording();
+        } catch {
+          /* speech recognition already owns the mic — karaoke still works */
+        }
       } else {
         await startAvRecording();
         await startRecognition();

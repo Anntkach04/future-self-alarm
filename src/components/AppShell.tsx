@@ -7,6 +7,11 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { BREAKPOINTS, LayoutProvider } from '../layout/LayoutContext';
+import {
+  SplashChromeProvider,
+  useSplashChrome,
+  WELCOME_BLUE,
+} from '../layout/SplashChromeContext';
 import { colors } from '../theme';
 
 type Props = {
@@ -18,16 +23,27 @@ type Props = {
  * doesn't stretch full-bleed. On native devices, renders full screen.
  */
 export function AppShell({ children }: Props) {
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
-
   if (Platform.OS !== 'web') {
     return (
-      <LayoutProvider>
-        <View style={styles.nativeFill}>{children}</View>
-      </LayoutProvider>
+      <SplashChromeProvider>
+        <LayoutProvider>
+          <View style={styles.nativeFill}>{children}</View>
+        </LayoutProvider>
+      </SplashChromeProvider>
     );
   }
+
+  return (
+    <SplashChromeProvider>
+      <AppShellWeb>{children}</AppShellWeb>
+    </SplashChromeProvider>
+  );
+}
+
+function AppShellWeb({ children }: Props) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const { splashActive } = useSplashChrome();
 
   const preferTablet = windowWidth >= 900;
   const maxFrameWidth = preferTablet
@@ -47,16 +63,32 @@ export function AppShell({ children }: Props) {
   };
 
   return (
-    <View style={styles.webStage}>
+    <View
+      style={[
+        styles.webStage,
+        splashActive && {
+          backgroundColor: WELCOME_BLUE,
+          padding: 0,
+        },
+      ]}
+    >
       <View
         style={[
           styles.deviceFrame,
-          {
-            width: frameWidth,
-            height: Math.max(frameHeight, 640),
-            maxHeight: windowHeight - 24,
-            borderRadius: preferTablet ? 28 : 60,
-          },
+          splashActive
+            ? {
+                width: '100%' as unknown as number,
+                height: '100%' as unknown as number,
+                maxHeight: windowHeight,
+                borderRadius: 0,
+                backgroundColor: WELCOME_BLUE,
+              }
+            : {
+                width: frameWidth,
+                height: Math.max(frameHeight, 640),
+                maxHeight: windowHeight - 24,
+                borderRadius: preferTablet ? 28 : 60,
+              },
         ]}
         onLayout={onFrameLayout}
       >

@@ -19,10 +19,10 @@ import { MicRecordButton } from '../components/MicRecordButton';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { VOICE_ONBOARDING_SKIP_ENABLED } from '../config/devBypass';
-import { buildVoiceScriptLines, VOICE_TIPS } from '../data/voiceScript';
+import { buildVoiceScriptLines } from '../data/voiceScript';
 import { useSmartDictaphone } from '../hooks/useSmartDictaphone';
 import { RootStackParamList } from '../navigation/types';
-import { accents, colors, fonts, noFakeBold, radii, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
@@ -215,7 +215,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
 
   const coach =
     recording && dictaphone.hearing && dictaphone.spokenCount === 0
-      ? 'Only the script counts — random words won’t move forward.'
+      ? 'Only the script counts.'
       : !dictaphone.recognitionReady && dictaphone.status !== 'recording'
         ? 'On iPhone, install a dev build once: npx expo run:ios'
         : null;
@@ -241,9 +241,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
             <Text style={styles.title}>{`Read this\nout loud`}</Text>
           </BubbleEnter>
           <BubbleEnter delay={50} fromY={12}>
-            <Text style={styles.subtitle}>
-              In a calm, unhurried voice. {VOICE_TIPS[0].toLowerCase()}.
-            </Text>
+            <Text style={styles.subtitle}>Find a quiet room.</Text>
           </BubbleEnter>
 
           <View style={styles.stage}>
@@ -352,11 +350,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 64,
-    lineHeight: 58,
+    fontSize: 48,
+    lineHeight: 50,
     letterSpacing: 0.37,
     color: colors.text,
-    marginBottom: 24,
+    marginBottom: 12,
     ...noFakeBold,
   },
   subtitle: {
@@ -365,7 +363,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     letterSpacing: 0.2,
     color: colors.textMuted,
-    marginBottom: 32,
+    marginBottom: 16,
     maxWidth: 320,
   },
   stage: {
@@ -373,10 +371,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
+    paddingVertical: 12,
+    overflow: 'hidden',
+    minHeight: 72,
   },
   controls: {
     alignItems: 'center',
     gap: spacing.sm,
+    paddingTop: 12,
     paddingBottom: spacing.sm,
   },
   hint: {
