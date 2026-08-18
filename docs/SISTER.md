@@ -21,6 +21,22 @@
 
 Потрібно: **Mac**, **iPhone**, кабель, одна Wi‑Fi, ~30–60 хв першого разу.
 
+### Де що відкривати
+
+| Що | Де | Навіщо |
+|----|----|--------|
+| Лінк Vercel | **Safari / Chrome** | подивитись як виглядає |
+| Ця інструкція | браузер: [docs/SISTER.md](https://github.com/Anntkach04/future-self-alarm/blob/main/docs/SISTER.md) | читати кроки |
+| Репозиторій | **Термінал** (`git clone …`) | скачати код на Mac |
+| `.env` | **Cursor, VS Code або TextEdit** — файл у папці `future-self-alarm` | вставити ключі |
+| Апка | **не відкривай проєкт у Xcode руками** | Xcode ставимо, але збірку робить команда `npx expo run:ios --device` |
+
+**Не треба:** заходити на GitHub і качати zip «відкрити файл».  
+**Не треба:** File → Open у Xcode на репозиторій.
+
+Папка після клону зазвичай тут: `Macintosh HD → Users → ТВОЄ_ІМʼЯ → future-self-alarm`  
+(або `~/future-self-alarm` у Терміналі).
+
 ### 1. Програми
 
 1. App Store → **Xcode** → встановити → відкрити один раз → Agree.
@@ -49,9 +65,12 @@ npm -v
 
 Якщо `node -v` або `npm -v` не працює в новому вікні — напиши Анні; Node є, просто треба підхопити PATH.
 
-### 2. Код
+### 2. Код (Термінал, не Xcode)
+
+Відкрий **Terminal** (Програми → Утиліти → Термінал). Скопіюй команди цілком:
 
 ```bash
+cd ~
 git clone https://github.com/Anntkach04/future-self-alarm.git
 cd future-self-alarm
 npm install
@@ -66,7 +85,7 @@ cd server && npm install && npm run beds:download && cd ..
 cp .env.example .env
 ```
 
-Відкрий `.env` і встав значення, які надішле Анна в **особисте повідомлення** (не в GitHub):
+Відкрий `.env` у **Cursor / VS Code / TextEdit** (файл лежить у папці `future-self-alarm`, поруч з `package.json`) і встав значення, які надішле Анна в **особисте повідомлення** (не в GitHub):
 
 ```
 ELEVENLABS_API_KEY=...
