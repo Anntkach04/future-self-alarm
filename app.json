@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Future Self Alarm",
+    "slug": "future-self-alarm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow Future Self to record your voice for cloning.",
+        "NSSpeechRecognitionUsageDescription": "Allow Future Self to listen while you read the script aloud.",
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ]
+      },
+      "bundleIdentifier": "com.anonymous.future-self-alarm"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Future Self to record your voice for cloning."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FFFAEE",
+          "defaultChannel": "alarms"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Future Self to record your voice for cloning.",
+          "speechRecognitionPermission": "Allow Future Self to listen while you read the script aloud."
+        }
+      ]
+    ]
+  }
+}

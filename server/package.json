@@ -1,0 +1,19 @@
+{
+  "name": "future-self-voice-api",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "beds:download": "bash scripts/download-beds.sh"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ffmpeg-static": "^5.2.0",
+    "form-data": "^4.0.2",
+    "multer": "^1.4.5-lts.2",
+    "node-fetch": "^2.7.0"
+  }
+}
