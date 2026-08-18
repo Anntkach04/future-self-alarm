@@ -66,29 +66,18 @@ function AppShellWeb({ children }: Props) {
     <View
       style={[
         styles.webStage,
-        splashActive && {
-          backgroundColor: WELCOME_BLUE,
-          padding: 0,
-        },
+        splashActive && { backgroundColor: WELCOME_BLUE },
       ]}
     >
       <View
         style={[
           styles.deviceFrame,
-          splashActive
-            ? {
-                width: '100%' as unknown as number,
-                height: '100%' as unknown as number,
-                maxHeight: windowHeight,
-                borderRadius: 0,
-                backgroundColor: WELCOME_BLUE,
-              }
-            : {
-                width: frameWidth,
-                height: Math.max(frameHeight, 640),
-                maxHeight: windowHeight - 24,
-                borderRadius: preferTablet ? 28 : 60,
-              },
+          {
+            width: frameWidth,
+            height: Math.max(frameHeight, 640),
+            maxHeight: windowHeight - 24,
+            borderRadius: preferTablet ? 28 : 60,
+          },
         ]}
         onLayout={onFrameLayout}
       >

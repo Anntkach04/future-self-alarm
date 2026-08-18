@@ -56,6 +56,11 @@ export function IntroCarouselScreen({ navigation }: Props) {
   useEffect(() => {
     if (!frame.h || splashStarted.current || splashDone) return;
     splashStarted.current = true;
+    setSplashActive(true);
+
+    const chromeTimer = setTimeout(() => {
+      setSplashActive(false);
+    }, HOLD_MS);
 
     const anim = Animated.sequence([
       Animated.delay(HOLD_MS),
@@ -78,14 +83,11 @@ export function IntroCarouselScreen({ navigation }: Props) {
     anim.start(({ finished }) => {
       if (finished) setSplashDone(true);
     });
-
-    return () => anim.stop();
-  }, [blueHeight, frame.h, splashDone, textOpacity]);
+  }, [blueHeight, frame.h, setSplashActive, splashDone, textOpacity]);
 
   useEffect(() => {
-    setSplashActive(!splashDone);
     return () => setSplashActive(false);
-  }, [setSplashActive, splashDone]);
+  }, [setSplashActive]);
 
   const pillRadius = Math.max(frame.w * 0.55, 180);
   const bottomRadius =

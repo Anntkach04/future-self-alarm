@@ -43,6 +43,8 @@ export function WelcomeScreen({ navigation }: Props) {
   useEffect(() => {
     if (!fullH || started.current) return;
     started.current = true;
+    setSplashActive(true);
+    const chromeTimer = setTimeout(() => setSplashActive(false), HOLD_MS);
 
     const pillRadius = Math.max(fullW * 0.55, 180);
 
@@ -73,11 +75,13 @@ export function WelcomeScreen({ navigation }: Props) {
       if (finished) navigation.replace('Intro');
     });
 
-    return () => anim.stop();
-  }, [blueHeight, fullH, fullW, navigation, textOpacity, textScale]);
+    return () => {
+      clearTimeout(chromeTimer);
+      anim.stop();
+    };
+  }, [blueHeight, fullH, fullW, navigation, setSplashActive, textOpacity, textScale]);
 
   useEffect(() => {
-    setSplashActive(true);
     return () => setSplashActive(false);
   }, [setSplashActive]);
 
