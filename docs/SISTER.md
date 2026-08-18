@@ -38,17 +38,16 @@ echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
 eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
-4. CocoaPods і Node:
+4. CocoaPods (Node уже стоїть — не чіпай):
 
 ```bash
 brew install cocoapods
-brew install node
 pod --version
 node -v
 npm -v
 ```
 
-Якщо `npm` не знайдено — Node через nvm: https://github.com/nvm-sh/nvm#installing-and-updating
+Якщо `node -v` або `npm -v` не працює в новому вікні — напиши Анні; Node є, просто треба підхопити PATH.
 
 ### 2. Код
 
