@@ -107,12 +107,6 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
             {phase === 'advice' ? (
               <>
                 <Text style={styles.advice}>{advice}</Text>
-                {!fromAi ? (
-                  <Text style={styles.offline}>
-                    Couldn’t reach the AI server — start npm run server and set
-                    EXPO_PUBLIC_API_URL to your Mac’s IP on the phone.
-                  </Text>
-                ) : null}
                 <View style={styles.actions}>
                   <TextArrowButton
                     label="thank you"
@@ -160,7 +154,7 @@ const styles = StyleSheet.create({
   },
   moodName: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 32,
     lineHeight: 40,
     color: colors.text,
     marginBottom: 8,
@@ -206,7 +200,7 @@ const styles = StyleSheet.create({
   },
   advice: {
     fontFamily: fonts.headingRegular,
-    fontSize: 24,
+    fontSize: 22,
     lineHeight: 30,
     color: colors.text,
     marginBottom: 24,

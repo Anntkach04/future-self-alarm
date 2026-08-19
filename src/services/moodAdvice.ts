@@ -1,7 +1,7 @@
 import { getApiUrl } from './elevenlabs';
 
 const FALLBACK =
-  "That's allowed. You don't have to sort the whole day tonight. Tomorrow, start with one small thing — I'll be there when you wake.";
+  "That's allowed. You don't have to sort the whole day tonight. Tomorrow, start with one small thing - I'll be there when you wake.";
 
 export type MoodAdviceResult = {
   text: string;

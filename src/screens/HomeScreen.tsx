@@ -24,12 +24,11 @@ import {
   ALREADY_YOU_OPTIONS,
   FUTURE_SELF_OPTIONS,
   HARD_MORNING_OPTIONS,
-  MESSAGE_LENGTH_OPTIONS,
   VOICE_STYLE_OPTIONS,
 } from '../data/onboardingOptions';
 import { BASE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 import { colorsForRecapSections } from '../utils/optionColors';
 import { uiLabel } from '../utils/labels';
 
@@ -69,7 +68,6 @@ export function HomeScreen({ navigation }: Props) {
     proudColors,
     hardMorningColors,
     voiceColors,
-    messageColors,
   ] = useMemo(
     () =>
       colorsForRecapSections([
@@ -80,22 +78,17 @@ export function HomeScreen({ navigation }: Props) {
           items: answers.voiceStyle ? [answers.voiceStyle] : [],
           options: VOICE_STYLE_OPTIONS,
         },
-        {
-          items: answers.messageLength ? [answers.messageLength] : [],
-          options: MESSAGE_LENGTH_OPTIONS,
-        },
       ]),
     [
       answers.futureSelf,
       answers.alreadyProud,
       answers.hardMornings,
       answers.voiceStyle,
-      answers.messageLength,
     ]
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -211,11 +204,6 @@ export function HomeScreen({ navigation }: Props) {
             items={answers.voiceStyle ? [answers.voiceStyle] : []}
             colors={answers.voiceStyle ? voiceColors : undefined}
           />
-          <Text style={styles.recapTitle}>{uiLabel('message length')}</Text>
-          <RecapPills
-            items={answers.messageLength ? [answers.messageLength] : []}
-            colors={answers.messageLength ? messageColors : undefined}
-          />
           <View style={styles.editRow}>
             <TextArrowButton
               label="edit profile"
@@ -251,7 +239,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.md,
+    paddingTop: spacing.md + spacing.webTop,
     paddingBottom: 48,
   },
   menuBtn: {
@@ -266,19 +254,21 @@ const styles = StyleSheet.create({
   },
   hello: {
     fontFamily: fonts.headingRegular,
-    fontSize: 40,
+    fontSize: 36,
     lineHeight: 44,
     color: colors.text,
     marginBottom: 32,
     ...noFakeBold,
+    ...headingClipFix,
   },
   feeling: {
     fontFamily: fonts.headingRegular,
-    fontSize: 26,
+    fontSize: 24,
     lineHeight: 30,
     color: colors.text,
     marginBottom: 16,
     ...noFakeBold,
+    ...headingClipFix,
   },
   moodRow: {
     flexDirection: 'row',
@@ -290,6 +280,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 8,
     justifyContent: 'flex-end',
+    overflow: 'visible',
   },
   moodSelected: {
     borderWidth: 2,
@@ -297,7 +288,8 @@ const styles = StyleSheet.create({
   },
   moodLabel: {
     fontFamily: fonts.headingRegular,
-    fontSize: 17,
+    fontSize: 16,
+    lineHeight: 20,
     color: colors.text,
     ...noFakeBold,
   },

@@ -22,7 +22,7 @@ export function MusicBedScreen({ navigation }: Props) {
   return (
     <ChipQuestionScreen
       question={"What music sits\nunder your voice?"}
-      subtitle="Tap a bed for a short preview — up to 30 seconds."
+      subtitle="Tap a bed for a short preview - up to 30 seconds."
       options={MUSIC_BED_OPTIONS}
       selected={selectedLabel ? [selectedLabel] : []}
       onToggle={(label) => {

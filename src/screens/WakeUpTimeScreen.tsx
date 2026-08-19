@@ -9,7 +9,7 @@ import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import { ensureNotificationPermissions } from '../services/alarmScheduler';
-import { colors, fonts, noFakeBold, spacing } from '../theme';
+import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeUpTime'>;
 
@@ -17,7 +17,7 @@ export function WakeUpTimeScreen({ navigation }: Props) {
   const { answers, setWakeTime, setWakeDays } = useOnboarding();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.page}>
         <View style={styles.header}>
           <BackButton style={styles.back} />
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: spacing.inset,
+    paddingTop: spacing.webTop,
   },
   header: {
     paddingBottom: 8,
@@ -83,11 +84,12 @@ const styles = StyleSheet.create({
   question: {
     fontFamily: fonts.headingRegular,
     color: colors.text,
-    fontSize: 44,
-    lineHeight: 46,
+    fontSize: 36,
+    lineHeight: 44,
     textAlign: 'left',
     marginBottom: 16,
     ...noFakeBold,
+    ...headingClipFix,
   },
   subtitle: {
     fontFamily: fonts.bodyLight,

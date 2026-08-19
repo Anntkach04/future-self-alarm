@@ -10,8 +10,6 @@ import {
   ALREADY_YOU_OPTIONS,
   FUTURE_SELF_OPTIONS,
   HARD_MORNING_OPTIONS,
-  MESSAGE_LENGTH_OPTIONS,
-  MUSIC_BED_OPTIONS,
   VOICE_STYLE_OPTIONS,
 } from '../data/onboardingOptions';
 import { ProfileFieldKey, RootStackParamList } from '../navigation/types';
@@ -43,17 +41,11 @@ export function EditProfileScreen({ navigation }: Props) {
   const openField = (field: ProfileFieldKey) =>
     navigation.navigate('ProfileFieldEdit', { field });
 
-  const musicLabel =
-    MUSIC_BED_OPTIONS.find((item) => item.id === answers.musicBedId)?.label ??
-    '';
-
   const [
     goalsColors,
     proudColors,
     hardMorningColors,
     voiceColors,
-    messageColors,
-    musicColors,
   ] = useMemo(
     () =>
       colorsForRecapSections([
@@ -64,19 +56,12 @@ export function EditProfileScreen({ navigation }: Props) {
           items: answers.voiceStyle ? [answers.voiceStyle] : [],
           options: VOICE_STYLE_OPTIONS,
         },
-        {
-          items: answers.messageLength ? [answers.messageLength] : [],
-          options: MESSAGE_LENGTH_OPTIONS,
-        },
-        { items: musicLabel ? [musicLabel] : [], options: MUSIC_BED_OPTIONS },
       ]),
     [
       answers.futureSelf,
       answers.alreadyProud,
       answers.hardMornings,
       answers.voiceStyle,
-      answers.messageLength,
-      musicLabel,
     ]
   );
 
@@ -114,18 +99,6 @@ export function EditProfileScreen({ navigation }: Props) {
             items={answers.voiceStyle ? [answers.voiceStyle] : []}
             itemColors={answers.voiceStyle ? voiceColors : undefined}
             onPress={() => openField('voiceStyle')}
-          />
-          <Section
-            title="message length"
-            items={answers.messageLength ? [answers.messageLength] : []}
-            itemColors={answers.messageLength ? messageColors : undefined}
-            onPress={() => openField('messageLength')}
-          />
-          <Section
-            title="music"
-            items={musicLabel ? [musicLabel] : []}
-            itemColors={musicLabel ? musicColors : undefined}
-            onPress={() => openField('musicBed')}
           />
           <View style={styles.editRow}>
             <TextArrowButton

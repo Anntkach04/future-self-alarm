@@ -3,7 +3,7 @@ import { StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BubbleEnter } from './BubbleEnter';
 import { useLayout } from '../layout/LayoutContext';
-import { colors } from '../theme';
+import { colors, spacing } from '../theme';
 
 type Props = {
   children: ReactNode;
@@ -19,16 +19,18 @@ export function Screen({ children, style, edges, static: noAnim }: Props) {
   return (
     <SafeAreaView
       style={styles.safe}
-      edges={edges ?? ['bottom', 'left', 'right']}
+      edges={edges ?? ['top', 'bottom', 'left', 'right']}
     >
       <View
         style={[
           styles.column,
           {
             paddingHorizontal: layout.horizontalPadding,
+            paddingTop: spacing.webTop,
             maxWidth: layout.contentMaxWidth,
             alignSelf: 'center',
             width: '100%',
+            overflow: 'visible',
           },
           style,
         ]}
@@ -55,5 +57,6 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
+    overflow: 'visible',
   },
 });

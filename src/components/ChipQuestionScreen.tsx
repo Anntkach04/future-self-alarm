@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,10 +15,11 @@ import { BackButton } from './BackButton';
 import { BubbleChip } from './BubbleChip';
 import { BubbleEnter } from './BubbleEnter';
 import { RoundArrowButton } from './RoundArrowButton';
-import { ADD_CHIP_COLOR, type BubbleOption } from '../data/onboardingOptions';
+import { type BubbleOption } from '../data/onboardingOptions';
 import {
   colors,
   fonts,
+  headingClipFix,
   mutedColorForLabel,
   mutedPalette,
   noFakeBold,
@@ -40,6 +42,8 @@ type Props = {
   onSubmit: () => void;
   allowAdd?: boolean;
   addPlaceholder?: string;
+  /** Show text input always open at the top (above chips), never collapsed to + */
+  inputAlwaysVisible?: boolean;
 };
 
 type CloudChip = {
@@ -98,8 +102,9 @@ export function ChipQuestionScreen({
   onSubmit,
   allowAdd = true,
   addPlaceholder = '',
+  inputAlwaysVisible = false,
 }: Props) {
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(inputAlwaysVisible);
   const [custom, setCustom] = useState('');
   const window = useWindowDimensions();
   const [wrapW, setWrapW] = useState(() =>
@@ -111,12 +116,12 @@ export function ChipQuestionScreen({
   const submitCustom = () => {
     const value = custom.trim();
     if (!value) {
-      setAdding(false);
+      if (!inputAlwaysVisible) setAdding(false);
       return;
     }
     onAddCustom?.(value);
     setCustom('');
-    setAdding(false);
+    if (!inputAlwaysVisible) setAdding(false);
   };
 
   const customOptions = selected.filter(
@@ -157,58 +162,9 @@ export function ChipQuestionScreen({
       });
     });
 
-    if (allowAdd && onAddCustom) {
-      if (adding) {
-        items.push({
-          key: 'add-input',
-          widthHint: 240,
-          node: (
-            <View
-              style={[
-                styles.addInputWrap,
-                { backgroundColor: mutedPalette[7] },
-              ]}
-            >
-              <TextInput
-                value={custom}
-                onChangeText={setCustom}
-                autoFocus
-                placeholder={addPlaceholder}
-                placeholderTextColor={colors.placeholder}
-                returnKeyType="done"
-                onSubmitEditing={submitCustom}
-                onBlur={submitCustom}
-                style={styles.addInput}
-                selectionColor={colors.text}
-                underlineColorAndroid="transparent"
-              />
-            </View>
-          ),
-        });
-      } else {
-        items.push({
-          key: 'add-plus',
-          widthHint: 48,
-          node: (
-            <BubbleChip
-              plus
-              color={ADD_CHIP_COLOR}
-              delay={80 + options.length * 55}
-              onPress={() => setAdding(true)}
-            />
-          ),
-        });
-      }
-    }
-
     return items;
   }, [
-    addPlaceholder,
-    adding,
-    allowAdd,
-    custom,
     customOptions,
-    onAddCustom,
     onToggle,
     options,
     selected,
@@ -217,7 +173,7 @@ export function ChipQuestionScreen({
   const rows = packChipRows(cloudChips, wrapW);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -239,6 +195,52 @@ export function ChipQuestionScreen({
               </BubbleEnter>
             ) : null}
           </View>
+
+          {allowAdd && onAddCustom ? (
+            <View style={styles.addTop}>
+              {inputAlwaysVisible ? (
+                <View style={styles.addInputUnderline}>
+                  <TextInput
+                    value={custom}
+                    onChangeText={setCustom}
+                    placeholder={addPlaceholder}
+                    placeholderTextColor={colors.placeholder}
+                    returnKeyType="done"
+                    onSubmitEditing={submitCustom}
+                    style={styles.addInput}
+                    selectionColor={colors.text}
+                    underlineColorAndroid="transparent"
+                  />
+                </View>
+              ) : adding ? (
+                <View style={[styles.addInputWrap, { backgroundColor: mutedPalette[7] }]}>
+                  <TextInput
+                    value={custom}
+                    onChangeText={setCustom}
+                    autoFocus
+                    placeholder={addPlaceholder}
+                    placeholderTextColor={colors.placeholder}
+                    returnKeyType="done"
+                    onSubmitEditing={submitCustom}
+                    onBlur={submitCustom}
+                    style={styles.addInput}
+                    selectionColor={colors.text}
+                    underlineColorAndroid="transparent"
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Write your own"
+                  onPress={() => setAdding(true)}
+                  hitSlop={12}
+                  style={styles.hiddenPlus}
+                >
+                  <Text style={styles.hiddenPlusMark}>+</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null}
 
           <View
             style={styles.chipWrap}
@@ -300,8 +302,10 @@ const styles = StyleSheet.create({
   },
   page: {
     flexGrow: 1,
+    paddingTop: spacing.webTop,
     paddingBottom: spacing.inset,
     paddingHorizontal: spacing.inset,
+    overflow: 'visible' as const,
   },
   backInScroll: {
     marginTop: 0,
@@ -312,11 +316,12 @@ const styles = StyleSheet.create({
   question: {
     fontFamily: fonts.headingRegular,
     color: colors.text,
-    fontSize: 44,
-    lineHeight: 46,
+    fontSize: 32,
+    lineHeight: 40,
     textAlign: 'left',
-    marginBottom: 24,
+    marginBottom: 16,
     ...noFakeBold,
+    ...headingClipFix,
   },
   subtitle: {
     fontFamily: fonts.bodyLight,
@@ -327,6 +332,24 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web'
       ? ({ fontWeight: '300', fontSynthesis: 'none' } as object)
       : { fontWeight: '300' as const }),
+  },
+  addTop: {
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  hiddenPlus: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.28,
+  },
+  hiddenPlusMark: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 26,
+    lineHeight: 28,
+    color: colors.text,
+    ...noFakeLight,
   },
   chipWrap: {
     paddingHorizontal: 0,
@@ -339,8 +362,17 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: ROW_GAP,
   },
+  addInputUnderline: {
+    width: '100%',
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.text,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    justifyContent: 'center',
+  },
   addInputWrap: {
     minWidth: 180,
+    width: '100%',
     maxWidth: '100%',
     borderRadius: radii.chip,
     paddingHorizontal: 16,

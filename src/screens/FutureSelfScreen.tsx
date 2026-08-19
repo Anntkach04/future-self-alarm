@@ -11,14 +11,14 @@ export function FutureSelfScreen({ navigation }: Props) {
 
   return (
     <ChipQuestionScreen
-      question={"Who are you\nbecoming?"}
-      subtitle="Choose the version of you that already feels like your Future Self."
-      helperText="Write it as who you are, not what you want."
+      question={"Why do you want\nto wake up early?"}
+      subtitle="Or pick from the chips below."
       options={FUTURE_SELF_OPTIONS}
       selected={answers.futureSelf}
       onToggle={toggleFutureSelf}
       onAddCustom={addFutureSelf}
-      addPlaceholder="Who is your Future Self?"
+      addPlaceholder="Write your own reason…"
+      inputAlwaysVisible
       onSubmit={() => navigation.navigate('AlreadyYou')}
     />
   );

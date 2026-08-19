@@ -6,7 +6,7 @@ const cors = require('cors');
 const { cloneVoice, synthesizeSpeech, getElevenKey } = require('./lib/elevenlabs');
 const { generateMorningScript, generateMoodAdvice, getOpenAiKey } = require('./lib/openai');
 const { mixVoiceWithBed, getFfmpegPath, listBeds } = require('./lib/mix');
-const { resolveBed } = require('./lib/beds');
+const { resolveBed, pickBedId } = require('./lib/beds');
 
 const app = express();
 const upload = multer({
@@ -137,7 +137,10 @@ app.post('/api/alarm/generate', async (req, res) => {
 
     const mixed = skipMix
       ? { buffer: spoken.buffer, mixed: false, reason: 'skipped' }
-      : await mixVoiceWithBed(spoken.buffer, answers?.musicBedId);
+      : await mixVoiceWithBed(
+          spoken.buffer,
+          pickBedId(answers || {})
+        );
 
     return res.json({
       text: script.text,

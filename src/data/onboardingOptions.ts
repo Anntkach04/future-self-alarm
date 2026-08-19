@@ -32,14 +32,16 @@ export const MORNING_FEELING_OPTIONS: BubbleOption[] = [
 ];
 
 export const FUTURE_SELF_OPTIONS: BubbleOption[] = [
-  bubble('I keep promises to myself', '#8FBDB7'),
-  bubble('Calm & confident', '#ADDEFF'),
-  bubble('Building something of my own', '#FEC554'),
-  bubble('Creative & alive', '#FF7FB5'),
-  bubble('Caring without losing myself', '#AFC9A8'),
-  bubble('A trusted leader', '#7E9BFF'),
-  bubble('Kind to my body', '#EDB28C'),
-  bubble('Free & financially secure', '#C5E86A'),
+  bubble('Build a morning routine', '#8FBDB7'),
+  bubble('Have more energy', '#ADDEFF'),
+  bubble('Work on my own project', '#FEC554'),
+  bubble('Move my body', '#B9F34A'),
+  bubble('Read before the day starts', '#AFC9A8'),
+  bubble('Meditate or breathe', '#EDB28C'),
+  bubble('Have quiet time for myself', '#FF7FB5'),
+  bubble('Get ahead of my to-do list', '#7E9BFF'),
+  bubble('Feel less rushed', '#D8C29E'),
+  bubble('Invest in my growth', '#C5E86A'),
 ];
 
 export const ALREADY_YOU_OPTIONS: BubbleOption[] = [
@@ -74,12 +76,7 @@ export const VOICE_STYLE_OPTIONS: BubbleOption[] = [
 ];
 
 export const MESSAGE_LENGTH_OPTIONS: BubbleOption[] = [
-  bubble('Quick boost', '#B9F34A', '~20 seconds'),
-  bubble('A few warm words', '#EDB28C', '~40 seconds'),
-  {
-    ...bubble('Full morning letter', '#ADDEFF', '~60–90 seconds'),
-    nudgeRight: 36,
-  },
+  bubble('About 30 seconds', '#ADDEFF', 'one calm morning letter'),
 ];
 
 export const MUSIC_BED_OPTIONS: BubbleOption[] = [

@@ -28,7 +28,7 @@ async function generateMorningScript(answers) {
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.8,
-      max_tokens: 500,
+      max_tokens: 700,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -81,12 +81,12 @@ async function generateMoodAdvice({ mood, note, name }) {
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.7,
-      max_tokens: 180,
+      max_tokens: 420,
       messages: [
         {
           role: 'system',
           content:
-            "You are the user's Future Self. Speak in first person as them, briefly, like a calm note to tonight. 2–4 short sentences. Warm, specific, not clinical, not a therapist, no quotes, no bullets, no emoji. Acknowledge the feeling and offer one small next step.",
+            "You are the user's Future Self. Speak in first person as them, like a warm letter to tonight. 5–8 sentences. Warm, specific, not clinical, not a therapist, no quotes, no bullets, no emoji. Acknowledge the feeling in their own words, sit with it, then offer one small next step. Longer than a slogan — a real note.",
         },
         {
           role: 'user',

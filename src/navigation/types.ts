@@ -2,9 +2,7 @@ export type ProfileFieldKey =
   | 'futureSelf'
   | 'alreadyProud'
   | 'hardMornings'
-  | 'voiceStyle'
-  | 'messageLength'
-  | 'musicBed';
+  | 'voiceStyle';
 
 export type RootStackParamList = {
   Welcome: undefined;

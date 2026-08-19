@@ -49,9 +49,30 @@ function resolveBed(bedId) {
   return file ? { ...wanted, path: file, file: path.basename(file) } : null;
 }
 
+function pickBedId(answers = {}) {
+  const blob = [
+    answers.voiceStyle,
+    ...(Array.isArray(answers.morningFeelings) ? answers.morningFeelings : []),
+    ...(Array.isArray(answers.hardMornings) ? answers.hardMornings : []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (/whisper|soft|unhurried|gentle|tender|massage/.test(blob)) {
+    return 'soft-massage';
+  }
+  if (/bright|happy|energy|smiling|light &/.test(blob)) {
+    return 'bali-morning';
+  }
+  if (/calm|wise|yoga|ground/.test(blob)) return 'yoga-air';
+  if (/strong|focus|earth|body/.test(blob)) return 'warm-earth';
+  return 'light-water';
+}
+
 function findBedFile(bedId) {
   const bed = resolveBed(bedId);
   return bed ? bed.path : null;
 }
 
-module.exports = { BEDS, BEDS_DIR, listBeds, resolveBed, findBedFile };
+module.exports = { BEDS, BEDS_DIR, listBeds, resolveBed, findBedFile, pickBedId };

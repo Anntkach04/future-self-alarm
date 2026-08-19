@@ -49,6 +49,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const goldHeight = useRef(new Animated.Value(0)).current;
   const completeOpacity = useRef(new Animated.Value(0)).current;
   const readOpacity = useRef(new Animated.Value(1)).current;
+  const lineReadyRef = useRef(false);
 
   useEffect(() => {
     dictaphone.requestPermission();
@@ -143,8 +144,17 @@ export function VoiceRecordScreen({ navigation }: Props) {
     });
   }, [finishReading, lineIndex, lineOpacity, lineY, lines.length]);
 
+  // Mark line as ready after a short delay so stale STT results don't immediately
+  // trigger an advance on the new line.
+  useEffect(() => {
+    lineReadyRef.current = false;
+    const t = setTimeout(() => { lineReadyRef.current = true; }, 700);
+    return () => clearTimeout(t);
+  }, [lineIndex]);
+
   useEffect(() => {
     if (!recording || complete || advancingRef.current) return;
+    if (!lineReadyRef.current) return;
     if (dictaphone.spokenCount < dictaphone.wordCount || dictaphone.wordCount === 0) {
       return;
     }
@@ -279,6 +289,15 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 onPress={onMicPress}
               />
               <Text style={styles.hint}>{hint}</Text>
+              {recording && lineIndex < lines.length - 1 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={advanceLine}
+                  style={styles.nextLineBtn}
+                >
+                  <Text style={styles.nextLineText}>Next line →</Text>
+                </Pressable>
+              ) : null}
             </View>
           </BubbleEnter>
         </Animated.View>
@@ -386,6 +405,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textMuted,
     marginTop: 4,
+  },
+  nextLineBtn: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  nextLineText: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
   },
   error: {
     fontFamily: fonts.body,

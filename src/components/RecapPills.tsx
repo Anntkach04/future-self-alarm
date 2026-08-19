@@ -13,7 +13,7 @@ type Props = {
 
 export function RecapPills({ items, colors: itemColors, onPress }: Props) {
   if (!items.length) {
-    return <Text style={styles.empty}>—</Text>;
+    return <Text style={styles.empty}>-</Text>;
   }
 
   const content = (

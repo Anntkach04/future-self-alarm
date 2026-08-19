@@ -39,8 +39,8 @@ export function LiveWaveform({ active, metering, hearing = false }: Props) {
     return Array.from({ length: BAR_COUNT }, (_, i) => {
       const wave = Math.sin((i * 0.72 + tick * 0.38) * 1.15) * 0.5 + 0.5;
       const bounce = Math.sin((tick + i * 3) * 0.55) * 0.25 + 0.75;
-      const quiet = 10 + i % 3;
-      return Math.max(quiet, 18 + 46 * energy * wave * bounce);
+      const quiet = 14 + i % 4;
+      return Math.max(quiet, 24 + 62 * energy * wave * bounce);
     });
   }, [active, hearing, metering, tick]);
 
@@ -65,14 +65,14 @@ export function LiveWaveform({ active, metering, hearing = false }: Props) {
 
 const styles = StyleSheet.create({
   row: {
-    height: 72,
+    height: 88,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
   bar: {
-    width: 7,
+    width: 5,
     borderRadius: 999,
   },
 });

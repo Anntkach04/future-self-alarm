@@ -1,0 +1,13 @@
+---
+description: Later onboarding steps to add after the dashboard exists
+alwaysApply: true
+---
+
+# Later onboarding (do not skip)
+
+After the current onboarding (name → feelings → voice → home), add screens **before Home**:
+
+1. **Login / account** — the person needs to be signed in.
+2. **Notification permission** — Future Self cannot wake them without iOS/Android alert access. Ask clearly, then deep-link to system settings if denied.
+
+Do not pretend a sound picker controls the iPhone Clock app. The alarm is the cloned voice via notifications; a chime-before-voice picker can come later, bundled in the app.

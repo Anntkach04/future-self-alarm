@@ -11,13 +11,13 @@ export function VoiceStyleScreen({ navigation }: Props) {
 
   return (
     <ChipQuestionScreen
-      question={"How should\nFuture You sound?"}
-      subtitle="Choose the energy you want to wake up to."
+      question={"What tone should\nmornings have?"}
+      subtitle="This shapes how Future You speaks - pick once."
       options={VOICE_STYLE_OPTIONS}
       selected={answers.voiceStyle ? [answers.voiceStyle] : []}
       onToggle={setVoiceStyle}
       allowAdd={false}
-      onSubmit={() => navigation.navigate('MessageLength')}
+      onSubmit={() => navigation.navigate('WakeUpTime')}
     />
   );
 }

@@ -69,7 +69,7 @@ const defaultAnswers: OnboardingAnswers = {
   alreadyProud: [],
   hardMornings: [],
   voiceStyle: null,
-  messageLength: null,
+  messageLength: 'About 30 seconds',
   musicBedId: 'bali-morning',
   wakeHour: 7,
   wakeMinute: 0,

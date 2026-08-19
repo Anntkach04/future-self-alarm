@@ -32,6 +32,7 @@ export function useSmartDictaphone(currentLine: string) {
   const lineRef = useRef(currentLine);
   const keepListeningRef = useRef(false);
   const finalsRef = useRef('');
+  const lineGenRef = useRef(0);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const uriRef = useRef<string | null>(null);
   const usesNativePersistRef = useRef(false);
@@ -43,6 +44,8 @@ export function useSmartDictaphone(currentLine: string) {
     spokenRef.current = 0;
     setSpokenCount(0);
     finalsRef.current = '';
+    setHearing(false);
+    lineGenRef.current += 1;
   }, [currentLine]);
 
   useEffect(() => {
@@ -53,7 +56,8 @@ export function useSmartDictaphone(currentLine: string) {
     }
   }, []);
 
-  const applyTranscript = useCallback((heard: string) => {
+  const applyTranscript = useCallback((heard: string, gen: number) => {
+    if (gen !== lineGenRef.current) return;
     const trimmed = heard.trim();
     if (!trimmed) return;
     setHearing(true);
@@ -68,6 +72,7 @@ export function useSmartDictaphone(currentLine: string) {
     if (!keepListeningRef.current) return;
     const results = event.results;
     if (!results?.length) return;
+    const gen = lineGenRef.current;
 
     const chunk = results
       .map((item) => item?.transcript?.trim())
@@ -77,10 +82,10 @@ export function useSmartDictaphone(currentLine: string) {
 
     if (event.isFinal) {
       finalsRef.current = `${finalsRef.current} ${chunk}`.trim();
-      applyTranscript(finalsRef.current);
+      applyTranscript(finalsRef.current, gen);
       return;
     }
-    applyTranscript(`${finalsRef.current} ${chunk}`.trim());
+    applyTranscript(`${finalsRef.current} ${chunk}`.trim(), gen);
   });
 
   useSpeechRecognitionEvent('volumechange', (event) => {

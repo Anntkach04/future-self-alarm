@@ -10,7 +10,12 @@ let handlersReady = false;
 
 export function isFutureSelfAlarmData(
   data: unknown
-): data is { alarmId: string; audioUri?: string; type: 'future-self-alarm' } {
+): data is {
+  alarmId: string;
+  audioUri?: string;
+  type: 'future-self-alarm';
+  snoozeMinutes?: number;
+} {
   if (!data || typeof data !== 'object') return false;
   const row = data as Record<string, unknown>;
   return row.type === 'future-self-alarm' && typeof row.alarmId === 'string';
@@ -117,8 +122,10 @@ function notificationId(alarmId: string, index: number) {
 export async function cancelScheduledAlarm(alarmId: string) {
   if (Platform.OS === 'web') return;
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  const mine = scheduled.filter((item) =>
-    item.identifier.startsWith(`fs_alarm_${alarmId}_`)
+  const mine = scheduled.filter(
+    (item) =>
+      item.identifier.startsWith(`fs_alarm_${alarmId}_`) ||
+      item.identifier === snoozeId(alarmId)
   );
   await Promise.all(
     mine.map((item) =>
@@ -161,6 +168,7 @@ export async function scheduleAlarmNotifications(
             type: 'future-self-alarm',
             alarmId: alarm.id,
             audioUri: audioUri || undefined,
+            snoozeMinutes: alarm.snoozeMinutes || 10,
           },
         },
         trigger: {
@@ -180,6 +188,74 @@ async function handleAlarmNotification(
   if (!isFutureSelfAlarmData(data)) return;
   const uri = typeof data.audioUri === 'string' ? data.audioUri : null;
   if (uri) await playAlarmAudio(uri);
+  const snoozeMin =
+    typeof data.snoozeMinutes === 'number' && data.snoozeMinutes > 0
+      ? data.snoozeMinutes
+      : 10;
+  await scheduleSnooze(data.alarmId, uri, snoozeMin);
+  emitRinging({ alarmId: data.alarmId, audioUri: uri });
+}
+
+function snoozeId(alarmId: string) {
+  return `fs_snooze_${alarmId}`;
+}
+
+export async function scheduleSnooze(
+  alarmId: string,
+  audioUri: string | null,
+  minutes = 10
+) {
+  if (Platform.OS === 'web') return;
+  await Notifications.cancelScheduledNotificationAsync(snoozeId(alarmId)).catch(
+    () => undefined
+  );
+  const fire = new Date(Date.now() + minutes * 60 * 1000);
+  await Notifications.scheduleNotificationAsync({
+    identifier: snoozeId(alarmId),
+    content: {
+      title: 'Future You',
+      body: 'Still here - whenever you’re ready.',
+      sound: Platform.OS === 'android' ? 'default' : true,
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      interruptionLevel: 'timeSensitive',
+      data: {
+        type: 'future-self-alarm',
+        alarmId,
+        audioUri: audioUri || undefined,
+        snoozeMinutes: minutes,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: fire,
+      channelId: Platform.OS === 'android' ? 'alarms' : undefined,
+    },
+  });
+}
+
+export async function dismissAlarm(alarmId: string) {
+  await stopPlayback();
+  if (Platform.OS !== 'web') {
+    await Notifications.cancelScheduledNotificationAsync(snoozeId(alarmId)).catch(
+      () => undefined
+    );
+  }
+  emitRinging(null);
+}
+
+type RingingState = { alarmId: string; audioUri: string | null } | null;
+type RingListener = (next: RingingState) => void;
+const ringListeners = new Set<RingListener>();
+
+function emitRinging(next: RingingState) {
+  ringListeners.forEach((fn) => fn(next));
+}
+
+export function subscribeAlarmRing(listener: RingListener) {
+  ringListeners.add(listener);
+  return () => {
+    ringListeners.delete(listener);
+  };
 }
 
 export function initAlarmNotifications() {

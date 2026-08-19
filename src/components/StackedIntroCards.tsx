@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { fonts } from '../theme';
 import { IntroDoodle } from './IntroDoodle';
+import { useLayout } from '../layout/LayoutContext';
 
 export type IntroCardTone = 'sky' | 'coral' | 'gold';
 
@@ -60,6 +61,8 @@ type Props = {
   onNext: () => void;
   onPrev: () => void;
   interactive?: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
 };
 
 export function StackedIntroCards({
@@ -68,7 +71,19 @@ export function StackedIntroCards({
   onNext,
   onPrev,
   interactive = true,
+  maxWidth,
+  maxHeight,
 }: Props) {
+  const layout = useLayout();
+  const fitW = maxWidth ?? layout.width;
+  const fitH = maxHeight ?? layout.height;
+  const scale = Math.min(
+    1,
+    fitW > 0 ? fitW / (INTRO_CARD_SIZE + 28) : 1,
+    fitH > 0 ? fitH / INTRO_STAGE_H : 1
+  );
+  const stageW = Math.round(INTRO_CARD_SIZE * scale);
+  const stageH = Math.round(INTRO_STAGE_H * scale);
   const order = useMemo(() => slides.map((s) => s.card), [slides]);
   const anims = useRef(order.map((_, i) => makeAnim(i))).current;
   const contentFade = useRef(new Animated.Value(1)).current;
@@ -238,7 +253,14 @@ export function StackedIntroCards({
       nativeID={STAGE_ID}
       {...(Platform.OS === 'web' ? ({ id: STAGE_ID } as object) : null)}
       collapsable={false}
-      style={styles.stage}
+      style={[
+        styles.stage,
+        {
+          width: stageW,
+          height: stageH,
+          overflow: 'visible',
+        },
+      ]}
       pointerEvents={interactive ? 'auto' : 'none'}
       onStartShouldSetResponder={() => interactive}
       onMoveShouldSetResponder={() => interactive}
@@ -267,6 +289,19 @@ export function StackedIntroCards({
         else if (dx < -40) onNextRef.current();
       }}
     >
+      <View
+        pointerEvents="box-none"
+        style={{
+          width: INTRO_CARD_SIZE,
+          height: INTRO_STAGE_H,
+          transform: [{ scale }],
+          marginLeft: 0,
+          marginTop: 0,
+          ...(Platform.OS === 'web'
+            ? ({ transformOrigin: 'top left' } as object)
+            : null),
+        }}
+      >
       {order.map((tone, toneIndex) => {
         const anim = anims[toneIndex];
         const slotIndex = (toneIndex - index + order.length) % order.length;
@@ -307,6 +342,7 @@ export function StackedIntroCards({
           </Animated.View>
         );
       })}
+      </View>
     </View>
   );
 }
@@ -329,7 +365,7 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingHorizontal: 28,
     paddingBottom: 24,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   copy: {
     flex: 1,

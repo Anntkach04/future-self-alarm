@@ -1,20 +1,14 @@
 export function buildVoiceScriptLines(name: string) {
   const who = name.trim() || 'there';
   return [
-    'Hi.',
-    `My name is ${who}.`,
-    "I'm recording my voice for my morning alarm.",
-    'Calm, clear, and real.',
-    'Some days I want to stay in bed.',
-    'Small steps still build a bigger life.',
-    'Today I choose focus and kindness.',
+    `Hi, I'm ${who}.`,
+    'The quick brown fox jumps over the lazy dog.',
+    'Please bring yellow lilies, red berries, and warm tea.',
+    'She sells sea shells by the south sea shore.',
     'One, two, three, four, five.',
     'Six, seven, eight, nine, ten.',
-    'Good morning.',
-    'Get up.',
-    "It's time to do what you promised yourself.",
-    "You've got this.",
-    'Start now.',
+    'Blue, gold, green. Soft, clear, calm.',
+    'Good morning. This is only my voice.',
   ];
 }
 

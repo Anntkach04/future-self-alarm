@@ -172,5 +172,5 @@ export function isPaidPlanCloneError(message: string) {
 
 export function buildPreviewLine(name: string) {
   const who = name.trim() || 'friend';
-  return `Good morning, ${who}. This is you from the future. Get up — today matters. Start with one clear step.`;
+  return `Good morning, ${who}. This is you from the future. Get up - today matters. Start with one clear step.`;
 }

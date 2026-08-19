@@ -18,7 +18,7 @@ import {
 import { INTRO_SLIDES } from '../data/onboardingOptions';
 import { RootStackParamList } from '../navigation/types';
 import { useSplashChrome } from '../layout/SplashChromeContext';
-import { colors, fonts, noFakeBold, spacing } from '../theme';
+import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Intro'>;
 
@@ -26,8 +26,6 @@ const WELCOME_BLUE = '#BADFFF';
 const HOLD_MS = 2200;
 const RETRACT_MS = 1000;
 const LAST = INTRO_SLIDES.length - 1;
-const HEADING_SIZE = 44;
-const HEADING_LINE = 48;
 
 /**
  * Splash overlay retracts over a layout that is already final —
@@ -38,6 +36,7 @@ export function IntroCarouselScreen({ navigation }: Props) {
   const [index, setIndex] = useState(0);
   const [splashDone, setSplashDone] = useState(false);
   const [frame, setFrame] = useState({ w: 0, h: 0 });
+  const [stageBox, setStageBox] = useState({ w: 0, h: 0 });
   const lock = useRef(false);
   const splashStarted = useRef(false);
 
@@ -139,11 +138,19 @@ export function IntroCarouselScreen({ navigation }: Props) {
           colors={INTRO_SLIDES.map((slide) => CARD_COLORS[slide.card])}
           onPress={onBarPress}
         />
-        <Text style={styles.heading}>{heading}</Text>
+        <Text style={styles.heading} numberOfLines={3}>
+          {heading}
+        </Text>
 
         <View
           style={styles.stageWrap}
           pointerEvents={splashDone ? 'auto' : 'none'}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (width !== stageBox.w || height !== stageBox.h) {
+              setStageBox({ w: width, h: height });
+            }
+          }}
         >
           <StackedIntroCards
             slides={INTRO_SLIDES}
@@ -151,6 +158,8 @@ export function IntroCarouselScreen({ navigation }: Props) {
             onNext={goNextCard}
             onPrev={goPrevCard}
             interactive={splashDone}
+            maxWidth={stageBox.w}
+            maxHeight={stageBox.h}
           />
         </View>
 
@@ -192,26 +201,33 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
-    padding: spacing.inset,
+    paddingHorizontal: spacing.inset,
+    paddingTop: spacing.webTop + 8,
+    paddingBottom: spacing.inset,
+    overflow: 'visible',
   },
   heading: {
     fontFamily: fonts.headingRegular,
-    fontSize: HEADING_SIZE,
-    lineHeight: HEADING_LINE,
+    fontSize: 36,
+    lineHeight: 44,
     letterSpacing: 0.374,
     color: '#1A1A1A',
     textAlign: 'left',
-    marginTop: 20,
+    marginTop: 12,
     marginBottom: 12,
+    minHeight: 44,
     ...noFakeBold,
+    ...headingClipFix,
   },
   stageWrap: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     width: '100%',
     position: 'relative',
     zIndex: 1,
+    overflow: 'visible',
+    minHeight: 180,
   },
   nextWrap: {
     width: '100%',

@@ -11,7 +11,9 @@ import {
 } from '@expo-google-fonts/inter';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AlarmWakeBanner } from './src/components/AlarmWakeBanner';
 import { AppShell } from './src/components/AppShell';
 import { WaitingView } from './src/components/WaitingView';
 import { AlarmsProvider } from './src/context/AlarmsContext';
@@ -19,6 +21,7 @@ import { MoodCheckInProvider } from './src/context/MoodCheckInContext';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { initAlarmNotifications } from './src/services/alarmScheduler';
+import { lockWebViewport } from './src/utils/lockWebViewport';
 
 export default function App() {
   const [loaded] = useFonts({
@@ -32,6 +35,8 @@ export default function App() {
 
   useEffect(() => {
     initAlarmNotifications();
+    if (Platform.OS !== 'web') return undefined;
+    return lockWebViewport();
   }, []);
 
   if (!loaded) {
@@ -46,6 +51,7 @@ export default function App() {
             <AppShell>
               <StatusBar style="dark" />
               <RootNavigator />
+              <AlarmWakeBanner />
             </AppShell>
           </MoodCheckInProvider>
         </AlarmsProvider>

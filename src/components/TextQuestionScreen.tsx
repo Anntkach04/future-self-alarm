@@ -1,15 +1,15 @@
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from './BackButton';
 import { BubbleEnter } from './BubbleEnter';
 import { InputPill } from './InputPill';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = {
   question: string;
@@ -35,12 +35,17 @@ export function TextQuestionScreen({
   accentColor = accents.gold,
 }: Props) {
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <BackButton />
           <BubbleEnter delay={0} fromY={16}>
             <Text style={styles.question}>{question}</Text>
@@ -61,7 +66,7 @@ export function TextQuestionScreen({
               buttonColor={accentColor}
             />
           </BubbleEnter>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -76,19 +81,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: spacing.inset,
+    paddingTop: spacing.webTop,
     paddingBottom: spacing.inset,
   },
   question: {
     textAlign: 'left',
     fontFamily: fonts.headingRegular,
     color: colors.text,
-    fontSize: 60,
-    lineHeight: 58,
-    letterSpacing: 0.37,
-    marginBottom: 24,
+    fontSize: 36,
+    lineHeight: 44,
+    letterSpacing: 0.2,
+    marginBottom: 20,
     ...noFakeBold,
+    ...headingClipFix,
   },
   subtitle: {
     textAlign: 'left',

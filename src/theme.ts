@@ -127,7 +127,18 @@ export const spacing = {
   xxl: 48,
   /** Minimum margin on every screen edge */
   inset: 40,
+  /** Extra top gap on mobile web — Safari chrome reports 0 safe-area. */
+  webTop: Platform.OS === 'web' ? 20 : 0,
 };
+
+/** Instrument Serif glyphs clip when line-height is tight or overflow is hidden. */
+export const headingClipFix =
+  Platform.OS === 'web'
+    ? ({
+        overflow: 'visible' as const,
+        paddingTop: 8,
+      } as const)
+    : ({ overflow: 'visible' as const } as const);
 
 export const radii = {
   input: 999,

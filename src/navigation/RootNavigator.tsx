@@ -11,8 +11,6 @@ import { FutureSelfScreen } from '../screens/FutureSelfScreen';
 import { AlreadyYouScreen } from '../screens/AlreadyYouScreen';
 import { HardMorningsScreen } from '../screens/HardMorningsScreen';
 import { VoiceStyleScreen } from '../screens/VoiceStyleScreen';
-import { MessageLengthScreen } from '../screens/MessageLengthScreen';
-import { MusicBedScreen } from '../screens/MusicBedScreen';
 import { WakeUpTimeScreen } from '../screens/WakeUpTimeScreen';
 import { VoiceRecordScreen } from '../screens/VoiceRecordScreen';
 import { VoiceReviewScreen } from '../screens/VoiceReviewScreen';
@@ -50,7 +48,7 @@ export function RootNavigator() {
         screenOptions={{
           headerShown: false,
           animation: 'fade',
-          contentStyle: { backgroundColor: colors.bg },
+          contentStyle: { backgroundColor: colors.bg, overflow: 'visible' },
         }}
       >
         <Stack.Screen
@@ -72,8 +70,6 @@ export function RootNavigator() {
         <Stack.Screen name="AlreadyYou" component={AlreadyYouScreen} />
         <Stack.Screen name="HardMornings" component={HardMorningsScreen} />
         <Stack.Screen name="VoiceStyle" component={VoiceStyleScreen} />
-        <Stack.Screen name="MessageLength" component={MessageLengthScreen} />
-        <Stack.Screen name="MusicBed" component={MusicBedScreen} />
         <Stack.Screen name="WakeUpTime" component={WakeUpTimeScreen} />
         <Stack.Screen name="VoiceRecord" component={VoiceRecordScreen} />
         <Stack.Screen name="VoiceReview" component={VoiceReviewScreen} />

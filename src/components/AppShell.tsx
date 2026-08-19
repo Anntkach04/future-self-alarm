@@ -44,6 +44,15 @@ function AppShellWeb({ children }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const { splashActive } = useSplashChrome();
+  const isNarrowPhone = windowWidth < 600;
+
+  if (isNarrowPhone) {
+    return (
+      <LayoutProvider frameWidth={windowWidth} frameHeight={windowHeight}>
+        <View style={styles.nativeFill}>{children}</View>
+      </LayoutProvider>
+    );
+  }
 
   const preferTablet = windowWidth >= 900;
   const maxFrameWidth = preferTablet
@@ -96,6 +105,7 @@ const styles = StyleSheet.create({
   nativeFill: {
     flex: 1,
     backgroundColor: colors.bg,
+    overflow: 'visible',
   },
   webStage: {
     flex: 1,
@@ -107,10 +117,11 @@ const styles = StyleSheet.create({
   },
   deviceFrame: {
     backgroundColor: colors.bg,
-    overflow: 'hidden',
+    overflow: 'visible',
     borderWidth: 0,
   },
   deviceInner: {
     flex: 1,
+    overflow: 'visible',
   },
 });

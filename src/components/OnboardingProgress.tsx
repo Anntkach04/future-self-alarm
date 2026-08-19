@@ -11,28 +11,31 @@ type Props = {
 };
 
 export function OnboardingProgress({ index, colors, onPress }: Props) {
-  const current = colors[index] ?? colors[0] ?? '#FEC554';
-
   return (
     <View style={styles.row}>
-      {colors.map((color, i) => (
-        <Pressable
-          key={`${color}-${i}`}
-          onPress={() => onPress?.(i)}
-          disabled={!onPress}
-          hitSlop={8}
-          style={styles.hit}
-        >
-          <View
-            style={[
-              styles.bar,
-              {
-                backgroundColor: i <= index ? current : idleTint(color),
-              },
-            ]}
-          />
-        </Pressable>
-      ))}
+      {colors.map((color, i) => {
+        const reached = i <= index;
+        const active = i === index;
+        return (
+          <Pressable
+            key={`${color}-${i}`}
+            onPress={() => onPress?.(i)}
+            disabled={!onPress}
+            hitSlop={8}
+            style={styles.hit}
+          >
+            <View
+              style={[
+                styles.bar,
+                active && styles.barActive,
+                {
+                  backgroundColor: reached ? color : idleTint(color),
+                },
+              ]}
+            />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -43,6 +46,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     width: '100%',
+    minHeight: 10,
   },
   hit: {
     flex: 1,
@@ -51,5 +55,8 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 999,
     width: '100%',
+  },
+  barActive: {
+    height: 10,
   },
 });
