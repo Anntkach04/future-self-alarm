@@ -1,91 +1,51 @@
-# Future Self Alarm — для сестри
+# Future Self Alarm — для сестри (оновлено)
 
-Спочатку дивимось **веб-лінк (Vercel)** і узгоджуємо правки.  
-Потім, коли дизайн ок — ставиш апку **на свій iPhone** з Mac. $99 Apple Developer **не потрібні**.
+Спочатку можна дивитись **веб-лінк (Vercel)** і узгоджувати дизайн.  
+Потім ставиш апку **на свій iPhone** з Mac. **$99 Apple Developer не потрібні** (безкоштовний Apple ID ок).
+
+У тебе є акаунт **Cursor** — майже все можна віддати агенту в чаті. Ти лише ставиш програми один раз і тримаєш телефон розблокованим.
 
 ---
 
 ## Частина 1 — лише подивитись (Vercel)
 
-Це сайт-прев’ю екранів у браузері. Можна відкрити з телефону або ноута.
+Це сайт-прев’ю екранів у браузері.
 
-**Що працює:** онбординг, чіпи, Home, як виглядає.
+**Працює:** онбординг, чіпи, Home, як виглядає.  
+**Не працює:** справжній диктофон, клон голосу, будильник. Це нормально для дизайну.
 
-**Що не працює:** справжній диктофон, клон голосу, будильник на залоченому екрані. Це нормально для узгодження вигляду.
-
-Після правок Анна оновлює Vercel — оновлюєш сторінку.
+Після правок Анна оновлює Vercel — просто оновлюєш сторінку.
 
 ---
 
-## Частина 2 — поставити на свій iPhone
+## Частина 2 — поставити на iPhone через Cursor
 
-Потрібно: **Mac**, **iPhone**, кабель, одна Wi‑Fi, ~30–60 хв першого разу.
+### Що зробити один раз руками
 
-### Де що відкривати
+1. **Mac + iPhone** на **одній Wi‑Fi**, кабель USB.
+2. App Store → **Xcode** → встановити → відкрити один раз → Agree.
+3. На iPhone: Settings → Privacy & Security → **Developer Mode** → On → перезавантажити.
+4. Встановити **Cursor** і увійти в свій акаунт.
+5. Підключи iPhone кабелем, розблокуй, натисни **Trust This Computer**, якщо спитає.
 
-| Що | Де | Навіщо |
-|----|----|--------|
-| Лінк Vercel | **Safari / Chrome** | подивитись як виглядає |
-| Ця інструкція | браузер: [docs/SISTER.md](https://github.com/Anntkach04/future-self-alarm/blob/main/docs/SISTER.md) | читати кроки |
-| Репозиторій | **Термінал** (`git clone …`) | скачати код на Mac |
-| `.env` | **Cursor, VS Code або TextEdit** — файл у папці `future-self-alarm` | вставити ключі |
-| Апка | **не відкривай проєкт у Xcode руками** | Xcode ставимо, але збірку робить команда `npx expo run:ios --device` |
+### Відкрити проєкт у Cursor
 
-**Не треба:** заходити на GitHub і качати zip «відкрити файл».  
-**Не треба:** File → Open у Xcode на репозиторій.
-
-Папка після клону зазвичай тут: `Macintosh HD → Users → ТВОЄ_ІМʼЯ → future-self-alarm`  
-(або `~/future-self-alarm` у Терміналі).
-
-### 1. Програми
-
-1. App Store → **Xcode** → встановити → відкрити один раз → Agree.
-2. У Терміналі:
-
-```bash
-xcode-select --install
-```
-
-3. Homebrew:
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
-eval "$(/opt/homebrew/bin/brew shellenv)"
-```
-
-4. CocoaPods (Node уже стоїть — не чіпай):
-
-```bash
-brew install cocoapods
-pod --version
-node -v
-npm -v
-```
-
-Якщо `node -v` або `npm -v` не працює в новому вікні — напиши Анні; Node є, просто треба підхопити PATH.
-
-### 2. Код (Термінал, не Xcode)
-
-Відкрий **Terminal** (Програми → Утиліти → Термінал). Скопіюй команди цілком:
+Анна дасть доступ до репо (або папку). Найпростіше:
 
 ```bash
 cd ~
 git clone https://github.com/Anntkach04/future-self-alarm.git
-cd future-self-alarm
-npm install
-cd server && npm install && npm run beds:download && cd ..
 ```
 
-### 3. Ключі (файл `.env`)
+Потім у Cursor: **File → Open Folder** → `~/future-self-alarm`.
 
-Скопіюй приклад:
+Або Анна надішле вже готову папку — відкрий її в Cursor так само.
 
-```bash
-cp .env.example .env
-```
+### Ключі `.env` (від Анни в особисте повідомлення)
 
-Відкрий `.env` у **Cursor / VS Code / TextEdit** (файл лежить у папці `future-self-alarm`, поруч з `package.json`) і встав значення, які надішле Анна в **особисте повідомлення** (не в GitHub):
+Анна надішле значення. Агент може сам створити `.env`, якщо ти **вставиш ключі в чат Cursor** (або попросиш Анну передати агенту).
+
+Потрібні рядки:
 
 ```
 ELEVENLABS_API_KEY=...
@@ -95,59 +55,112 @@ VOICE_API_PORT=8787
 EXPO_PUBLIC_API_URL=http://ТВІЙ_IP_MAC:8787
 ```
 
+`EXPO_PUBLIC_API_URL` **не може бути** `localhost` — телефон не бачить Mac як localhost.  
 IP Mac: System Settings → Wi‑Fi → Details → IP address.  
-Приклад: `EXPO_PUBLIC_API_URL=http://192.168.1.23:8787`
+Приклад: `http://192.168.0.100:8787`
 
-Mac і iPhone — **та сама Wi‑Fi**. Не `localhost` — телефон його не бачить.
+---
 
-### 4. Запуск (два вікна Терміналу)
+## Команда для агента в Cursor
 
-**Вікно 1 — сервер** (тримати відкритим):
+Відкрий **Agent / Chat** у Cursor (режим Agent) і **встав це одним повідомленням**:
+
+```text
+Підключи Future Self Alarm на мій iPhone. Роби все сам через термінал, питай мене лише коли треба щось натиснути на телефоні.
+
+Зроби по черзі:
+1. Перевір Node, npm, Xcode, CocoaPods; якщо чогось немає — встанови (Homebrew / cocoapods).
+2. У корені проєкту: npm install; у server/: npm install і npm run beds:download якщо треба.
+3. Знайди IP цього Mac (ipconfig getifaddr en0) і запиши в .env:
+   EXPO_PUBLIC_API_URL=http://ЦЕЙ_IP:8787
+   (не localhost). Якщо .env немає — скопіюй з .env.example і попроси мене ключі ElevenLabs/OpenAI.
+4. Запусти voice server: npm run server (слухає 0.0.0.0:8787). Перевір /api/health.
+5. Підключи iPhone кабелем, знайди UDID, зроби Release-збірку і встанови:
+   npx expo run:ios --device "<UDID>" --configuration Release --no-bundler
+   Якщо launch fails бо телефон locked — встанови через xcrun devicectl device install app.
+6. Якщо шлях проєкту з пробілами ламає збірку — клонуй/скопіюй у ~/fsa-clean і збирай звідти, тримаючи .env з правильним IP.
+7. Напиши мені коротко: сервер запущений? апка встановлена? що натиснути на iPhone (Trust / Developer Mode / відкрити апку).
+
+Не коміть і не пуш без моєї просьби. Не друкуй повні API-ключі в чат.
+```
+
+Агент сам поставить залежності, пропише IP, підніме сервер і поставить апку.  
+Ти лише: **розблокуй iPhone**, підтвердь Trust / Developer Mode, коли він попросить.
+
+---
+
+## Щодня (після першої установки)
+
+### 1. Сервер на Mac (обовʼязково)
+
+У Cursor Agent або в Терміналі:
 
 ```bash
-cd ~/future-self-alarm
+cd ~/future-self-alarm   # або ~/fsa-clean
 npm run server
 ```
 
+Має з’явитись щось на кшталт `Future Self API on http://localhost:8787` і рядок з IP для телефону.
+
 Перевірка в браузері Mac: http://localhost:8787/api/health  
-Має бути JSON, не помилка.
+Має бути JSON з `"elevenLabs": true`.
 
-Якщо `address already in use :::8787` — сервер уже запущений, не запускай другий.
+### 2. Апка на телефоні
 
-**Вікно 2 — апка на телефон:**
+Просто відкрий **Future Self Alarm** на iPhone (якщо вже встановлена).  
+Нову збірку треба лише коли Анна каже «оновили код» — тоді знову встав команду агенту вище (або коротше: «перезбери Release на мій iPhone»).
 
-Підключи iPhone кабелем, розблокуй, на iPhone: Settings → Privacy & Security → **Developer Mode** → On.
+### 3. Якщо змінився Wi‑Fi / IP Mac
 
-```bash
-cd ~/future-self-alarm
-npx expo run:ios --device
+IP часто стрибає (`.100` → `.101`). Тоді:
+
+1. Дізнайся новий IP Mac.
+2. У Cursor скажи агенту:
+
+```text
+Онови EXPO_PUBLIC_API_URL на поточний IP Mac і зроби нову Release-збірку на iPhone.
 ```
 
-Перша збірка 5–15 хв. Вибери свій iPhone у списку, якщо спитає.
+Без нової збірки телефон далі б’ється в старий IP → помилка `Could not connect to the server`.
 
-### 5. Дозволи в апці
+---
+
+## Дозволи в апці
 
 | Коли | Що дозволити |
 |------|----------------|
-| Час будильника → Continue | Notifications |
-| Запис голосу → мікрофон | Microphone + Speech Recognition |
-| Зберегти alarm | Notifications, якщо ще ні |
+| Час будильника → далі | Notifications |
+| Запис голосу | Microphone + Speech Recognition |
+| Після запису | зачекай стрілку на золотому екрані (клонування йде там, без окремого спінера) |
 
-### 6. Якщо щось не так
+---
+
+## Якщо щось не так
 
 | Симптом | Що зробити |
 |---------|------------|
-| `command not found: npm` | `source ~/.zshrc`, перевірити `node -v` |
-| CocoaPods / brew missing | кроки Homebrew + `brew install cocoapods` |
-| Mood завжди однакова фраза | сервер не запущений або в `.env` стоїть `localhost`, а не IP Mac |
-| Апка не чує слова на диктофоні | це не Expo Go; має бути `npx expo run:ios --device` |
-| Trust This Computer | на iPhone натисни Trust |
+| `Could not connect to the server` | Mac і iPhone одна Wi‑Fi; `npm run server` запущений; IP у збірці = поточний IP Mac → перезбери |
+| `command not found: npm` | У Cursor: «постав Node через nvm/Homebrew і додай у PATH» |
+| Апка білий екран / стара версія | нова Release-збірка через агента |
+| Диктофон глухий / дуже строгий | не Expo Go; має бути збірка `expo run:ios --device` |
+| Trust This Computer | на iPhone натисни Trust, розблокуй екран |
+| Пристрій locked під час install | розблокуй iPhone і попроси агента повторити install |
 
 ---
 
 ## Що сказати Анні після установки
 
 - Чи відкрився онбординг
-- Чи підсвічуються слова, коли читаєш скрипт
+- Чи підсвічуються слова при читанні скрипта
+- Чи з’явилась стрілка після «You're all set!» і чи клон пройшов
 - Чи зібрався будильник
 - Скрін / відео, якщо щось зламалось
+
+---
+
+## Коротко для Анни (що переслати сестрі)
+
+1. Відкрий проєкт у Cursor.  
+2. Встав **блок «Команда для агента»** з цього файлу.  
+3. Тримай iPhone розблокованим на кабелі.  
+4. Коли агент закінчить — залиш `npm run server` увімкненим і тестуй апку.
