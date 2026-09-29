@@ -1,11 +1,18 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const express = require('express');
+const os = require('os');
 const multer = require('multer');
 const cors = require('cors');
 const { cloneVoice, synthesizeSpeech, getElevenKey } = require('./lib/elevenlabs');
 const { generateMorningScript, generateMoodAdvice, getOpenAiKey } = require('./lib/openai');
-const { mixVoiceWithBed, getFfmpegPath, listBeds } = require('./lib/mix');
+const { buildAlarmScript } = require('./lib/alarmScript');
+const {
+  mixVoiceWithBed,
+  mp3BufferToAlarmCaf,
+  getFfmpegPath,
+  listBeds,
+} = require('./lib/mix');
 const { resolveBed, pickBedId } = require('./lib/beds');
 
 const app = express();
@@ -17,13 +24,29 @@ const upload = multer({
 const PORT = process.env.VOICE_API_PORT || 8787;
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '30mb' }));
+
+app.use((req, _res, next) => {
+  if (req.path.startsWith('/api/')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  }
+  next();
+});
 
 function sendError(res, error) {
   const status = error.status || 500;
   return res.status(status).json({
     error: error.message || 'Unexpected error',
     details: error.details,
+  });
+}
+
+async function runClone({ buffer, originalname, mimetype, name }) {
+  return cloneVoice({
+    buffer,
+    originalname,
+    mimetype,
+    name,
   });
 }
 
@@ -50,7 +73,7 @@ app.post('/api/voices/clone', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'Audio file is required' });
     }
-    const result = await cloneVoice({
+    const result = await runClone({
       buffer: req.file.buffer,
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
@@ -59,6 +82,30 @@ app.post('/api/voices/clone', upload.single('file'), async (req, res) => {
     return res.json(result);
   } catch (error) {
     console.error('clone error', error);
+    return sendError(res, error);
+  }
+});
+
+/** RN-safe clone: avoids FormDataPart bugs on newer React Native. */
+app.post('/api/voices/clone-json', async (req, res) => {
+  try {
+    const { name, base64, mimeType, fileName } = req.body || {};
+    if (!base64 || typeof base64 !== 'string') {
+      return res.status(400).json({ error: 'base64 audio is required' });
+    }
+    const buffer = Buffer.from(base64, 'base64');
+    if (!buffer.length) {
+      return res.status(400).json({ error: 'Empty audio payload' });
+    }
+    const result = await runClone({
+      buffer,
+      originalname: fileName || 'sample.m4a',
+      mimetype: mimeType || 'audio/m4a',
+      name: name || 'User Future Self',
+    });
+    return res.json(result);
+  } catch (error) {
+    console.error('clone-json error', error);
     return sendError(res, error);
   }
 });
@@ -106,6 +153,33 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
+/** MP3 → short CAF for iOS system alarm / notification sound (≤30s). */
+app.post('/api/audio/to-alarm-sound', async (req, res) => {
+  try {
+    const { base64, maxSeconds } = req.body || {};
+    if (!base64 || typeof base64 !== 'string') {
+      return res.status(400).json({ error: 'base64 audio is required' });
+    }
+    const input = Buffer.from(base64, 'base64');
+    if (!input.length) {
+      return res.status(400).json({ error: 'Empty audio payload' });
+    }
+    const caf = await mp3BufferToAlarmCaf(
+      input,
+      Math.min(30, Math.max(5, Number(maxSeconds) || 28))
+    );
+    return res.json({
+      mimeType: caf.mimeType,
+      base64: caf.buffer.toString('base64'),
+      maxSeconds: caf.maxSeconds,
+      extension: 'caf',
+    });
+  } catch (error) {
+    console.error('to-alarm-sound error', error);
+    return sendError(res, error);
+  }
+});
+
 app.get('/api/beds/:id/preview', (req, res) => {
   const bed = resolveBed(req.params.id);
   if (!bed?.path) {
@@ -122,13 +196,26 @@ app.post('/api/alarm/generate', async (req, res) => {
       return res.status(400).json({ error: 'voiceId is required' });
     }
 
-    const script = providedText
-      ? {
-          text: String(providedText).trim(),
-          wordCount: String(providedText).trim().split(/\s+/).length,
-          model: 'provided',
-        }
-      : await generateMorningScript(answers || {});
+    // Default: fixed wake script only. Set USE_AI_ALARM_SCRIPTS=true to bring OpenAI back.
+    const useAiScripts = process.env.USE_AI_ALARM_SCRIPTS === 'true';
+    let script;
+    if (providedText) {
+      const text = String(providedText).trim();
+      script = {
+        text,
+        wordCount: text.split(/\s+/).filter(Boolean).length,
+        model: 'provided',
+      };
+    } else if (useAiScripts) {
+      script = await generateMorningScript(answers || {});
+    } else {
+      const text = buildAlarmScript(answers?.name);
+      script = {
+        text,
+        wordCount: text.split(/\s+/).filter(Boolean).length,
+        model: 'fixed',
+      };
+    }
 
     const spoken = await synthesizeSpeech({
       voiceId,
@@ -158,8 +245,14 @@ app.post('/api/alarm/generate', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
+  const lan = Object.values(os.networkInterfaces())
+    .flat()
+    .find((i) => i?.family === 'IPv4' && !i.internal)?.address;
   console.log(`Future Self API on http://localhost:${PORT}`);
+  if (lan) {
+    console.log(`Phone (same Wi‑Fi): set EXPO_PUBLIC_API_URL=http://${lan}:${PORT}`);
+  }
   console.log(
     getElevenKey() ? 'ElevenLabs: loaded' : 'ElevenLabs: MISSING — set ELEVENLABS_API_KEY'
   );
