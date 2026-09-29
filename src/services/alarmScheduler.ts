@@ -291,24 +291,24 @@ async function scheduleWithAlarmKit(
   alarm: Alarm,
   hasSystemSound: boolean
 ): Promise<boolean> {
+  // Never schedule AlarmKit without a custom CAF — bare Kit plays the
+  // default system “pu-pu-pu” tone on top of (or instead of) the voice.
+  if (!hasSystemSound) return false;
+
   const kit = await loadAlarmKit();
   if (!kit) return false;
   const ready = await ensureAlarmKitReady();
   if (!ready) return false;
 
   const id = alarmKitUUID(alarm.id);
-  // Prefer per-alarm CAF; fall back to shared FutureYouWake.caf (same mix).
-  // Always pass the .caf extension — AlarmKit needs it to resolve Library/Sounds.
-  const soundName = hasSystemSound
-    ? alarmSoundBaseName(alarm.id)
-    : undefined;
+  const primary = alarmSoundBaseName(alarm.id);
   const weekdays = toAlarmKitWeekdays(alarmDays(alarm));
   const snoozeSec = Math.max(60, (alarm.snoozeMinutes || 10) * 60);
 
   try {
     await kit.cancelAlarm(id).catch(() => undefined);
 
-    const trySchedule = async (name?: string) =>
+    const trySchedule = async (name: string) =>
       kit.scheduleRepeatingAlarm({
         id,
         hour: alarm.hour,
@@ -327,15 +327,11 @@ async function scheduleWithAlarmKit(
         snoozeButtonLabel: 'Snooze',
       });
 
-    let ok = await trySchedule(soundName);
-    if (!ok && soundName && soundName !== 'FutureYouWake.caf') {
-      ok = await trySchedule('FutureYouWake.caf');
+    if (await trySchedule(primary)) return true;
+    if (primary !== 'FutureYouWake.caf' && (await trySchedule('FutureYouWake.caf'))) {
+      return true;
     }
-    // Still schedule a loud system alarm rather than falling through to a banner.
-    if (!ok && soundName) {
-      ok = await trySchedule(undefined);
-    }
-    return Boolean(ok);
+    return false;
   } catch (error) {
     console.warn('AlarmKit schedule failed', error);
     return false;
@@ -343,12 +339,12 @@ async function scheduleWithAlarmKit(
 }
 
 /**
- * Schedule a real wake (Clock-style), not a soft banner.
+ * Wake with YOUR voice (+ soft bed) as one CAF — never the default system beep.
  *
- * Priority on iOS 26.1+:
- * 1) AlarmKit — full-screen alarm UI, rings through Silent / Focus
- *    (custom CAF from Library/Sounds when installed)
- * 2) Local notification + CAF — only if AlarmKit unavailable / denied
+ * Custom Library/Sounds CAF via local notification is the voice path.
+ * AlarmKit without a resolvable custom file plays iOS’s default “pu-pu-pu”
+ * tone, which stacked on top of the voice — so we only use Kit when we have
+ * no CAF yet (last resort), and never with an empty soundName.
  */
 export async function scheduleAlarmNotifications(
   alarm: Alarm,
@@ -364,10 +360,6 @@ export async function scheduleAlarmNotifications(
   let hasSystemSound = false;
   if (Platform.OS === 'ios') {
     hasSystemSound = await librarySoundExists(alarmSoundFileName(alarm.id));
-    if (!hasSystemSound) {
-      // Same mix also written as a stable name for AlarmKit resolution.
-      hasSystemSound = await librarySoundExists('FutureYouWake.caf');
-    }
   } else if (soundPath) {
     const FileSystem = await import('expo-file-system/legacy');
     const info = await FileSystem.getInfoAsync(soundPath);
@@ -376,10 +368,17 @@ export async function scheduleAlarmNotifications(
 
   await cancelScheduledAlarm(alarm.id);
 
-  const usedKit = await scheduleWithAlarmKit(alarm, hasSystemSound);
-  if (usedKit) return;
+  if (hasSystemSound) {
+    // One sound only: mixed voice + bed CAF. No AlarmKit default beep.
+    await scheduleNotificationFallback(alarm, audioUri, true);
+    return;
+  }
 
-  await scheduleNotificationFallback(alarm, audioUri, hasSystemSound);
+  // No CAF yet — Kit only if it can use a named file; else plain notification.
+  const usedKit = await scheduleWithAlarmKit(alarm, false);
+  if (!usedKit) {
+    await scheduleNotificationFallback(alarm, audioUri, false);
+  }
 }
 
 async function handleAlarmNotification(

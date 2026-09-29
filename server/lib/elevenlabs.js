@@ -25,14 +25,14 @@ function realisticVoiceSettings() {
 /** Expressive first-pass — wide emotion range before STS into the clone. */
 function expressiveDonorSettings() {
   return {
-    // Low stability = real ups/downs (chuckle → calm), not flat TTS.
-    stability: clamp01(Number(process.env.ELEVENLABS_DONOR_STABILITY ?? 0.18)),
+    // Keep expression without huge random gaps.
+    stability: clamp01(Number(process.env.ELEVENLABS_DONOR_STABILITY ?? 0.35)),
     similarity_boost: clamp01(
-      Number(process.env.ELEVENLABS_DONOR_SIMILARITY ?? 0.55)
+      Number(process.env.ELEVENLABS_DONOR_SIMILARITY ?? 0.6)
     ),
-    style: clamp01(Number(process.env.ELEVENLABS_DONOR_STYLE ?? 0.72)),
+    style: clamp01(Number(process.env.ELEVENLABS_DONOR_STYLE ?? 0.4)),
     use_speaker_boost: true,
-    speed: Math.min(1.1, Math.max(0.8, Number(process.env.ELEVENLABS_DONOR_SPEED ?? 0.9))),
+    speed: Math.min(1.1, Math.max(0.85, Number(process.env.ELEVENLABS_DONOR_SPEED ?? 0.95))),
   };
 }
 
@@ -425,52 +425,29 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
   }
 }
 
-/** Strip emoji; keep paragraph pauses. */
+/** Strip emoji; natural short pauses (not long “…” gaps). */
 function prepareSpokenText(text) {
   return String(text)
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
     .replace(/\r\n/g, '\n')
-    .replace(/\n{2,}/g, '... ')
-    .replace(/\n/g, ' ')
+    .replace(/\n+/g, ' ')
+    .replace(/\s*\.\.\.\s*/g, '. ')
+    .replace(/\s*—\s*/g, ', ')
     .replace(/[ \t]+/g, ' ')
     .trim();
 }
 
 /**
- * Beat-by-beat delivery for eleven_v3 (and lighter cues for v2).
- * Calm → soft smile/chuckle → gentle push — like a real morning talk.
+ * Light mood cues only — heavy tags + “...” made surreal pauses.
  */
 function prepareExpressiveText(text, opts = {}) {
-  const moods = [
-    '[softly] [warmly]',
-    '[gentle] [calm]',
-    '[chuckles] [smiles] [encouraging]',
-    '[happily] [warmly]',
-  ];
-  const plainMoods = [
-    '',
-    '',
-    '(with a little smile) ',
-    '(warmer, lighter) ',
-  ];
-
-  const parts = String(text)
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
-    .replace(/\r\n/g, '\n')
-    .split(/\n+/)
-    .map((p) => p.replace(/[ \t]+/g, ' ').trim())
-    .filter(Boolean);
-
-  if (!parts.length) return prepareSpokenText(text);
-
-  const lines = parts.map((part, i) => {
-    if (opts.stripUnknownTags) {
-      return `${plainMoods[i % plainMoods.length]}${part}`;
-    }
-    return `${moods[i % moods.length]} ${part}`;
-  });
-
-  return lines.join(' ... ');
+  const clean = prepareSpokenText(text);
+  if (!clean) return clean;
+  if (opts.stripUnknownTags) {
+    return clean;
+  }
+  // One soft cue up front; let punctuation drive the rest.
+  return `[warmly] ${clean}`;
 }
 
 module.exports = {
