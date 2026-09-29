@@ -2,7 +2,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -17,7 +16,6 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import { buildAlarmAudioForId } from '../services/alarmGeneration';
 import { scheduleAlarmNotifications } from '../services/alarmScheduler';
-import { resolveVoiceId } from '../services/defaultVoice';
 import { checkVoiceApiHealth } from '../services/elevenlabs';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 import { uiLabel } from '../utils/labels';
@@ -26,7 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreateAlarm'>;
 
 export function CreateAlarmScreen({ navigation, route }: Props) {
   const { addAlarm, updateAlarm, alarms } = useAlarms();
-  const { answers, voice, markOnboardingComplete, setVoiceId } = useOnboarding();
+  const { answers, voice, markOnboardingComplete } = useOnboarding();
   const editingId = route.params?.alarmId;
   const existing = useMemo(
     () => alarms.find((a) => a.id === editingId),
@@ -46,14 +44,10 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const voiceId = resolveVoiceId(voice.voiceId);
-      if (!voiceId) {
+      if (!voice.voiceId) {
         setSaving(false);
         navigation.replace(voice.sampleUri ? 'VoiceCloning' : 'VoiceRecord');
         return;
-      }
-      if (!voice.voiceId) {
-        setVoiceId(voiceId, true);
       }
 
       const health = await checkVoiceApiHealth();
@@ -75,10 +69,11 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         updateAlarm(existing.id, payload);
       }
 
-      const { uri, text, systemSound } = await buildAlarmAudioForId({
+      const { uri, text } = await buildAlarmAudioForId({
         alarmId,
-        voiceId,
+        voiceId: voice.voiceId,
         answers,
+        useOpenAi: health.openai === true,
       });
 
       const saved = {
@@ -89,10 +84,6 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
       };
       updateAlarm(alarmId, { audioUri: uri, scriptText: text });
       await scheduleAlarmNotifications(saved, uri);
-      if (!systemSound && Platform.OS === 'ios') {
-        // Still scheduled via AlarmKit/default sound; warn softly in UI
-        console.warn('Wake CAF missing — using default system alarm sound');
-      }
 
       if (then === 'another') {
         navigation.replace('CreateAlarm');
@@ -113,10 +104,6 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         <BackButton style={styles.back} />
         <Text style={styles.title}>
           {uiLabel(existing ? 'edit alarm' : 'set up alarm')}
-        </Text>
-        <Text style={styles.hint}>
-          Future Self sets a real iPhone alarm with your voice. Allow Alarm
-          access when asked — it rings like Clock, even on Silent.
         </Text>
 
         <View style={styles.timeZone}>
@@ -179,13 +166,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.sm,
     ...noFakeBold,
-  },
-  hint: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
   },
   timeZone: {
     flex: 1,

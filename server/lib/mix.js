@@ -26,10 +26,132 @@ function runFfmpeg(args) {
     });
     child.on('error', reject);
     child.on('close', (code) => {
-      if (code === 0) resolve();
+      if (code === 0) resolve(stderr);
       else reject(new Error(stderr.slice(-800) || `ffmpeg exited ${code}`));
     });
   });
+}
+
+/** ffmpeg -i prints duration on stderr and exits non-zero without an output file. */
+function probeDurationSec(filePath) {
+  const ffmpegPath = getFfmpegPath();
+  return new Promise((resolve, reject) => {
+    if (!ffmpegPath) {
+      reject(new Error('ffmpeg-static is not installed'));
+      return;
+    }
+    const child = spawn(ffmpegPath, ['-i', filePath], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on('error', reject);
+    child.on('close', () => {
+      const match = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+      if (!match) {
+        reject(new Error('Could not read audio duration'));
+        return;
+      }
+      const sec =
+        Number(match[1]) * 3600 + Number(match[2]) * 60 + parseFloat(match[3]);
+      resolve(sec);
+    });
+  });
+}
+
+/**
+ * Hybrid IVC (fast + better + cheap, no PVC):
+ * one user take → up to 3 overlapping clips for ElevenLabs multi-file Instant Clone.
+ * Short takes stay single-file so onboarding remains quick.
+ */
+async function buildHybridCloneSamples(buffer, originalname, mimetype) {
+  const fallback = [
+    {
+      buffer,
+      originalname: originalname || 'sample.m4a',
+      mimetype: mimetype || 'audio/m4a',
+    },
+  ];
+  if (!getFfmpegPath() || !buffer?.length) return fallback;
+
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const ext = String(originalname || 'sample.m4a').split('.').pop() || 'm4a';
+  const inPath = path.join(os.tmpdir(), `fs-clone-in-${stamp}.${ext}`);
+  fs.writeFileSync(inPath, buffer);
+
+  const outPaths = [];
+  try {
+    let duration = 0;
+    try {
+      duration = await probeDurationSec(inPath);
+    } catch {
+      return fallback;
+    }
+
+    // Too short → don't bother splitting (keeps clone fast).
+    if (!(duration >= 42)) return fallback;
+
+    const windows =
+      duration >= 75
+        ? [
+            [0, Math.min(duration * 0.42, duration)],
+            [duration * 0.28, Math.min(duration * 0.72, duration)],
+            [duration * 0.55, duration],
+          ]
+        : [
+            [0, Math.min(duration * 0.58, duration)],
+            [duration * 0.38, duration],
+          ];
+
+    const samples = [];
+    for (let i = 0; i < windows.length; i += 1) {
+      const [start, end] = windows[i];
+      const len = Math.max(0.8, end - start);
+      const outPath = path.join(os.tmpdir(), `fs-clone-part-${stamp}-${i}.mp3`);
+      outPaths.push(outPath);
+      await runFfmpeg([
+        '-y',
+        '-ss',
+        start.toFixed(2),
+        '-t',
+        len.toFixed(2),
+        '-i',
+        inPath,
+        '-ac',
+        '1',
+        '-ar',
+        '44100',
+        '-c:a',
+        'libmp3lame',
+        '-b:a',
+        '192k',
+        outPath,
+      ]);
+      samples.push({
+        buffer: fs.readFileSync(outPath),
+        originalname: `sample-${i + 1}.mp3`,
+        mimetype: 'audio/mpeg',
+      });
+    }
+
+    console.log(
+      `[clone] hybrid IVC: ${samples.length} clips from ${duration.toFixed(1)}s take`
+    );
+    return samples.length ? samples : fallback;
+  } catch (error) {
+    console.warn('[clone] hybrid split failed, single file', error?.message || error);
+    return fallback;
+  } finally {
+    for (const file of [inPath, ...outPaths]) {
+      try {
+        fs.unlinkSync(file);
+      } catch {
+        // ignore
+      }
+    }
+  }
 }
 
 async function mixVoiceWithBed(voiceBuffer, bedId) {
@@ -202,6 +324,7 @@ module.exports = {
   mixVoiceWithBed,
   mp3BufferToAlarmCaf,
   denoiseVoiceBuffer,
+  buildHybridCloneSamples,
   findBedFile,
   getFfmpegPath,
   listBeds,

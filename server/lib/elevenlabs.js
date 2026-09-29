@@ -1,5 +1,6 @@
 const FormData = require('form-data');
 const fetch = require('node-fetch');
+const { buildHybridCloneSamples } = require('./mix');
 
 const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
 
@@ -59,7 +60,7 @@ function prosodyDonorVoiceId() {
   return process.env.ELEVENLABS_PROSODY_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
 }
 
-async function cloneVoice({ buffer, originalname, mimetype, name }) {
+async function cloneVoice({ buffer, originalname, mimetype, name, files }) {
   const apiKey = getElevenKey();
   if (!apiKey) {
     const error = new Error(
@@ -67,6 +68,17 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
     );
     error.status = 500;
     throw error;
+  }
+
+  let samples = Array.isArray(files) && files.length ? files : null;
+  if (!samples?.length) {
+    if (!buffer?.length) {
+      const error = new Error('Audio sample is required');
+      error.status = 400;
+      throw error;
+    }
+    // Hybrid: one take → multi-clip Instant Clone (better likeness, still cheap/fast).
+    samples = await buildHybridCloneSamples(buffer, originalname, mimetype);
   }
 
   const form = new FormData();
@@ -79,12 +91,13 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
       'Sound intimate and close — never like a podcast host, audiobook, or AI assistant.',
     ].join(' ')
   );
-  // Don’t run aggressive denoise — it strips the micro-texture that sounds human.
   form.append('remove_background_noise', 'false');
-  form.append('files', buffer, {
-    filename: originalname || 'sample.m4a',
-    contentType: mimetype || 'audio/m4a',
-  });
+  for (const sample of samples) {
+    form.append('files', sample.buffer, {
+      filename: sample.originalname || 'sample.m4a',
+      contentType: sample.mimetype || 'audio/m4a',
+    });
+  }
 
   const response = await fetch(`${ELEVEN_BASE}/voices/add`, {
     method: 'POST',
@@ -113,6 +126,7 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
   return {
     voiceId,
     requiresVerification: data.requires_verification,
+    sampleCount: samples.length,
   };
 }
 

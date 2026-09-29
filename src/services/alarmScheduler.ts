@@ -1,25 +1,12 @@
-import {
-  createAudioPlayer,
-  setAudioModeAsync,
-  type AudioPlayer,
-} from 'expo-audio';
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { Alarm } from '../context/AlarmsContext';
 import { EVERY_DAY } from '../context/AlarmsContext';
-import {
-  alarmSoundBaseName,
-  alarmSoundFileName,
-  alarmSoundPath,
-} from './alarmSoundFile';
-import { librarySoundExists } from '../../modules/ios-library-sounds/src';
 
 const SCHEDULE_AHEAD = 14;
-const APP_GROUP = 'group.com.anonymous.future-self-alarm';
-
-let playback: AudioPlayer | null = null;
+let playback: Audio.Sound | null = null;
 let handlersReady = false;
-let alarmKitReady: boolean | null = null;
 
 export function isFutureSelfAlarmData(
   data: unknown
@@ -35,19 +22,22 @@ export function isFutureSelfAlarmData(
 }
 
 async function configureAudioForAlarm() {
-  await setAudioModeAsync({
-    allowsRecording: false,
-    shouldPlayInBackground: true,
-    playsInSilentMode: true,
-    interruptionMode: 'doNotMix',
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    staysActiveInBackground: true,
+    playsInSilentModeIOS: true,
+    shouldDuckAndroid: false,
+    playThroughEarpieceAndroid: false,
+    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
   });
 }
 
 async function stopPlayback() {
   if (!playback) return;
   try {
-    playback.pause();
-    playback.remove();
+    await playback.stopAsync();
+    await playback.unloadAsync();
   } catch {
     // ignore
   }
@@ -58,10 +48,11 @@ export async function playAlarmAudio(uri: string) {
   if (!uri || Platform.OS === 'web') return;
   await configureAudioForAlarm();
   await stopPlayback();
-  const player = createAudioPlayer({ uri });
-  player.volume = 1;
-  player.play();
-  playback = player;
+  const { sound } = await Audio.Sound.createAsync(
+    { uri },
+    { shouldPlay: true, volume: 1, isLooping: false }
+  );
+  playback = sound;
 }
 
 export async function ensureNotificationPermissions() {
@@ -96,33 +87,6 @@ export async function ensureNotificationPermissions() {
   return Boolean(requested.granted);
 }
 
-/** Deterministic UUID so AlarmKit accepts our alarm_* ids. */
-export function alarmKitUUID(alarmId: string) {
-  let h1 = 0x811c9dc5;
-  let h2 = 0x811c9dc5;
-  let h3 = 0x811c9dc5;
-  let h4 = 0x811c9dc5;
-  for (let i = 0; i < alarmId.length; i += 1) {
-    const c = alarmId.charCodeAt(i);
-    h1 ^= c;
-    h1 = Math.imul(h1, 0x01000193);
-    h2 ^= c + i * 17;
-    h2 = Math.imul(h2, 0x01000193);
-    h3 ^= c * 31 + i;
-    h3 = Math.imul(h3, 0x01000193);
-    h4 ^= (c << (i % 8)) + i;
-    h4 = Math.imul(h4, 0x01000193);
-  }
-  const hex = (n: number) => (n >>> 0).toString(16).padStart(8, '0');
-  const a = hex(h1) + hex(h2) + hex(h3) + hex(h4);
-  return `${a.slice(0, 8)}-${a.slice(8, 12)}-4${a.slice(13, 16)}-a${a.slice(17, 20)}-${a.slice(20, 32)}`;
-}
-
-/** Our days: 0=Mon…6=Sun → AlarmKit: 1=Sun…7=Sat */
-function toAlarmKitWeekdays(days: number[]) {
-  return days.map((d) => (d === 6 ? 1 : d + 2));
-}
-
 function jsDayToAlarmDay(jsDay: number) {
   return jsDay === 0 ? 6 : jsDay - 1;
 }
@@ -155,66 +119,8 @@ function notificationId(alarmId: string, index: number) {
   return `fs_alarm_${alarmId}_${index}`;
 }
 
-function snoozeId(alarmId: string) {
-  return `fs_snooze_${alarmId}`;
-}
-
-async function loadAlarmKit() {
-  if (Platform.OS !== 'ios') return null;
-  try {
-    // expo-alarm-kit is not linked below iOS 26.1 — requireNativeModule would
-    // crash the app as a fatal JS exception. Probe first, then import.
-    const { requireOptionalNativeModule } = await import('expo-modules-core');
-    if (!requireOptionalNativeModule('ExpoAlarmKit')) {
-      return null;
-    }
-    return await import('expo-alarm-kit');
-  } catch {
-    return null;
-  }
-}
-
-export async function ensureAlarmKitReady() {
-  if (Platform.OS !== 'ios') {
-    alarmKitReady = false;
-    return false;
-  }
-  if (alarmKitReady != null) return alarmKitReady;
-  const kit = await loadAlarmKit();
-  if (!kit) {
-    alarmKitReady = false;
-    return false;
-  }
-  try {
-    // App Groups may be unavailable on free teams — still try to authorize.
-    try {
-      kit.configure(APP_GROUP);
-    } catch {
-      /* ignore */
-    }
-    const status = await kit.requestAuthorization();
-    alarmKitReady = status === 'authorized';
-    return alarmKitReady;
-  } catch (error) {
-    console.warn('AlarmKit unavailable', error);
-    alarmKitReady = false;
-    return false;
-  }
-}
-
-async function cancelAlarmKit(alarmId: string) {
-  const kit = await loadAlarmKit();
-  if (!kit) return;
-  try {
-    await kit.cancelAlarm(alarmKitUUID(alarmId));
-  } catch {
-    // ignore
-  }
-}
-
 export async function cancelScheduledAlarm(alarmId: string) {
   if (Platform.OS === 'web') return;
-  await cancelAlarmKit(alarmId);
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   const mine = scheduled.filter(
     (item) =>
@@ -228,18 +134,16 @@ export async function cancelScheduledAlarm(alarmId: string) {
   );
 }
 
-function notificationSoundFor(alarmId: string, hasSystemSound: boolean) {
-  if (Platform.OS === 'android') return 'default';
-  if (!hasSystemSound) return true;
-  // iOS looks up Library/Sounds/<name>
-  return alarmSoundFileName(alarmId);
-}
-
-async function scheduleNotificationFallback(
+export async function scheduleAlarmNotifications(
   alarm: Alarm,
-  audioUri: string | null,
-  hasSystemSound: boolean
+  audioUri: string | null
 ) {
+  if (Platform.OS === 'web') return;
+  if (!alarm.enabled) {
+    await cancelScheduledAlarm(alarm.id);
+    return;
+  }
+
   const ok = await ensureNotificationPermissions();
   if (!ok) {
     throw new Error(
@@ -247,9 +151,8 @@ async function scheduleNotificationFallback(
     );
   }
 
+  await cancelScheduledAlarm(alarm.id);
   const times = nextAlarmOccurrences(alarm);
-  const sound = notificationSoundFor(alarm.id, hasSystemSound);
-  const body = notificationBodyFor(alarm);
 
   await Promise.all(
     times.map((date, index) =>
@@ -257,11 +160,10 @@ async function scheduleNotificationFallback(
         identifier: notificationId(alarm.id, index),
         content: {
           title: 'Future You',
-          body,
-          sound,
+          body: alarm.label || 'Your morning message is ready.',
+          sound: Platform.OS === 'android' ? 'default' : true,
           priority: Notifications.AndroidNotificationPriority.MAX,
           interruptionLevel: 'timeSensitive',
-          vibrate: [0, 400, 200, 400, 200, 400],
           data: {
             type: 'future-self-alarm',
             alarmId: alarm.id,
@@ -279,108 +181,6 @@ async function scheduleNotificationFallback(
   );
 }
 
-function notificationBodyFor(alarm: Alarm) {
-  const script = String(alarm.scriptText || '').replace(/\s+/g, ' ').trim();
-  if (script.length > 40) {
-    return script.length > 160 ? `${script.slice(0, 157).trim()}…` : script;
-  }
-  return 'Your morning voice is ready. Open when you’re up.';
-}
-
-async function scheduleWithAlarmKit(
-  alarm: Alarm,
-  hasSystemSound: boolean
-): Promise<boolean> {
-  // Never schedule AlarmKit without a custom CAF — bare Kit plays the
-  // default system “pu-pu-pu” tone on top of (or instead of) the voice.
-  if (!hasSystemSound) return false;
-
-  const kit = await loadAlarmKit();
-  if (!kit) return false;
-  const ready = await ensureAlarmKitReady();
-  if (!ready) return false;
-
-  const id = alarmKitUUID(alarm.id);
-  const primary = alarmSoundBaseName(alarm.id);
-  const weekdays = toAlarmKitWeekdays(alarmDays(alarm));
-  const snoozeSec = Math.max(60, (alarm.snoozeMinutes || 10) * 60);
-
-  try {
-    await kit.cancelAlarm(id).catch(() => undefined);
-
-    const trySchedule = async (name: string) =>
-      kit.scheduleRepeatingAlarm({
-        id,
-        hour: alarm.hour,
-        minute: alarm.minute,
-        weekdays,
-        title: 'Future You',
-        soundName: name,
-        launchAppOnDismiss: true,
-        dismissPayload: alarm.id,
-        doSnoozeIntent: true,
-        launchAppOnSnooze: true,
-        snoozePayload: alarm.id,
-        snoozeDuration: snoozeSec,
-        tintColor: '#BADFFF',
-        stopButtonLabel: "I'm up",
-        snoozeButtonLabel: 'Snooze',
-      });
-
-    if (await trySchedule(primary)) return true;
-    if (primary !== 'FutureYouWake.caf' && (await trySchedule('FutureYouWake.caf'))) {
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.warn('AlarmKit schedule failed', error);
-    return false;
-  }
-}
-
-/**
- * Wake with YOUR voice (+ soft bed) as one CAF — never the default system beep.
- *
- * Custom Library/Sounds CAF via local notification is the voice path.
- * AlarmKit without a resolvable custom file plays iOS’s default “pu-pu-pu”
- * tone, which stacked on top of the voice — so we only use Kit when we have
- * no CAF yet (last resort), and never with an empty soundName.
- */
-export async function scheduleAlarmNotifications(
-  alarm: Alarm,
-  audioUri: string | null
-) {
-  if (Platform.OS === 'web') return;
-  if (!alarm.enabled) {
-    await cancelScheduledAlarm(alarm.id);
-    return;
-  }
-
-  const soundPath = alarmSoundPath(alarm.id);
-  let hasSystemSound = false;
-  if (Platform.OS === 'ios') {
-    hasSystemSound = await librarySoundExists(alarmSoundFileName(alarm.id));
-  } else if (soundPath) {
-    const FileSystem = await import('expo-file-system/legacy');
-    const info = await FileSystem.getInfoAsync(soundPath);
-    hasSystemSound = Boolean(info.exists);
-  }
-
-  await cancelScheduledAlarm(alarm.id);
-
-  if (hasSystemSound) {
-    // One sound only: mixed voice + bed CAF. No AlarmKit default beep.
-    await scheduleNotificationFallback(alarm, audioUri, true);
-    return;
-  }
-
-  // No CAF yet — Kit only if it can use a named file; else plain notification.
-  const usedKit = await scheduleWithAlarmKit(alarm, false);
-  if (!usedKit) {
-    await scheduleNotificationFallback(alarm, audioUri, false);
-  }
-}
-
 async function handleAlarmNotification(
   notification: Notifications.Notification
 ) {
@@ -392,36 +192,30 @@ async function handleAlarmNotification(
     typeof data.snoozeMinutes === 'number' && data.snoozeMinutes > 0
       ? data.snoozeMinutes
       : 10;
-  await scheduleSnooze(data.alarmId, uri, snoozeMin, true);
+  await scheduleSnooze(data.alarmId, uri, snoozeMin);
   emitRinging({ alarmId: data.alarmId, audioUri: uri });
+}
+
+function snoozeId(alarmId: string) {
+  return `fs_snooze_${alarmId}`;
 }
 
 export async function scheduleSnooze(
   alarmId: string,
   audioUri: string | null,
-  minutes = 10,
-  hasSystemSound = true
+  minutes = 10
 ) {
   if (Platform.OS === 'web') return;
   await Notifications.cancelScheduledNotificationAsync(snoozeId(alarmId)).catch(
     () => undefined
   );
   const fire = new Date(Date.now() + minutes * 60 * 1000);
-  const soundPath = alarmSoundPath(alarmId);
-  let soundOk = hasSystemSound;
-  if (Platform.OS === 'ios') {
-    soundOk = await librarySoundExists(alarmSoundFileName(alarmId));
-  } else if (soundPath) {
-    const FileSystem = await import('expo-file-system/legacy');
-    const info = await FileSystem.getInfoAsync(soundPath);
-    soundOk = info.exists;
-  }
   await Notifications.scheduleNotificationAsync({
     identifier: snoozeId(alarmId),
     content: {
       title: 'Future You',
-      body: 'Still here — your voice again.',
-      sound: notificationSoundFor(alarmId, soundOk),
+      body: 'Still here - whenever you’re ready.',
+      sound: Platform.OS === 'android' ? 'default' : true,
       priority: Notifications.AndroidNotificationPriority.MAX,
       interruptionLevel: 'timeSensitive',
       data: {
@@ -468,19 +262,15 @@ export function initAlarmNotifications() {
   if (handlersReady || Platform.OS === 'web') return;
   handlersReady = true;
 
-  void ensureAlarmKitReady();
-
   Notifications.setNotificationHandler({
     handleNotification: async (notification) => {
       const data = notification.request.content.data;
-      // Custom CAF already plays via the notification sound when backgrounded.
-      // When foregrounded, also play the full mix.
       if (isFutureSelfAlarmData(data) && typeof data.audioUri === 'string') {
         await playAlarmAudio(data.audioUri);
       }
       return {
         shouldShowAlert: true,
-        shouldPlaySound: true,
+        shouldPlaySound: false,
         shouldSetBadge: false,
         shouldShowBanner: true,
         shouldShowList: true,
@@ -497,37 +287,14 @@ export function initAlarmNotifications() {
   });
 }
 
-/** Handle app opened from AlarmKit dismiss/snooze. */
-export async function consumeAlarmKitLaunch(audioByAlarmId: Record<string, string | null>) {
-  if (Platform.OS !== 'ios') return;
-  const kit = await loadAlarmKit();
-  if (!kit) return;
-  try {
-    const payload = kit.getLaunchPayload();
-    if (!payload?.alarmId && !payload?.payload) return;
-    const logicalId =
-      (typeof payload.payload === 'string' && payload.payload) ||
-      null;
-    const alarmId = logicalId;
-    if (!alarmId) return;
-    const uri = audioByAlarmId[alarmId] ?? null;
-    if (uri) await playAlarmAudio(uri);
-    emitRinging({ alarmId, audioUri: uri });
-  } catch {
-    // ignore
-  }
-}
-
 export async function rescheduleAllAlarms(
   alarms: Alarm[],
   audioByAlarmId: Record<string, string | null>
 ) {
   if (Platform.OS === 'web') return;
   await Promise.all(
-    alarms
-      .filter((alarm) => alarm.enabled && audioByAlarmId[alarm.id])
-      .map((alarm) =>
-        scheduleAlarmNotifications(alarm, audioByAlarmId[alarm.id] ?? null)
-      )
+    alarms.map((alarm) =>
+      scheduleAlarmNotifications(alarm, audioByAlarmId[alarm.id] ?? null)
+    )
   );
 }
