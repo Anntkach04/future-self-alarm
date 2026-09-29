@@ -71,24 +71,23 @@ export async function cloneOnboardingVoice(params: {
     fileName: params.sampleUri.includes('.webm') ? 'sample.webm' : 'sample.m4a',
   });
 
-  // Always speak the fixed wake script (AI scripts optional later via USE_AI_ALARM_SCRIPTS).
-  const text = buildAlarmScript(params.answers.name);
+  // Server owns expressive wake script; omit `text` so delivery stays up to date.
   if (health.openai === true || health.elevenLabs) {
     const { generateMorningAlarm } = await import('./elevenlabs');
     const alarm = await generateMorningAlarm({
       voiceId: clone.voiceId,
       answers: params.answers,
-      text,
     });
     const previewPath = await savePreviewAudio(alarm.base64);
     return {
       voiceId: clone.voiceId,
       previewPath,
-      previewText: alarm.text || text,
+      previewText: alarm.text || buildAlarmScript(params.answers.name),
       isDemo: false,
     };
   }
 
+  const text = buildAlarmScript(params.answers.name);
   const tts = await synthesizeSpeech({ voiceId: clone.voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return {

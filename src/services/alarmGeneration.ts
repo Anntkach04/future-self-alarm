@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import type { OnboardingAnswers } from '../context/OnboardingContext';
-import { buildAlarmScript } from '../data/alarmScript';
 import { installAlarmSystemSound } from './alarmSoundFile';
 import { saveAlarmAudio } from './audioPreview';
 import { generateMorningAlarm } from './elevenlabs';
@@ -11,14 +10,10 @@ export async function buildAlarmAudioForId(params: {
   answers: OnboardingAnswers;
 }) {
   const { alarmId, voiceId, answers } = params;
-  const fixedText = buildAlarmScript(answers.name);
-  const generated = await generateMorningAlarm({
-    voiceId,
-    answers,
-    text: fixedText,
-  });
+  // Server owns wake script + expressive delivery (don't pin stale client text).
+  const generated = await generateMorningAlarm({ voiceId, answers });
   const uri = await saveAlarmAudio(generated.base64, alarmId);
-  const text = generated.text || fixedText;
+  const text = generated.text;
 
   let systemSound: Awaited<ReturnType<typeof installAlarmSystemSound>> | null =
     null;

@@ -22,16 +22,28 @@ function realisticVoiceSettings() {
   };
 }
 
-/** Expressive first-pass (prosody donor) — more emotion before STS into the clone. */
+/** Expressive first-pass — wide emotion range before STS into the clone. */
 function expressiveDonorSettings() {
   return {
-    stability: clamp01(Number(process.env.ELEVENLABS_DONOR_STABILITY ?? 0.28)),
+    // Low stability = real ups/downs (chuckle → calm), not flat TTS.
+    stability: clamp01(Number(process.env.ELEVENLABS_DONOR_STABILITY ?? 0.18)),
     similarity_boost: clamp01(
-      Number(process.env.ELEVENLABS_DONOR_SIMILARITY ?? 0.65)
+      Number(process.env.ELEVENLABS_DONOR_SIMILARITY ?? 0.55)
     ),
-    style: clamp01(Number(process.env.ELEVENLABS_DONOR_STYLE ?? 0.45)),
+    style: clamp01(Number(process.env.ELEVENLABS_DONOR_STYLE ?? 0.72)),
     use_speaker_boost: true,
-    speed: Math.min(1.1, Math.max(0.8, Number(process.env.ELEVENLABS_DONOR_SPEED ?? 0.88))),
+    speed: Math.min(1.1, Math.max(0.8, Number(process.env.ELEVENLABS_DONOR_SPEED ?? 0.9))),
+  };
+}
+
+/** Final clone pass — allow a bit of the donor’s emotion through. */
+function expressiveCloneSettings() {
+  return {
+    stability: clamp01(Number(process.env.ELEVENLABS_STABILITY ?? 0.32)),
+    similarity_boost: clamp01(Number(process.env.ELEVENLABS_SIMILARITY ?? 0.62)),
+    style: clamp01(Number(process.env.ELEVENLABS_STYLE ?? 0.28)),
+    use_speaker_boost: process.env.ELEVENLABS_SPEAKER_BOOST === 'true',
+    speed: Math.min(1.15, Math.max(0.75, Number(process.env.ELEVENLABS_SPEED ?? 0.9))),
   };
 }
 
@@ -277,7 +289,7 @@ async function speechToSpeech({ voiceId, audioBuffer, filename = 'prosody.mp3' }
     });
     form.append('model_id', stsModel());
     form.append('remove_background_noise', 'true');
-    form.append('voice_settings', JSON.stringify(realisticVoiceSettings()));
+    form.append('voice_settings', JSON.stringify(expressiveCloneSettings()));
 
     const response = await fetch(
       `${ELEVEN_BASE}/speech-to-speech/${voiceId}?output_format=${outputFormat}`,
@@ -349,7 +361,8 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
   if (stsEnabled() && !modelId) {
     try {
       const donorId = prosodyDonorVoiceId();
-      const tagged = prepareExpressiveText(spoken);
+      // Tag from original paragraphs so mood can shift beat-by-beat.
+      const tagged = prepareExpressiveText(text);
       let donorAudio;
       try {
         donorAudio = await ttsRequest({
@@ -365,7 +378,7 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
         );
         donorAudio = await ttsRequest({
           voiceId: donorId,
-          text: spoken,
+          text: prepareExpressiveText(text, { stripUnknownTags: true }),
           model: 'eleven_multilingual_v2',
           voiceSettings: expressiveDonorSettings(),
         });
@@ -396,9 +409,9 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
 
   const direct = await ttsRequest({
     voiceId,
-    text: spoken,
+    text: prepareExpressiveText(text, { stripUnknownTags: true }),
     model: modelId || defaultTtsModel(),
-    voiceSettings: realisticVoiceSettings(),
+    voiceSettings: expressiveCloneSettings(),
   });
   try {
     const cleaned = await denoiseVoiceBuffer(direct.buffer, 'mp3');
@@ -423,11 +436,41 @@ function prepareSpokenText(text) {
     .trim();
 }
 
-/** Soft delivery hints for eleven_v3 (ignored harmlessly by v2 if ever passed). */
-function prepareExpressiveText(text) {
-  const clean = prepareSpokenText(text);
-  if (/^\s*\[/.test(clean)) return clean;
-  return `[softly] [warmly] ${clean}`;
+/**
+ * Beat-by-beat delivery for eleven_v3 (and lighter cues for v2).
+ * Calm → soft smile/chuckle → gentle push — like a real morning talk.
+ */
+function prepareExpressiveText(text, opts = {}) {
+  const moods = [
+    '[softly] [warmly]',
+    '[gentle] [calm]',
+    '[chuckles] [smiles] [encouraging]',
+    '[happily] [warmly]',
+  ];
+  const plainMoods = [
+    '',
+    '',
+    '(with a little smile) ',
+    '(warmer, lighter) ',
+  ];
+
+  const parts = String(text)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n+/)
+    .map((p) => p.replace(/[ \t]+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (!parts.length) return prepareSpokenText(text);
+
+  const lines = parts.map((part, i) => {
+    if (opts.stripUnknownTags) {
+      return `${plainMoods[i % plainMoods.length]}${part}`;
+    }
+    return `${moods[i % moods.length]} ${part}`;
+  });
+
+  return lines.join(' ... ');
 }
 
 module.exports = {
