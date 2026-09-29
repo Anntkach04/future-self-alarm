@@ -18,10 +18,10 @@ export function buildVoiceScript(name: string) {
 }
 
 export const VOICE_TIPS = [
-  'Quiet room, phone ~20 cm from your mouth',
-  'Speak like you’re gently waking yourself — not reading a script',
-  'Same pace and accent you’d use with a close friend',
-  'A longer take (about a minute) makes the clone much more alive',
+  'Quiet room — AC / fan / music off if you can',
+  'Phone ~20 cm from your mouth',
+  'Speak like you’re gently waking yourself — not performing',
+  'A longer clean take (~1 min) makes the clone much clearer',
 ];
 
 export const MIN_RECORDING_SECONDS = 30;
