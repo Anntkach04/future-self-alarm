@@ -1,14 +1,15 @@
+/**
+ * What the user reads while cloning.
+ * Must sound like real morning talk — pangrams / counting train a “robot reader” IVC.
+ */
 export function buildVoiceScriptLines(name: string) {
   const who = name.trim() || 'there';
   return [
-    `Hi, I'm ${who}.`,
-    'The quick brown fox jumps over the lazy dog.',
-    'Please bring yellow lilies, red berries, and warm tea.',
-    'She sells sea shells by the south sea shore.',
-    'One, two, three, four, five.',
-    'Six, seven, eight, nine, ten.',
-    'Blue, gold, green. Soft, clear, calm.',
-    'Good morning. This is only my voice.',
+    `Hey… it’s ${who}. This is just me, talking the way I actually talk in the morning.`,
+    `Soft voice. A little sleepy. No performance — just close and real.`,
+    `Take one slow breath with me. Then we’ll sit up when we’re ready.`,
+    `Today can start small. One clear step. I’m proud of you for getting up.`,
+    `I’ve got you. Come on… let’s begin.`,
   ];
 }
 
@@ -17,11 +18,11 @@ export function buildVoiceScript(name: string) {
 }
 
 export const VOICE_TIPS = [
-  'Find a quiet room',
-  'Hold the phone ~20 cm from your mouth',
-  'Speak in a calm, unhurried voice',
-  'Sound like you’re gently waking yourself',
+  'Quiet room, phone ~20 cm from your mouth',
+  'Speak like you’re gently waking yourself — not reading a script',
+  'Same pace and accent you’d use with a close friend',
+  'A longer take (about a minute) makes the clone much more alive',
 ];
 
-export const MIN_RECORDING_SECONDS = 20;
-export const TARGET_RECORDING_SECONDS = 45;
+export const MIN_RECORDING_SECONDS = 30;
+export const TARGET_RECORDING_SECONDS = 55;
