@@ -39,8 +39,20 @@ function getElevenKey() {
 }
 
 function defaultTtsModel() {
-  // Strongest identity match for Instant Voice Clones.
-  return process.env.ELEVENLABS_TTS_MODEL || 'eleven_multilingual_v2';
+  // Newest quality model when the account has it; override via .env.
+  return process.env.ELEVENLABS_TTS_MODEL || 'eleven_v4';
+}
+
+/** Ordered fallbacks if the primary model rejects / is unavailable. */
+function ttsModelCandidates(preferred) {
+  const primary = preferred || defaultTtsModel();
+  const rest = [
+    'eleven_v4',
+    'eleven_multilingual_v2',
+    'eleven_v3',
+    'eleven_turbo_v2_5',
+  ].filter((id) => id !== primary);
+  return [primary, ...rest];
 }
 
 function defaultOutputFormat() {
@@ -145,56 +157,78 @@ async function applyVoiceSettings(voiceId) {
 
 async function ttsRequest({ voiceId, text, model, voiceSettings }) {
   const apiKey = getElevenKey();
-  const body = {
-    text: text.slice(0, 2500),
-    model_id: model,
-    voice_settings: voiceSettings || realisticVoiceSettings(),
-    apply_text_normalization: 'auto',
-  };
-  if (/multilingual_v2|turbo_v2_5|flash_v2_5|eleven_v3|eleven_multilingual/.test(model)) {
-    body.language_code = process.env.ELEVENLABS_LANGUAGE || 'en';
-  }
-
+  const models = model ? [model] : ttsModelCandidates();
   const formats = [defaultOutputFormat(), 'mp3_44100_128'];
   let lastError;
 
-  for (const outputFormat of formats) {
-    const response = await fetch(
-      `${ELEVEN_BASE}/text-to-speech/${voiceId}?output_format=${outputFormat}`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-          Accept: 'audio/mpeg',
-        },
-        body: JSON.stringify(body),
+  for (const modelId of models) {
+    const body = {
+      text: text.slice(0, 2500),
+      model_id: modelId,
+      voice_settings: voiceSettings || realisticVoiceSettings(),
+      apply_text_normalization: 'auto',
+    };
+    if (
+      /multilingual_v2|turbo_v2_5|flash_v2_5|eleven_v3|eleven_v4|eleven_multilingual/.test(
+        modelId
+      )
+    ) {
+      body.language_code = process.env.ELEVENLABS_LANGUAGE || 'en';
+    }
+
+    for (const outputFormat of formats) {
+      const response = await fetch(
+        `${ELEVEN_BASE}/text-to-speech/${voiceId}?output_format=${outputFormat}`,
+        {
+          method: 'POST',
+          headers: {
+            'xi-api-key': apiKey,
+            'Content-Type': 'application/json',
+            Accept: 'audio/mpeg',
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (response.ok) {
+        const buffer = await response.buffer();
+        if (modelId !== models[0]) {
+          console.log(`[tts] fell back to model ${modelId}`);
+        }
+        return {
+          mimeType: 'audio/mpeg',
+          buffer,
+          base64: buffer.toString('base64'),
+          modelId,
+        };
       }
-    );
 
-    if (response.ok) {
-      const buffer = await response.buffer();
-      return {
-        mimeType: 'audio/mpeg',
-        buffer,
-        base64: buffer.toString('base64'),
-      };
+      const errText = await response.text();
+      let details;
+      try {
+        details = JSON.parse(errText);
+      } catch {
+        details = errText;
+      }
+      lastError = { status: response.status, details, modelId };
+      const detailStr = JSON.stringify(details).toLowerCase();
+      const formatIssue =
+        response.status === 400 ||
+        response.status === 402 ||
+        /output_format|bitrate|tier|subscription|creator/.test(detailStr);
+      // Bad model / not allowed → try next model.
+      const modelIssue =
+        response.status === 400 ||
+        response.status === 404 ||
+        response.status === 422 ||
+        /model|not found|not available|access|permission/.test(detailStr);
+      if (formatIssue && !/model/.test(detailStr)) {
+        // try next bitrate with same model
+        continue;
+      }
+      if (modelIssue) break; // next model
+      if (!formatIssue) break;
     }
-
-    const errText = await response.text();
-    let details;
-    try {
-      details = JSON.parse(errText);
-    } catch {
-      details = errText;
-    }
-    lastError = { status: response.status, details };
-    const detailStr = JSON.stringify(details).toLowerCase();
-    const formatIssue =
-      response.status === 400 ||
-      response.status === 402 ||
-      /output_format|bitrate|tier|subscription|creator/.test(detailStr);
-    if (!formatIssue) break;
   }
 
   const error = new Error('TTS failed');
@@ -288,7 +322,7 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
       const donorAudio = await ttsRequest({
         voiceId: prosodyDonorVoiceId(),
         text: spoken,
-        model: 'eleven_multilingual_v2',
+        model: null, // use quality cascade
         voiceSettings: realisticVoiceSettings(),
       });
       return await speechToSpeech({
