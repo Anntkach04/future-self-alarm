@@ -1,15 +1,17 @@
 /**
- * What the user reads while cloning.
- * Must sound like real morning talk — pangrams / counting train a “robot reader” IVC.
+ * Clone sample script.
+ * - Natural morning lines → better Instant Voice Clone (sounds like you, not a reader)
+ * - A couple of phonetic lines → helps on-screen word highlight (STT) catch variety
  */
 export function buildVoiceScriptLines(name: string) {
   const who = name.trim() || 'there';
   return [
-    `Hey… it’s ${who}. This is just me, talking the way I actually talk in the morning.`,
-    `Soft voice. A little sleepy. No performance — just close and real.`,
-    `Take one slow breath with me. Then we’ll sit up when we’re ready.`,
-    `Today can start small. One clear step. I’m proud of you for getting up.`,
-    `I’ve got you. Come on… let’s begin.`,
+    `Hey… it's ${who}. This is my natural morning voice — calm, clear, and close.`,
+    `I speak the way I talk when I wake up. Soft. No rush. No performance.`,
+    `Take one slow breath. Then sit up when you're ready. Today can start small.`,
+    // Phoneme coverage for the live word-matcher (not for “robot reading”).
+    `Yellow lilies, red berries, warm tea. Seven bright stars glow at dawn.`,
+    `Hey… wake up gently. You can do this. This is only my voice.`,
   ];
 }
 
@@ -18,11 +20,11 @@ export function buildVoiceScript(name: string) {
 }
 
 export const VOICE_TIPS = [
-  'Quiet room — AC / fan / music off if you can',
-  'Phone ~20 cm from your mouth',
+  'Quiet room, phone ~20 cm from your mouth',
   'Speak like you’re gently waking yourself — not performing',
-  'A longer clean take (~1 min) makes the clone much clearer',
+  'Same pace and accent you’d use with a close friend',
+  'About a minute of clean speech makes a better clone',
 ];
 
-export const MIN_RECORDING_SECONDS = 30;
-export const TARGET_RECORDING_SECONDS = 55;
+export const MIN_RECORDING_SECONDS = 25;
+export const TARGET_RECORDING_SECONDS = 50;

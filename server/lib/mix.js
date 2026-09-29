@@ -60,10 +60,11 @@ async function mixVoiceWithBed(voiceBuffer, bedId) {
       [
         // Beds are longer than the spoken line — trim to voice. Avoid
         // -stream_loop on m4a (ffmpeg emits bogus negative timestamps).
-        '[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,highpass=f=80,afftdn=nf=-20:nr=8,volume=2.35,acompressor=threshold=-16dB:ratio=2.5:attack=5:release=50[voice]',
-        '[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=0.015,highpass=f=140,lowpass=f=3800,afade=t=in:d=3[bed]',
+        // Soft bed under clear voice — original balance users liked.
+        '[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=1.55,acompressor=threshold=-18dB:ratio=3:attack=5:release=50[voice]',
+        '[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=0.06,highpass=f=120,lowpass=f=4200,afade=t=in:d=3[bed]',
         '[voice][bed]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mix]',
-        '[mix]loudnorm=I=-11:TP=-1.0:LRA=7,areverse,afade=t=in:d=1.2,areverse[out]',
+        '[mix]loudnorm=I=-12:TP=-1.2:LRA=8,areverse,afade=t=in:d=2.5,areverse[out]',
       ].join(';'),
       '-map',
       '[out]',

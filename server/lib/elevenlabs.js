@@ -1,23 +1,21 @@
 const FormData = require('form-data');
 const fetch = require('node-fetch');
-const { denoiseVoiceBuffer } = require('./mix');
 
 const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
 
 /**
- * Instant Voice Clone settings — keep similarity moderate so sample hiss
- * is not baked into every generation.
+ * Instant Voice Clone settings — natural, without over-processing.
  */
 function realisticVoiceSettings() {
-  const stability = Number(process.env.ELEVENLABS_STABILITY ?? 0.4);
-  const similarity = Number(process.env.ELEVENLABS_SIMILARITY ?? 0.65);
-  const style = Number(process.env.ELEVENLABS_STYLE ?? 0.15);
-  const speed = Number(process.env.ELEVENLABS_SPEED ?? 0.9);
+  const stability = Number(process.env.ELEVENLABS_STABILITY ?? 0.42);
+  const similarity = Number(process.env.ELEVENLABS_SIMILARITY ?? 0.75);
+  const style = Number(process.env.ELEVENLABS_STYLE ?? 0.1);
+  const speed = Number(process.env.ELEVENLABS_SPEED ?? 0.95);
   return {
     stability: clamp01(stability),
     similarity_boost: clamp01(similarity),
     style: clamp01(style),
-    use_speaker_boost: process.env.ELEVENLABS_SPEAKER_BOOST === 'true',
+    use_speaker_boost: true,
     speed: Math.min(1.15, Math.max(0.75, speed)),
   };
 }
@@ -39,11 +37,11 @@ function expressiveDonorSettings() {
 /** Final clone pass — allow a bit of the donor’s emotion through. */
 function expressiveCloneSettings() {
   return {
-    stability: clamp01(Number(process.env.ELEVENLABS_STABILITY ?? 0.32)),
-    similarity_boost: clamp01(Number(process.env.ELEVENLABS_SIMILARITY ?? 0.62)),
-    style: clamp01(Number(process.env.ELEVENLABS_STYLE ?? 0.28)),
-    use_speaker_boost: process.env.ELEVENLABS_SPEAKER_BOOST === 'true',
-    speed: Math.min(1.15, Math.max(0.75, Number(process.env.ELEVENLABS_SPEED ?? 0.9))),
+    stability: clamp01(Number(process.env.ELEVENLABS_STABILITY ?? 0.4)),
+    similarity_boost: clamp01(Number(process.env.ELEVENLABS_SIMILARITY ?? 0.75)),
+    style: clamp01(Number(process.env.ELEVENLABS_STYLE ?? 0.15)),
+    use_speaker_boost: true,
+    speed: Math.min(1.15, Math.max(0.75, Number(process.env.ELEVENLABS_SPEED ?? 0.95))),
   };
 }
 
@@ -100,40 +98,17 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
     throw error;
   }
 
-  // 1) ElevenLabs Voice Isolator (speech only) → 2) ffmpeg denoise as safety net
-  let clean = buffer;
-  let cleanName = originalname || 'sample.m4a';
-  let cleanMime = mimetype || 'audio/m4a';
-  try {
-    const isolated = await isolateSpeech(buffer, cleanName, cleanMime);
-    clean = isolated.buffer;
-    cleanName = isolated.filename;
-    cleanMime = isolated.mimeType;
-    console.log('[clone] audio-isolation ok');
-  } catch (err) {
-    console.warn('[clone] audio-isolation skipped:', err?.message || err);
-  }
-  try {
-    const ext = cleanName.includes('.') ? cleanName.split('.').pop() : 'm4a';
-    clean = await denoiseVoiceBuffer(clean, ext);
-    cleanName = 'sample-clean.mp3';
-    cleanMime = 'audio/mpeg';
-    console.log('[clone] ffmpeg denoise ok');
-  } catch (err) {
-    console.warn('[clone] ffmpeg denoise skipped:', err?.message || err);
-  }
-
+  // Use the raw sample — heavy isolation/denoise was adding hiss/artifacts.
   const form = new FormData();
   form.append('name', String(name || 'Future Self').slice(0, 80));
   form.append(
     'description',
-    'My real speaking voice in the morning — soft, close, slightly sleepy, natural pauses. Not a narrator, podcast host, or character. Match my accent and rhythm exactly. Clean speech only — no room noise or hiss.'
+    'Natural everyday speaking voice. Match my real accent, pacing, and tone exactly. Soft morning talk, not a character or narrator.'
   );
-  // Isolator already ran; still ask IVC to strip residual noise.
-  form.append('remove_background_noise', 'true');
-  form.append('files', clean, {
-    filename: cleanName,
-    contentType: cleanMime,
+  form.append('remove_background_noise', 'false');
+  form.append('files', buffer, {
+    filename: originalname || 'sample.m4a',
+    contentType: mimetype || 'audio/m4a',
   });
 
   const response = await fetch(`${ELEVEN_BASE}/voices/add`, {
@@ -163,41 +138,6 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
   return {
     voiceId,
     requiresVerification: data.requires_verification,
-  };
-}
-
-/** ElevenLabs Voice Isolator — keeps speech, drops background. */
-async function isolateSpeech(buffer, filename = 'sample.m4a', mimeType = 'audio/m4a') {
-  const apiKey = getElevenKey();
-  const form = new FormData();
-  form.append('audio', buffer, {
-    filename,
-    contentType: mimeType,
-  });
-  const response = await fetch(`${ELEVEN_BASE}/audio-isolation`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-      ...form.getHeaders(),
-      Accept: 'audio/mpeg',
-    },
-    body: form,
-  });
-  if (!response.ok) {
-    const errText = await response.text();
-    const error = new Error(`audio-isolation failed (${response.status})`);
-    error.status = response.status;
-    error.details = errText.slice(0, 400);
-    throw error;
-  }
-  const out = await response.buffer();
-  if (!out.length) {
-    throw new Error('audio-isolation returned empty audio');
-  }
-  return {
-    buffer: out,
-    filename: 'sample-isolated.mp3',
-    mimeType: 'audio/mpeg',
   };
 }
 
@@ -288,7 +228,7 @@ async function speechToSpeech({ voiceId, audioBuffer, filename = 'prosody.mp3' }
       contentType: 'audio/mpeg',
     });
     form.append('model_id', stsModel());
-    form.append('remove_background_noise', 'true');
+    form.append('remove_background_noise', 'false');
     form.append('voice_settings', JSON.stringify(expressiveCloneSettings()));
 
     const response = await fetch(
@@ -389,16 +329,7 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
         audioBuffer: donorAudio.buffer,
       });
       console.log('[tts] STS pipeline ok → user Instant Voice Clone');
-      try {
-        const cleaned = await denoiseVoiceBuffer(converted.buffer, 'mp3');
-        return {
-          mimeType: 'audio/mpeg',
-          buffer: cleaned,
-          base64: cleaned.toString('base64'),
-        };
-      } catch {
-        return converted;
-      }
+      return converted;
     } catch (stsErr) {
       console.warn(
         '[tts] STS pipeline failed, direct clone TTS:',
@@ -407,22 +338,12 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
     }
   }
 
-  const direct = await ttsRequest({
+  return ttsRequest({
     voiceId,
     text: prepareExpressiveText(text, { stripUnknownTags: true }),
     model: modelId || defaultTtsModel(),
     voiceSettings: expressiveCloneSettings(),
   });
-  try {
-    const cleaned = await denoiseVoiceBuffer(direct.buffer, 'mp3');
-    return {
-      mimeType: 'audio/mpeg',
-      buffer: cleaned,
-      base64: cleaned.toString('base64'),
-    };
-  } catch {
-    return direct;
-  }
 }
 
 /** Strip emoji; natural short pauses (not long “…” gaps). */
