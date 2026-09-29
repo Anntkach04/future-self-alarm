@@ -1,17 +1,16 @@
 /**
- * Clone sample script.
- * - Natural morning lines → better Instant Voice Clone (sounds like you, not a reader)
- * - A couple of phonetic lines → helps on-screen word highlight (STT) catch variety
+ * Read this the way you’d talk to yourself at 7am.
+ * Same energy as the wake script → clone learns YOUR morning voice, not “narrator mode”.
  */
 export function buildVoiceScriptLines(name: string) {
   const who = name.trim() || 'there';
   return [
-    `Hey… it's ${who}. This is my natural morning voice — calm, clear, and close.`,
-    `I speak the way I talk when I wake up. Soft. No rush. No performance.`,
-    `Take one slow breath. Then sit up when you're ready. Today can start small.`,
-    // Phoneme coverage for the live word-matcher (not for “robot reading”).
-    `Yellow lilies, red berries, warm tea. Seven bright stars glow at dawn.`,
-    `Hey… wake up gently. You can do this. This is only my voice.`,
+    `Hey. It's ${who}. This is just me — morning voice, a little soft, a little sleepy.`,
+    `I'm not performing. This is how I actually talk when I wake up.`,
+    `One slow breath. Then sit up. Today can start small.`,
+    `I'm proud of you. Come on — let's begin. This is only my voice.`,
+    // Light phoneme spice for on-screen word matching (say it naturally, don't "announce").
+    `Yellow lilies, warm tea, seven bright stars.`,
   ];
 }
 
@@ -20,11 +19,11 @@ export function buildVoiceScript(name: string) {
 }
 
 export const VOICE_TIPS = [
-  'Quiet room, phone ~20 cm from your mouth',
-  'Speak like you’re gently waking yourself — not performing',
-  'Same pace and accent you’d use with a close friend',
-  'About a minute of clean speech makes a better clone',
+  'Quiet room, phone close (~20 cm)',
+  'Talk to yourself — don’t “read out loud”',
+  'Same accent and pace as a normal morning',
+  'About a minute helps the clone lock onto you',
 ];
 
-export const MIN_RECORDING_SECONDS = 25;
-export const TARGET_RECORDING_SECONDS = 50;
+export const MIN_RECORDING_SECONDS = 30;
+export const TARGET_RECORDING_SECONDS = 55;

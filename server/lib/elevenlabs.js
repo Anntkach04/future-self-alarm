@@ -4,44 +4,27 @@ const fetch = require('node-fetch');
 const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
 
 /**
- * Instant Voice Clone settings — natural, without over-processing.
+ * What makes TTS sound “AI” on Instant Voice Clones:
+ * - style > 0 → character/performance, not you
+ * - stability too low → random weird gaps / pitch jumps
+ * - stability too high → flat announcer
+ * - donor STS → someone else’s cadence glued onto your timbre (uncanny)
+ * - stage directions / audio tags → acted, not lived
+ *
+ * Fix: speak DIRECTLY with the user’s IVC, mid stability, style 0,
+ * plain conversational text, multilingual_v2 (best clone likeness).
  */
 function realisticVoiceSettings() {
-  const stability = Number(process.env.ELEVENLABS_STABILITY ?? 0.42);
-  const similarity = Number(process.env.ELEVENLABS_SIMILARITY ?? 0.75);
-  const style = Number(process.env.ELEVENLABS_STYLE ?? 0.1);
-  const speed = Number(process.env.ELEVENLABS_SPEED ?? 0.95);
+  const stability = Number(process.env.ELEVENLABS_STABILITY ?? 0.5);
+  const similarity = Number(process.env.ELEVENLABS_SIMILARITY ?? 0.8);
+  const style = Number(process.env.ELEVENLABS_STYLE ?? 0);
+  const speed = Number(process.env.ELEVENLABS_SPEED ?? 1);
   return {
     stability: clamp01(stability),
     similarity_boost: clamp01(similarity),
     style: clamp01(style),
-    use_speaker_boost: true,
-    speed: Math.min(1.15, Math.max(0.75, speed)),
-  };
-}
-
-/** Expressive first-pass — wide emotion range before STS into the clone. */
-function expressiveDonorSettings() {
-  return {
-    // Keep expression without huge random gaps.
-    stability: clamp01(Number(process.env.ELEVENLABS_DONOR_STABILITY ?? 0.35)),
-    similarity_boost: clamp01(
-      Number(process.env.ELEVENLABS_DONOR_SIMILARITY ?? 0.6)
-    ),
-    style: clamp01(Number(process.env.ELEVENLABS_DONOR_STYLE ?? 0.4)),
-    use_speaker_boost: true,
-    speed: Math.min(1.1, Math.max(0.85, Number(process.env.ELEVENLABS_DONOR_SPEED ?? 0.95))),
-  };
-}
-
-/** Final clone pass — allow a bit of the donor’s emotion through. */
-function expressiveCloneSettings() {
-  return {
-    stability: clamp01(Number(process.env.ELEVENLABS_STABILITY ?? 0.4)),
-    similarity_boost: clamp01(Number(process.env.ELEVENLABS_SIMILARITY ?? 0.75)),
-    style: clamp01(Number(process.env.ELEVENLABS_STYLE ?? 0.15)),
-    use_speaker_boost: true,
-    speed: Math.min(1.15, Math.max(0.75, Number(process.env.ELEVENLABS_SPEED ?? 0.95))),
+    use_speaker_boost: process.env.ELEVENLABS_SPEAKER_BOOST !== 'false',
+    speed: Math.min(1.15, Math.max(0.8, speed)),
   };
 }
 
@@ -54,38 +37,26 @@ function getElevenKey() {
   return process.env.ELEVENLABS_API_KEY || '';
 }
 
-/** Direct TTS model on the clone (fallback). */
 function defaultTtsModel() {
+  // Strongest identity match for Instant Voice Clones.
   return process.env.ELEVENLABS_TTS_MODEL || 'eleven_multilingual_v2';
-}
-
-/** Expressive donor TTS before voice-changer. */
-function donorTtsModel() {
-  return process.env.ELEVENLABS_DONOR_MODEL || 'eleven_v3';
-}
-
-function stsModel() {
-  return process.env.ELEVENLABS_STS_MODEL || 'eleven_multilingual_sts_v2';
-}
-
-/**
- * Temporary prosody carrier only — never the product voice.
- * Final audio is always the user's Instant Voice Clone via STS.
- */
-function prosodyDonorVoiceId() {
-  return (
-    process.env.ELEVENLABS_PROSODY_VOICE_ID ||
-    // Rachel — warm, clear English; used only as intermediate performance.
-    '21m00Tcm4TlvDq8ikWAM'
-  );
 }
 
 function defaultOutputFormat() {
   return process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3_44100_192';
 }
 
+/** STS is opt-in only — default OFF (it often sounds expressive but not “you”). */
 function stsEnabled() {
-  return process.env.ELEVENLABS_STS !== 'false';
+  return process.env.ELEVENLABS_STS === 'true';
+}
+
+function stsModel() {
+  return process.env.ELEVENLABS_STS_MODEL || 'eleven_multilingual_sts_v2';
+}
+
+function prosodyDonorVoiceId() {
+  return process.env.ELEVENLABS_PROSODY_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
 }
 
 async function cloneVoice({ buffer, originalname, mimetype, name }) {
@@ -98,13 +69,17 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
     throw error;
   }
 
-  // Use the raw sample — heavy isolation/denoise was adding hiss/artifacts.
   const form = new FormData();
   form.append('name', String(name || 'Future Self').slice(0, 80));
   form.append(
     'description',
-    'Natural everyday speaking voice. Match my real accent, pacing, and tone exactly. Soft morning talk, not a character or narrator.'
+    [
+      'This is my real voice talking to myself in the morning.',
+      'Keep my exact accent, mouth shape, breath, and uneven pacing.',
+      'Sound intimate and close — never like a podcast host, audiobook, or AI assistant.',
+    ].join(' ')
   );
+  // Don’t run aggressive denoise — it strips the micro-texture that sounds human.
   form.append('remove_background_noise', 'false');
   form.append('files', buffer, {
     filename: originalname || 'sample.m4a',
@@ -144,14 +119,13 @@ async function cloneVoice({ buffer, originalname, mimetype, name }) {
 async function applyVoiceSettings(voiceId) {
   const apiKey = getElevenKey();
   if (!apiKey || !voiceId) return;
-  const settings = realisticVoiceSettings();
   await fetch(`${ELEVEN_BASE}/voices/${voiceId}/settings/edit`, {
     method: 'POST',
     headers: {
       'xi-api-key': apiKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(settings),
+    body: JSON.stringify(realisticVoiceSettings()),
   });
 }
 
@@ -160,10 +134,10 @@ async function ttsRequest({ voiceId, text, model, voiceSettings }) {
   const body = {
     text: text.slice(0, 2500),
     model_id: model,
-    voice_settings: voiceSettings,
+    voice_settings: voiceSettings || realisticVoiceSettings(),
     apply_text_normalization: 'auto',
   };
-  if (/flash_v2_5|turbo_v2_5|multilingual_v2|eleven_v3|eleven_multilingual|eleven_english/.test(model)) {
+  if (/multilingual_v2|turbo_v2_5|flash_v2_5|eleven_v3|eleven_multilingual/.test(model)) {
     body.language_code = process.env.ELEVENLABS_LANGUAGE || 'en';
   }
 
@@ -190,7 +164,6 @@ async function ttsRequest({ voiceId, text, model, voiceSettings }) {
         mimeType: 'audio/mpeg',
         buffer,
         base64: buffer.toString('base64'),
-        outputFormat,
       };
     }
 
@@ -229,7 +202,7 @@ async function speechToSpeech({ voiceId, audioBuffer, filename = 'prosody.mp3' }
     });
     form.append('model_id', stsModel());
     form.append('remove_background_noise', 'false');
-    form.append('voice_settings', JSON.stringify(expressiveCloneSettings()));
+    form.append('voice_settings', JSON.stringify(realisticVoiceSettings()));
 
     const response = await fetch(
       `${ELEVEN_BASE}/speech-to-speech/${voiceId}?output_format=${outputFormat}`,
@@ -276,10 +249,8 @@ async function speechToSpeech({ voiceId, audioBuffer, filename = 'prosody.mp3' }
 }
 
 /**
- * Max-natural pipeline for Instant Voice Clones:
- * 1) Expressive TTS on a temporary donor (prosody only)
- * 2) Voice Changer (STS) into the user's clone → product voice is always IVC
- * Falls back to direct TTS on the clone if STS/v3 unavailable.
+ * Default path: plain IVC TTS (sounds most like the person).
+ * Optional STS only if ELEVENLABS_STS=true.
  */
 async function synthesizeSpeech({ voiceId, text, modelId }) {
   const apiKey = getElevenKey();
@@ -300,75 +271,42 @@ async function synthesizeSpeech({ voiceId, text, modelId }) {
 
   if (stsEnabled() && !modelId) {
     try {
-      const donorId = prosodyDonorVoiceId();
-      // Tag from original paragraphs so mood can shift beat-by-beat.
-      const tagged = prepareExpressiveText(text);
-      let donorAudio;
-      try {
-        donorAudio = await ttsRequest({
-          voiceId: donorId,
-          text: tagged,
-          model: donorTtsModel(),
-          voiceSettings: expressiveDonorSettings(),
-        });
-      } catch (v3Err) {
-        console.warn(
-          '[tts] donor v3 failed, multilingual donor:',
-          v3Err?.message || v3Err
-        );
-        donorAudio = await ttsRequest({
-          voiceId: donorId,
-          text: prepareExpressiveText(text, { stripUnknownTags: true }),
-          model: 'eleven_multilingual_v2',
-          voiceSettings: expressiveDonorSettings(),
-        });
-      }
-
-      const converted = await speechToSpeech({
+      const donorAudio = await ttsRequest({
+        voiceId: prosodyDonorVoiceId(),
+        text: spoken,
+        model: 'eleven_multilingual_v2',
+        voiceSettings: realisticVoiceSettings(),
+      });
+      return await speechToSpeech({
         voiceId,
         audioBuffer: donorAudio.buffer,
       });
-      console.log('[tts] STS pipeline ok → user Instant Voice Clone');
-      return converted;
     } catch (stsErr) {
-      console.warn(
-        '[tts] STS pipeline failed, direct clone TTS:',
-        stsErr?.message || stsErr
-      );
+      console.warn('[tts] STS failed, direct IVC:', stsErr?.message || stsErr);
     }
   }
 
   return ttsRequest({
     voiceId,
-    text: prepareExpressiveText(text, { stripUnknownTags: true }),
+    text: spoken,
     model: modelId || defaultTtsModel(),
-    voiceSettings: expressiveCloneSettings(),
+    voiceSettings: realisticVoiceSettings(),
   });
 }
 
-/** Strip emoji; natural short pauses (not long “…” gaps). */
+/**
+ * Keep speech human: normal punctuation, no theatrical “…”, no audio tags.
+ */
 function prepareSpokenText(text) {
   return String(text)
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\[[^\]]+\]/g, '') // strip any leftover stage tags
     .replace(/\r\n/g, '\n')
     .replace(/\n+/g, ' ')
-    .replace(/\s*\.\.\.\s*/g, '. ')
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/[ \t]+/g, ' ')
+    .replace(/\s*—\s*/g, ' — ')
+    .replace(/\s*\.\.\.\s*/g, ', ')
+    .replace(/\s+/g, ' ')
     .trim();
-}
-
-/**
- * Light mood cues only — heavy tags + “...” made surreal pauses.
- */
-function prepareExpressiveText(text, opts = {}) {
-  const clean = prepareSpokenText(text);
-  if (!clean) return clean;
-  if (opts.stripUnknownTags) {
-    return clean;
-  }
-  // One soft cue up front; let punctuation drive the rest.
-  return `[warmly] ${clean}`;
 }
 
 module.exports = {
