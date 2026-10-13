@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Easing,
   LayoutChangeEvent,
   Pressable,
@@ -14,29 +15,48 @@ import { BackButton } from '../components/BackButton';
 import { BubbleEnter } from '../components/BubbleEnter';
 import { KaraokeLine } from '../components/KaraokeLine';
 import { LiveWaveform } from '../components/LiveWaveform';
+import { LoadingLabel } from '../components/LoadingLabel';
 import { LogoSpinner } from '../components/LogoSpinner';
 import { MicRecordButton } from '../components/MicRecordButton';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
-import { VOICE_ONBOARDING_SKIP_ENABLED } from '../config/devBypass';
+import {
+  FOUNDER_AUTH_SKIP_ENABLED,
+  VOICE_ONBOARDING_SKIP_ENABLED,
+} from '../config/devBypass';
+import { getDefaultPremadeVoiceId } from '../services/defaultVoice';
 import { buildVoiceScriptLines } from '../data/voiceScript';
 import { useSmartDictaphone } from '../hooks/useSmartDictaphone';
 import { RootStackParamList } from '../navigation/types';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { cloneOnboardingVoice } from '../services/cloneOnboardingVoice';
+import { isLineFullyLit } from '../services/speechMatch';
+import { playAllSetSound, playLineSuccessSound } from '../services/uiSounds';
+import { accents, colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
 const COMPLETE_COLOR = accents.gold;
 
 export function VoiceRecordScreen({ navigation }: Props) {
-  const { answers, setVoiceSample, markOnboardingComplete } = useOnboarding();
+  const {
+    answers,
+    setVoiceSample,
+    setVoiceId,
+    setPreview,
+    markOnboardingComplete,
+  } = useOnboarding();
   const lines = buildVoiceScriptLines(answers.name);
   const [lineIndex, setLineIndex] = useState(0);
   const [complete, setComplete] = useState(false);
   const [frameH, setFrameH] = useState(0);
+  const [cloneReady, setCloneReady] = useState(false);
+  const [cloneError, setCloneError] = useState<string | null>(null);
+  const [cloning, setCloning] = useState(false);
   const finishingRef = useRef(false);
   const advancingRef = useRef(false);
   const doneLineRef = useRef(-1);
+  const cloneStartedRef = useRef(false);
+  const sampleUriRef = useRef<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const currentLine = lines[lineIndex] ?? '';
@@ -49,7 +69,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const goldHeight = useRef(new Animated.Value(0)).current;
   const completeOpacity = useRef(new Animated.Value(0)).current;
   const readOpacity = useRef(new Animated.Value(1)).current;
-  const lineReadyRef = useRef(false);
+  /** State (not ref) so advance effect re-runs when the gate opens. */
+  const [lineReady, setLineReady] = useState(false);
 
   useEffect(() => {
     dictaphone.requestPermission();
@@ -60,15 +81,42 @@ export function VoiceRecordScreen({ navigation }: Props) {
     if (next > 0) setFrameH(next);
   };
 
+  const startClone = useCallback(
+    async (sampleUri: string) => {
+      if (cloneStartedRef.current) return;
+      cloneStartedRef.current = true;
+      setCloning(true);
+      setCloneError(null);
+      try {
+        const result = await cloneOnboardingVoice({ sampleUri, answers });
+        setVoiceId(result.voiceId, result.isDemo);
+        setPreview(result.previewPath, result.previewText);
+        setCloneReady(true);
+      } catch (e) {
+        cloneStartedRef.current = false;
+        setCloneError(e instanceof Error ? e.message : 'Voice cloning failed');
+      } finally {
+        setCloning(false);
+      }
+    },
+    [answers, setPreview, setVoiceId]
+  );
+
+  const stopRecording = dictaphone.stop;
   const finishReading = useCallback(async () => {
     if (finishingRef.current) return;
     finishingRef.current = true;
 
-    const uri = await dictaphone.stop();
-    if (uri) {
-      setVoiceSample(uri, dictaphone.durationSec);
+    const result = await stopRecording();
+    if (!result.uri) {
+      finishingRef.current = false;
+      return;
     }
+    sampleUriRef.current = result.uri;
+    setVoiceSample(result.uri, result.durationSec);
     setComplete(true);
+    void playAllSetSound();
+    void startClone(result.uri);
 
     Animated.parallel([
       Animated.timing(readOpacity, {
@@ -93,81 +141,110 @@ export function VoiceRecordScreen({ navigation }: Props) {
         }),
       ]),
     ]).start();
-  }, [completeOpacity, dictaphone, goldHeight, readOpacity, setVoiceSample]);
+  }, [
+    completeOpacity,
+    goldHeight,
+    readOpacity,
+    setVoiceSample,
+    startClone,
+    stopRecording,
+  ]);
+
+  const finishReadingRef = useRef(finishReading);
+  finishReadingRef.current = finishReading;
+  const linesLenRef = useRef(lines.length);
+  linesLenRef.current = lines.length;
+  const lineIndexRef = useRef(lineIndex);
+  lineIndexRef.current = lineIndex;
 
   const advanceLine = useCallback(() => {
     if (advancingRef.current || finishingRef.current) return;
     advancingRef.current = true;
+    void playLineSuccessSound();
 
-    Animated.parallel([
-      Animated.timing(lineOpacity, {
-        toValue: 0,
-        duration: 260,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(lineY, {
-        toValue: -16,
-        duration: 260,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (!finished) {
-        advancingRef.current = false;
+    const fromIndex = lineIndexRef.current;
+    let moved = false;
+    const moveOn = () => {
+      if (moved) return;
+      moved = true;
+      if (fromIndex >= linesLenRef.current - 1) {
+        void finishReadingRef.current();
         return;
       }
-
-      if (lineIndex >= lines.length - 1) {
-        finishReading();
-        return;
-      }
-
-      setLineIndex((prev) => prev + 1);
+      setLineIndex(fromIndex + 1);
       lineY.setValue(16);
+      lineOpacity.setValue(0);
       Animated.parallel([
         Animated.timing(lineOpacity, {
           toValue: 1,
-          duration: 380,
+          duration: 320,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(lineY, {
           toValue: 0,
-          duration: 380,
+          duration: 320,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]).start(() => {
         advancingRef.current = false;
       });
-    });
-  }, [finishReading, lineIndex, lineOpacity, lineY, lines.length]);
+    };
 
-  // Mark line as ready after a short delay so stale STT results don't immediately
-  // trigger an advance on the new line.
+    Animated.parallel([
+      Animated.timing(lineOpacity, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(lineY, {
+        toValue: -12,
+        duration: 180,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => moveOn());
+    setTimeout(moveOn, 280);
+  }, [lineOpacity, lineY]);
+
+  const advanceLineRef = useRef(advanceLine);
+  advanceLineRef.current = advanceLine;
+
+  // Tiny gate so leftover STT from the *previous* line can't auto-skip.
   useEffect(() => {
-    lineReadyRef.current = false;
-    const t = setTimeout(() => { lineReadyRef.current = true; }, 700);
+    setLineReady(false);
+    const wait = lineIndex === 0 ? 80 : 220;
+    const t = setTimeout(() => setLineReady(true), wait);
     return () => clearTimeout(t);
   }, [lineIndex]);
 
+  /**
+   * Metering re-renders constantly. A setTimeout in an effect that deps on
+   * advanceLine was cleared every ~120ms and never fired. Poll with refs instead.
+   */
   useEffect(() => {
-    if (!recording || complete || advancingRef.current) return;
-    if (!lineReadyRef.current) return;
-    if (dictaphone.spokenCount < dictaphone.wordCount || dictaphone.wordCount === 0) {
-      return;
-    }
-    if (doneLineRef.current === lineIndex) return;
-    doneLineRef.current = lineIndex;
-    const t = setTimeout(() => advanceLine(), 220);
-    return () => clearTimeout(t);
+    if (!recording || complete) return;
+    const id = setInterval(() => {
+      if (!lineReady) return;
+      if (advancingRef.current || finishingRef.current) return;
+      const idx = lineIndexRef.current;
+      if (doneLineRef.current === idx) return;
+      const spoken = dictaphone.spokenCount;
+      const enough =
+        dictaphone.lineHeardEnough || isLineFullyLit(currentLine, spoken);
+      if (!enough) return;
+      doneLineRef.current = idx;
+      advanceLineRef.current();
+    }, 200);
+    return () => clearInterval(id);
   }, [
-    advanceLine,
     complete,
+    currentLine,
+    dictaphone.lineHeardEnough,
     dictaphone.spokenCount,
-    dictaphone.wordCount,
-    lineIndex,
+    lineReady,
     recording,
   ]);
 
@@ -191,11 +268,22 @@ export function VoiceRecordScreen({ navigation }: Props) {
     await dictaphone.start();
   };
 
-  const goReview = () => {
-    navigation.replace('VoiceReview');
+  const goPreview = () => {
+    if (!cloneReady) return;
+    navigation.replace('VoicePreview');
+  };
+
+  const retryClone = () => {
+    const uri = sampleUriRef.current;
+    if (!uri) return;
+    cloneStartedRef.current = false;
+    setCloneReady(false);
+    void startClone(uri);
   };
 
   const skipForDev = () => {
+    // Always give a working voice so alarm testing isn't blocked by cloning.
+    setVoiceId(getDefaultPremadeVoiceId(), true);
     markOnboardingComplete();
     navigation.reset({
       index: 0,
@@ -203,10 +291,30 @@ export function VoiceRecordScreen({ navigation }: Props) {
     });
   };
 
+  /** Continue past clone failure (auth / server) with a premade voice. */
+  const skipCloneAndContinue = () => {
+    setVoiceId(getDefaultPremadeVoiceId(), true);
+    setPreview(null, null);
+    setCloneError(null);
+    setCloneReady(true);
+    navigation.replace('VoicePreview');
+  };
+
+  const forceContinue = () => {
+    if (!recording || complete) return;
+    if (lineIndex >= lines.length - 1) {
+      void finishReading();
+      return;
+    }
+    doneLineRef.current = lineIndex;
+    advanceLine();
+  };
+
   const pillRadius = 220;
+  const screenH = Math.max(frameH, Dimensions.get('window').height);
   const goldH = goldHeight.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, Math.max(frameH, 1)],
+    outputRange: [0, screenH],
   });
   const bottomRadius = goldHeight.interpolate({
     inputRange: [0, 0.55, 1],
@@ -218,17 +326,15 @@ export function VoiceRecordScreen({ navigation }: Props) {
     dictaphone.status === 'recording'
       ? dictaphone.hearing
         ? 'Keep reading the highlighted words'
-        : 'I’m listening — read the line aloud'
+        : 'I’m listening. Read the line aloud'
       : dictaphone.status === 'stopped'
         ? 'Tap to try again'
         : 'Tap the mic and read';
 
   const coach =
-    recording && dictaphone.hearing && dictaphone.spokenCount === 0
-      ? 'Only the script counts.'
-      : !dictaphone.recognitionReady && dictaphone.status !== 'recording'
-        ? 'On iPhone, install a dev build once: npx expo run:ios'
-        : null;
+    !dictaphone.recognitionReady && dictaphone.status !== 'recording'
+      ? 'On iPhone, install a dev build once: npx expo run:ios'
+      : null;
 
   return (
     <View style={styles.root} onLayout={onLayout}>
@@ -238,7 +344,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
           onPress={skipForDev}
           style={styles.skipBtn}
         >
-          <Text style={styles.skipText}>skip (dev)</Text>
+          <Text style={styles.skipText}>skip → test alarm</Text>
         </Pressable>
       ) : null}
       <SafeAreaView style={styles.safe}>
@@ -246,7 +352,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
           pointerEvents={complete ? 'none' : 'auto'}
           style={[styles.readLayer, { opacity: readOpacity }]}
         >
-          <BackButton />
+          <BubbleEnter delay={0} fromY={10}>
+            <BackButton />
+          </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
             <Text style={styles.title}>{`Read this\nout loud`}</Text>
           </BubbleEnter>
@@ -289,13 +397,17 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 onPress={onMicPress}
               />
               <Text style={styles.hint}>{hint}</Text>
-              {recording && lineIndex < lines.length - 1 ? (
+              {recording ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={advanceLine}
+                  onPress={forceContinue}
                   style={styles.nextLineBtn}
                 >
-                  <Text style={styles.nextLineText}>Next line →</Text>
+                  <Text style={styles.nextLineText}>
+                    {lineIndex >= lines.length - 1
+                      ? 'Finish recording →'
+                      : 'Continue →'}
+                  </Text>
                 </Pressable>
               ) : null}
             </View>
@@ -307,11 +419,13 @@ export function VoiceRecordScreen({ navigation }: Props) {
         pointerEvents={complete ? 'auto' : 'none'}
         style={[
           styles.goldPill,
-          {
-            height: frameH ? goldH : 0,
-            borderBottomLeftRadius: bottomRadius,
-            borderBottomRightRadius: bottomRadius,
-          },
+          complete
+            ? StyleSheet.absoluteFillObject
+            : {
+                height: frameH ? goldH : 0,
+                borderBottomLeftRadius: bottomRadius,
+                borderBottomRightRadius: bottomRadius,
+              },
         ]}
       >
         <Animated.View
@@ -325,14 +439,59 @@ export function VoiceRecordScreen({ navigation }: Props) {
           ]}
         >
           <View style={styles.completeCopy}>
-            <LogoSpinner />
+            {cloning ? <LogoSpinner /> : null}
             <Text style={styles.completeTitle}>You’re all set!</Text>
-            <Text style={styles.completeSub}>
-              Your future self has your voice now.
-            </Text>
+            {cloneError ? (
+              <Text style={styles.completeError}>{cloneError}</Text>
+            ) : cloneReady ? (
+              <Text style={styles.completeSub}>
+                Your future self has your voice now.
+              </Text>
+            ) : (
+              <>
+                <LoadingLabel
+                  text="Cloning your voice"
+                  style={styles.completeSub}
+                />
+                <Text style={styles.cloneEta}>
+                  This usually takes about 1-2 minutes
+                </Text>
+              </>
+            )}
           </View>
           <View style={styles.completeFooter}>
-            <RoundArrowButton onPress={goReview} color={colors.bg} />
+            {cloneError ? (
+              <>
+                <Pressable
+                  onPress={() => navigation.replace('VoiceRecord')}
+                  style={styles.goldLinkBtn}
+                >
+                  <Text style={styles.goldLinkText}>re-record</Text>
+                </Pressable>
+                {FOUNDER_AUTH_SKIP_ENABLED ? (
+                  <Pressable
+                    onPress={skipCloneAndContinue}
+                    style={styles.goldLinkBtn}
+                  >
+                    <Text style={styles.goldLinkText}>skip → continue</Text>
+                  </Pressable>
+                ) : null}
+                <RoundArrowButton
+                  onPress={() => {
+                    if (/sign in/i.test(cloneError)) {
+                      navigation.replace('SignIn');
+                      return;
+                    }
+                    retryClone();
+                  }}
+                  color={colors.bg}
+                />
+              </>
+            ) : cloneReady ? (
+              <RoundArrowButton onPress={goPreview} color={colors.bg} />
+            ) : (
+              <View style={styles.footerPlaceholder} />
+            )}
           </View>
         </Animated.View>
       </Animated.View>
@@ -389,9 +548,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 12,
-    overflow: 'hidden',
+    overflow: 'visible',
     minHeight: 72,
   },
   controls: {
@@ -469,8 +628,45 @@ const styles = StyleSheet.create({
     color: colors.text,
     opacity: 0.7,
   },
+  cloneEta: {
+    marginTop: 8,
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: colors.text,
+    opacity: 0.55,
+  },
   completeFooter: {
     alignItems: 'flex-end',
     width: '100%',
+    minHeight: 64,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  goldLinkBtn: {
+    marginRight: 'auto',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  goldLinkText: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 15,
+    color: colors.text,
+    textDecorationLine: 'underline',
+    ...noFakeLight,
+  },
+  completeError: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: colors.text,
+    opacity: 0.8,
+    paddingHorizontal: 8,
+  },
+  footerPlaceholder: {
+    height: 56,
+    width: 56,
   },
 });

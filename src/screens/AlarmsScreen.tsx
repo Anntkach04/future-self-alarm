@@ -1,8 +1,16 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { BackButton } from '../components/BackButton';
 import { Screen } from '../components/Screen';
 import { RoundArrowButton } from '../components/RoundArrowButton';
+import { SwipeDeleteRow } from '../components/SwipeDeleteRow';
 import {
   formatAlarmDays,
   formatAlarmTime,
@@ -25,34 +33,41 @@ export function AlarmsScreen({ navigation }: Props) {
 
       <ScrollView contentContainerStyle={styles.list}>
         {alarms.length === 0 ? (
-          <Text style={styles.empty}>No alarms yet.</Text>
+          <Text style={styles.empty}>
+            No wakes yet. Tap + to set the first morning with your voice.
+          </Text>
         ) : (
           alarms.map((alarm) => (
-            <View key={alarm.id} style={styles.card}>
-              <Pressable
-                style={styles.cardMain}
-                onPress={() =>
-                  navigation.navigate('CreateAlarm', { alarmId: alarm.id })
-                }
-              >
-                <Text style={styles.time}>{formatAlarmTime(alarm)}</Text>
-                <Text style={styles.meta}>
-                  {alarm.label} · {formatAlarmDays(alarm.days)}
-                </Text>
-              </Pressable>
-              <Switch
-                value={alarm.enabled}
-                onValueChange={() => toggleAlarm(alarm.id)}
-                trackColor={{ false: colors.border, true: colors.text }}
-              />
-              <Pressable
-                onPress={() => removeAlarm(alarm.id)}
-                hitSlop={8}
-                style={styles.delete}
-              >
-                <Text style={styles.deleteText}>Delete</Text>
-              </Pressable>
-            </View>
+            <SwipeDeleteRow
+              key={alarm.id}
+              onDelete={() => removeAlarm(alarm.id)}
+              surfaceColor={colors.inputBg}
+            >
+              <View style={styles.card}>
+                <Pressable
+                  style={styles.cardMain}
+                  onPress={() =>
+                    navigation.navigate('CreateAlarm', { alarmId: alarm.id })
+                  }
+                >
+                  <Text
+                    style={[styles.time, !alarm.enabled && styles.dim]}
+                  >
+                    {formatAlarmTime(alarm)}
+                  </Text>
+                  <Text
+                    style={[styles.meta, !alarm.enabled && styles.dim]}
+                  >
+                    {alarm.label} · {formatAlarmDays(alarm.days)}
+                  </Text>
+                </Pressable>
+                <Switch
+                  value={alarm.enabled}
+                  onValueChange={() => toggleAlarm(alarm.id)}
+                  trackColor={{ false: colors.border, true: colors.text }}
+                />
+              </View>
+            </SwipeDeleteRow>
           ))
         )}
       </ScrollView>
@@ -95,9 +110,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: spacing.md,
     gap: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   cardMain: {
     gap: 4,
+    flex: 1,
   },
   time: {
     fontFamily: fonts.headingRegular,
@@ -110,12 +129,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.textMuted,
   },
-  delete: {
-    alignSelf: 'flex-start',
-  },
-  deleteText: {
-    fontFamily: fonts.bodyLight,
-    color: '#C0392B',
+  dim: {
+    opacity: 0.38,
   },
   footer: {
     alignItems: 'flex-end',

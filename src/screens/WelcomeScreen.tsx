@@ -11,7 +11,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LogoSpinner } from '../components/LogoSpinner';
 import { useSplashChrome } from '../layout/SplashChromeContext';
 import { RootStackParamList } from '../navigation/types';
-import { fonts, noFakeBold } from '../theme';
+import { colors, fonts, noFakeBold } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   cream: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#FFFAEE',
+    backgroundColor: colors.bg,
   },
   bluePill: {
     position: 'absolute',

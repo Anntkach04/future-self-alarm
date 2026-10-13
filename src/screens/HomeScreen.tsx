@@ -4,14 +4,17 @@ import {
   Image,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MoodWhySheet } from '../components/MoodWhySheet';
-import { RecapPills } from '../components/RecapPills';
+import { SwipeDeleteRow } from '../components/SwipeDeleteRow';
 import { TextArrowButton } from '../components/TextArrowButton';
+import { useAppSettings } from '../context/AppSettingsContext';
 import {
   formatAlarmDays,
   formatAlarmTime,
@@ -20,16 +23,10 @@ import {
 } from '../context/AlarmsContext';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
-import {
-  ALREADY_YOU_OPTIONS,
-  FUTURE_SELF_OPTIONS,
-  HARD_MORNING_OPTIONS,
-  VOICE_STYLE_OPTIONS,
-} from '../data/onboardingOptions';
+import { playAlarmAudio } from '../services/alarmScheduler';
 import { BASE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
 import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
-import { colorsForRecapSections } from '../utils/optionColors';
 import { uiLabel } from '../utils/labels';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -48,44 +45,26 @@ function alarmSortKey(a: Pick<Alarm, 'hour' | 'minute'>) {
 
 export function HomeScreen({ navigation }: Props) {
   const { answers } = useOnboarding();
-  const { alarms } = useAlarms();
+  const { alarms, removeAlarm, toggleAlarm } = useAlarms();
   const { today, saveCheckIn } = useMoodCheckIn();
+  const { morningsKept, isPaused, pauseUntil } = useAppSettings();
   const [sheetMood, setSheetMood] = useState<Mood | null>(null);
 
   const greeting = greetingForHour(new Date().getHours());
   const title = answers.name ? `${greeting}, ${answers.name}` : greeting;
+  const shareLine =
+    alarms.find((a) => a.enabled && a.scriptText)?.scriptText ||
+    alarms.find((a) => a.scriptText)?.scriptText ||
+    null;
 
   const listedAlarms = useMemo(
-    () =>
-      [...alarms]
-        .filter((alarm) => alarm.enabled)
-        .sort((a, b) => alarmSortKey(a) - alarmSortKey(b)),
+    () => [...alarms].sort((a, b) => alarmSortKey(a) - alarmSortKey(b)),
     [alarms]
   );
 
-  const [
-    goalsColors,
-    proudColors,
-    hardMorningColors,
-    voiceColors,
-  ] = useMemo(
-    () =>
-      colorsForRecapSections([
-        { items: answers.futureSelf, options: FUTURE_SELF_OPTIONS },
-        { items: answers.alreadyProud, options: ALREADY_YOU_OPTIONS },
-        { items: answers.hardMornings, options: HARD_MORNING_OPTIONS },
-        {
-          items: answers.voiceStyle ? [answers.voiceStyle] : [],
-          options: VOICE_STYLE_OPTIONS,
-        },
-      ]),
-    [
-      answers.futureSelf,
-      answers.alreadyProud,
-      answers.hardMornings,
-      answers.voiceStyle,
-    ]
-  );
+  const anyEnabled = listedAlarms.some((a) => a.enabled);
+  const hasAlarms = listedAlarms.length > 0;
+  const allPaused = hasAlarms && !anyEnabled;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
@@ -103,8 +82,23 @@ export function HomeScreen({ navigation }: Props) {
         </Pressable>
 
         <Text style={styles.hello}>{title}</Text>
+        {morningsKept > 0 ? (
+          <Text style={styles.streak}>
+            {morningsKept} morning{morningsKept === 1 ? '' : 's'} kept
+          </Text>
+        ) : null}
+
+        {isPaused ? (
+          <Text style={styles.pausedGlobal}>
+            Alarms paused{pauseUntil ? ` until ${pauseUntil}` : ''}. Resume in
+            Menu → Notifications when you’re back.
+          </Text>
+        ) : null}
 
         <Text style={styles.feeling}>How are you feeling today?</Text>
+        <Text style={styles.moodHint}>
+          This shapes tomorrow’s wake only - not every morning forever.
+        </Text>
         <View style={styles.moodRow}>
           {BASE_MOODS.map((mood) => {
             const selected = today?.moodId === mood.id;
@@ -133,84 +127,97 @@ export function HomeScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.block}>
-          {listedAlarms.length ? (
+          {allPaused ? (
+            <Text style={styles.pausedBanner}>
+              All alarms are off. Turn one on if you want Future You to wake
+              you tomorrow.
+            </Text>
+          ) : null}
+
+          {hasAlarms ? (
             listedAlarms.map((alarm, index) => (
-              <Pressable
+              <SwipeDeleteRow
                 key={alarm.id}
-                onPress={() =>
-                  navigation.navigate('CreateAlarm', { alarmId: alarm.id })
-                }
-                style={[
-                  styles.alarmRow,
-                  index > 0 && styles.alarmRowBorder,
-                ]}
+                onDelete={() => removeAlarm(alarm.id)}
               >
-                <View>
-                  <Text style={styles.alarmTime}>
-                    {formatAlarmTime(alarm)}
-                  </Text>
-                  <Text style={styles.alarmDays}>
-                    {formatAlarmDays(alarm.days)}
-                  </Text>
+                <View
+                  style={[
+                    styles.alarmRow,
+                    index > 0 && styles.alarmRowBorder,
+                  ]}
+                >
+                  <Pressable
+                    style={styles.alarmMain}
+                    onPress={() =>
+                      navigation.navigate('CreateAlarm', {
+                        alarmId: alarm.id,
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.alarmTime,
+                        !alarm.enabled && styles.alarmDim,
+                      ]}
+                    >
+                      {formatAlarmTime(alarm)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.alarmDays,
+                        !alarm.enabled && styles.alarmDim,
+                      ]}
+                    >
+                      {formatAlarmDays(alarm.days)}
+                    </Text>
+                  </Pressable>
+                  <Switch
+                    value={alarm.enabled}
+                    onValueChange={() => toggleAlarm(alarm.id)}
+                    trackColor={{ false: colors.border, true: colors.text }}
+                  />
                 </View>
-              </Pressable>
+              </SwipeDeleteRow>
             ))
           ) : (
             <View style={styles.alarmRow}>
-              <View>
-                <Text style={styles.alarmTime}>
-                  {formatAlarmTime({
-                    hour: answers.wakeHour,
-                    minute: answers.wakeMinute,
-                  })}
-                </Text>
-                <Text style={styles.alarmDays}>
-                  {answers.wakeDays.length
-                    ? formatAlarmDays(answers.wakeDays)
-                    : uiLabel('set the days')}
-                </Text>
-              </View>
+              <Text style={styles.emptyAlarms}>
+                No wake set yet. Add an alarm so Future You can call you in the
+                morning.
+              </Text>
             </View>
           )}
           <View style={styles.alarmActions}>
             <TextArrowButton
-              label="add alarm"
+              label={hasAlarms ? 'add alarm' : 'set wake time'}
               color={accents.coral}
               onPress={() => navigation.navigate('CreateAlarm')}
             />
-            {listedAlarms.length ? (
+            {listedAlarms[0]?.audioUri ? (
               <TextArrowButton
-                label="set up alarm"
+                label="test in 10s"
                 color={accents.lime}
-                onPress={() =>
-                  navigation.navigate('CreateAlarm', {
-                    alarmId: listedAlarms[0]?.id,
-                  })
-                }
+                onPress={() => {
+                  const uri = listedAlarms.find((a) => a.audioUri)?.audioUri;
+                  if (!uri) return;
+                  setTimeout(() => {
+                    void playAlarmAudio(uri);
+                  }, 10_000);
+                }}
               />
             ) : null}
           </View>
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.recapTitle}>{uiLabel('goals')}</Text>
-          <RecapPills items={answers.futureSelf} colors={goalsColors} />
-          <Text style={styles.recapTitle}>{uiLabel('already proud')}</Text>
-          <RecapPills items={answers.alreadyProud} colors={proudColors} />
-          <Text style={styles.recapTitle}>{uiLabel('hard mornings')}</Text>
-          <RecapPills items={answers.hardMornings} colors={hardMorningColors} />
-          <Text style={styles.recapTitle}>{uiLabel('voice tone')}</Text>
-          <RecapPills
-            items={answers.voiceStyle ? [answers.voiceStyle] : []}
-            colors={answers.voiceStyle ? voiceColors : undefined}
-          />
-          <View style={styles.editRow}>
-            <TextArrowButton
-              label="edit profile"
-              color={accents.lime}
-              onPress={() => navigation.navigate('EditProfile')}
-            />
-          </View>
+          {shareLine ? (
+            <View style={styles.shareRow}>
+              <TextArrowButton
+                label="share morning line"
+                color={accents.gold}
+                onPress={() => {
+                  void Share.share({ message: shareLine });
+                }}
+              />
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -257,18 +264,43 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     color: colors.text,
-    marginBottom: 32,
+    marginBottom: 8,
     ...noFakeBold,
     ...headingClipFix,
+  },
+  streak: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 15,
+    color: colors.textMuted,
+    marginBottom: 12,
+  },
+  pausedGlobal: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text,
+    marginBottom: 20,
+  },
+  shareRow: {
+    marginTop: 12,
+    alignItems: 'flex-start',
   },
   feeling: {
     fontFamily: fonts.headingRegular,
     fontSize: 24,
     lineHeight: 30,
     color: colors.text,
-    marginBottom: 16,
+    marginTop: 16,
+    marginBottom: 6,
     ...noFakeBold,
     ...headingClipFix,
+  },
+  moodHint: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
+    marginBottom: 14,
   },
   moodRow: {
     flexDirection: 'row',
@@ -306,8 +338,28 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 20,
   },
+  pausedBanner: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text,
+    marginBottom: 14,
+  },
+  emptyAlarms: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textMuted,
+  },
   alarmRow: {
     paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  alarmMain: {
+    flex: 1,
   },
   alarmRowBorder: {
     borderTopWidth: 1,
@@ -337,16 +389,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     ...noFakeBold,
   },
-  recapTitle: {
-    fontFamily: fonts.headingRegular,
-    fontSize: 20,
-    color: colors.text,
-    marginTop: 8,
-    marginBottom: 8,
-    ...noFakeBold,
-  },
-  editRow: {
-    alignItems: 'flex-end',
-    marginTop: 16,
+  alarmDim: {
+    opacity: 0.38,
   },
 });

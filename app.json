@@ -8,9 +8,20 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "deploymentTarget": "26.1",
+      "buildNumber": "26",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Future Self to record your voice for cloning.",
         "NSSpeechRecognitionUsageDescription": "Allow Future Self to listen while you read the script aloud.",
+        "NSLocalNetworkUsageDescription": "On a developer Mac, Future Self can talk to a local voice server. Production builds use a secure HTTPS API.",
+        "NSAlarmKitUsageDescription": "Future Self uses alarms to wake you with your own voice.",
+        "NSBonjourServices": [
+          "_http._tcp."
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
         "UIBackgroundModes": [
           "audio",
           "fetch"
@@ -39,18 +50,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-apple-authentication",
+      "expo-secure-store",
       [
-        "expo-av",
+        "expo-audio",
         {
           "microphonePermission": "Allow Future Self to record your voice for cloning."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#FFFAEE",
-          "defaultChannel": "alarms"
         }
       ],
       [
@@ -59,7 +64,21 @@
           "microphonePermission": "Allow Future Self to record your voice for cloning.",
           "speechRecognitionPermission": "Allow Future Self to listen while you read the script aloud."
         }
-      ]
-    ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/fs_fallback.caf"
+          ],
+          "mode": "production"
+        }
+      ],
+      "./plugins/withLocalNotificationsOnly.js",
+      "./plugins/withAlarmKit.js",
+      "./plugins/withIosLibrarySounds.js",
+      "@react-native-community/datetimepicker"
+    ],
+    "newArchEnabled": true
   }
 }

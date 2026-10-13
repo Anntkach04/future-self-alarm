@@ -65,6 +65,7 @@ type Props = {
   maxHeight?: number;
 };
 
+/** Tap / swipe cards. Transitions use short timing (not springs). */
 export function StackedIntroCards({
   slides,
   index,
@@ -88,6 +89,8 @@ export function StackedIntroCards({
   const anims = useRef(order.map((_, i) => makeAnim(i))).current;
   const contentFade = useRef(new Animated.Value(1)).current;
   const dragX = useRef(new Animated.Value(0)).current;
+  const didInit = useRef(false);
+  const moveAnim = useRef<Animated.CompositeAnimation | null>(null);
   const startX = useRef(0);
   const startY = useRef(0);
   const tracking = useRef(false);
@@ -98,10 +101,8 @@ export function StackedIntroCards({
   onPrevRef.current = onPrev;
   interactiveRef.current = interactive;
 
-  const didInit = useRef(false);
-
   useEffect(() => {
-    const snapOrSpring = order.map((_, toneIndex) => {
+    const moves = order.map((_, toneIndex) => {
       const slotIndex = (toneIndex - index + order.length) % order.length;
       const slot = SLOT[slotIndex];
       const anim = anims[toneIndex];
@@ -113,28 +114,28 @@ export function StackedIntroCards({
         return null;
       }
       return Animated.parallel([
-        Animated.spring(anim.x, {
+        Animated.timing(anim.x, {
           toValue: slot.x,
-          friction: 8,
-          tension: 60,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(anim.y, {
+        Animated.timing(anim.y, {
           toValue: slot.y,
-          friction: 8,
-          tension: 60,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(anim.rotate, {
+        Animated.timing(anim.rotate, {
           toValue: slot.rotate,
-          friction: 8,
-          tension: 60,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(anim.scale, {
+        Animated.timing(anim.scale, {
           toValue: slot.scale,
-          friction: 8,
-          tension: 60,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]);
@@ -147,21 +148,26 @@ export function StackedIntroCards({
       return;
     }
 
-    contentFade.setValue(0);
     dragX.setValue(0);
-    Animated.parallel([
-      Animated.parallel(snapOrSpring.filter(Boolean) as Animated.CompositeAnimation[]),
+    contentFade.setValue(0);
+    moveAnim.current?.stop();
+    moveAnim.current = Animated.parallel([
+      Animated.parallel(moves.filter(Boolean) as Animated.CompositeAnimation[]),
       Animated.timing(contentFade, {
         toValue: 1,
-        duration: 280,
+        duration: 220,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
+    moveAnim.current.start();
+    return () => {
+      moveAnim.current?.stop();
+    };
   }, [anims, contentFade, dragX, index, order]);
 
   const stageNode = useRef<HTMLElement | null>(null);
 
-  // Web: bind to the real DOM node. Parent transforms (BubbleEnter) steal RN responders.
+  // Web pointer handling (desktop preview).
   useEffect(() => {
     if (Platform.OS !== 'web' || !interactive) return;
 
@@ -193,11 +199,7 @@ export function StackedIntroCards({
         el.style.cursor = 'grab';
         const dx = e.clientX - startX.current;
         const dy = e.clientY - startY.current;
-        Animated.spring(dragX, {
-          toValue: 0,
-          friction: 7,
-          useNativeDriver: Platform.OS !== 'web',
-        }).start();
+        dragX.setValue(0);
         if (!interactiveRef.current) return;
         if (dx > 40) onPrevRef.current();
         else if (Math.abs(dx) < 14 && Math.abs(dy) < 14) onNextRef.current();
@@ -231,9 +233,7 @@ export function StackedIntroCards({
         remove = attach(host);
         return;
       }
-      if (tries++ < 20) {
-        timer = setTimeout(tryAttach, 50);
-      }
+      if (tries++ < 20) timer = setTimeout(tryAttach, 50);
     };
     tryAttach();
 
@@ -242,6 +242,14 @@ export function StackedIntroCards({
       remove?.();
     };
   }, [dragX, interactive]);
+
+  const finishGesture = (dx: number, dy: number) => {
+    dragX.setValue(0);
+    if (!interactiveRef.current) return;
+    if (dx > 40) onPrevRef.current();
+    else if (Math.abs(dx) < 14 && Math.abs(dy) < 14) onNextRef.current();
+    else if (dx < -40) onNextRef.current();
+  };
 
   const active = slides[index];
 
@@ -264,6 +272,7 @@ export function StackedIntroCards({
       pointerEvents={interactive ? 'auto' : 'none'}
       onStartShouldSetResponder={() => interactive}
       onMoveShouldSetResponder={() => interactive}
+      onResponderTerminationRequest={() => false}
       onResponderGrant={(e) => {
         if (!interactive) return;
         tracking.current = true;
@@ -277,16 +286,14 @@ export function StackedIntroCards({
       onResponderRelease={(e) => {
         if (!tracking.current) return;
         tracking.current = false;
-        const dx = e.nativeEvent.pageX - startX.current;
-        const dy = e.nativeEvent.pageY - startY.current;
-        Animated.spring(dragX, {
-          toValue: 0,
-          friction: 7,
-          useNativeDriver: true,
-        }).start();
-        if (dx > 40) onPrevRef.current();
-        else if (Math.abs(dx) < 14 && Math.abs(dy) < 14) onNextRef.current();
-        else if (dx < -40) onNextRef.current();
+        finishGesture(
+          e.nativeEvent.pageX - startX.current,
+          e.nativeEvent.pageY - startY.current
+        );
+      }}
+      onResponderTerminate={() => {
+        tracking.current = false;
+        dragX.setValue(0);
       }}
     >
       <View
@@ -302,46 +309,50 @@ export function StackedIntroCards({
             : null),
         }}
       >
-      {order.map((tone, toneIndex) => {
-        const anim = anims[toneIndex];
-        const slotIndex = (toneIndex - index + order.length) % order.length;
-        const rotate = anim.rotate.interpolate({
-          inputRange: [-20, 20],
-          outputRange: ['-20deg', '20deg'],
-        });
-        const isFront = slotIndex === 0;
+        {order.map((tone, toneIndex) => {
+          const anim = anims[toneIndex];
+          const slotIndex = (toneIndex - index + order.length) % order.length;
+          const rotate = anim.rotate.interpolate({
+            inputRange: [-20, 20],
+            outputRange: ['-20deg', '20deg'],
+          });
+          const isFront = slotIndex === 0;
 
-        return (
-          <Animated.View
-            key={tone}
-            pointerEvents="none"
-            style={[
-              styles.card,
-              {
-                backgroundColor: CARD_COLORS[tone],
-                zIndex: SLOT[slotIndex].z,
-                transform: [
-                  { translateX: isFront ? Animated.add(anim.x, dragX) : anim.x },
-                  { translateY: anim.y },
-                  { rotate },
-                  { scale: anim.scale },
-                ],
-              },
-            ]}
-          >
-            {isFront ? (
-              <Animated.View style={[styles.copy, { opacity: contentFade }]}>
-                <Text style={styles.body}>{active.body}</Text>
-                <View style={styles.doodle}>
-                  <IntroDoodle tone={tone} />
-                </View>
-              </Animated.View>
-            ) : (
-              <View style={styles.copy} />
-            )}
-          </Animated.View>
-        );
-      })}
+          return (
+            <Animated.View
+              key={tone}
+              pointerEvents="none"
+              style={[
+                styles.card,
+                {
+                  backgroundColor: CARD_COLORS[tone],
+                  zIndex: SLOT[slotIndex].z,
+                  transform: [
+                    {
+                      translateX: isFront
+                        ? Animated.add(anim.x, dragX)
+                        : anim.x,
+                    },
+                    { translateY: anim.y },
+                    { rotate },
+                    { scale: anim.scale },
+                  ],
+                },
+              ]}
+            >
+              {isFront ? (
+                <Animated.View style={[styles.copy, { opacity: contentFade }]}>
+                  <Text style={styles.body}>{active.body}</Text>
+                  <View style={styles.doodle}>
+                    <IntroDoodle tone={tone} />
+                  </View>
+                </Animated.View>
+              ) : (
+                <View style={styles.copy} />
+              )}
+            </Animated.View>
+          );
+        })}
       </View>
     </View>
   );

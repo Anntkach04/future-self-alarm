@@ -32,8 +32,6 @@ type FieldConfig = {
 const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
   futureSelf: {
     question: 'Write 3 of your\nmain goals in life',
-    subtitle: 'Tap + to write your own, chips below.',
-    helperText: 'Pick up to three.',
     options: FUTURE_SELF_OPTIONS,
     getSelected: (a) => a.futureSelf,
     onToggle: (ctx, value) => ctx.toggleFutureSelf(value),
@@ -42,7 +40,6 @@ const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
   },
   alreadyProud: {
     question: "3 things you're\nalready proud of",
-    subtitle: 'Tap + to write your own, or pick chips.',
     options: ALREADY_YOU_OPTIONS,
     getSelected: (a) => a.alreadyProud,
     onToggle: (ctx, value) => ctx.toggleAlreadyProud(value),
@@ -51,7 +48,6 @@ const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
   },
   hardMornings: {
     question: 'What do hard\nmornings need?',
-    subtitle: 'Pick the words Future You should whisper when it’s heavy.',
     options: HARD_MORNING_OPTIONS,
     getSelected: (a) => a.hardMornings,
     onToggle: (ctx, value) => ctx.toggleHardMorning(value),
@@ -60,7 +56,6 @@ const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
   },
   voiceStyle: {
     question: 'What tone should\nmornings have?',
-    subtitle: 'This shapes how Future You speaks.',
     options: VOICE_STYLE_OPTIONS,
     getSelected: (a) => (a.voiceStyle ? [a.voiceStyle] : []),
     onToggle: (ctx, value) => ctx.setVoiceStyle(value),

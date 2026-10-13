@@ -30,10 +30,11 @@ function playTickSound() {
   }
 }
 
-/** One light detent per value crossed — not a continuous buzz. */
+/** One light detent per value crossed — haptic + soft click feel. */
 export function playPickerTick() {
   const now = Date.now();
-  if (now - lastTickAt < 32) return;
+  // Wider gate — stacked selection haptics were freezing the wheel on device.
+  if (now - lastTickAt < 45) return;
   lastTickAt = now;
 
   if (Platform.OS === 'android') {

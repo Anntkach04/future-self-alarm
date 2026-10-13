@@ -8,7 +8,6 @@ import { BubbleEnter } from '../components/BubbleEnter';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { ensureNotificationPermissions } from '../services/alarmScheduler';
 import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeUpTime'>;
@@ -20,7 +19,9 @@ export function WakeUpTimeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.page}>
         <View style={styles.header}>
-          <BackButton style={styles.back} />
+          <BubbleEnter delay={0} fromY={10}>
+            <BackButton style={styles.back} />
+          </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
             <Text style={styles.question}>
               {"What time should\nFuture You wake\nyou up?"}
@@ -51,10 +52,7 @@ export function WakeUpTimeScreen({ navigation }: Props) {
           <Text style={styles.helper}>You can change this anytime.</Text>
           <View style={styles.nextRow}>
             <RoundArrowButton
-              onPress={() => {
-                void ensureNotificationPermissions();
-                navigation.navigate('VoiceRecord');
-              }}
+              onPress={() => navigation.navigate('VoiceRecord')}
               color={colors.fab}
             />
           </View>

@@ -1,0 +1,7 @@
+{
+  "name": "ios-library-sounds",
+  "version": "1.0.0",
+  "description": "Write custom notification/alarm CAF files into iOS Library/Sounds",
+  "main": "src/index.ts",
+  "license": "MIT"
+}

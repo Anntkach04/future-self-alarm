@@ -1,52 +1,55 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LoadingLabel } from '../components/LoadingLabel';
 import { Screen } from '../components/Screen';
 import { RoundArrowButton } from '../components/RoundArrowButton';
-import { useAlarms } from '../context/AlarmsContext';
+import { useAppSettings } from '../context/AppSettingsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { buildPreviewLine } from '../services/elevenlabs';
+import { buildAlarmScript } from '../data/alarmScript';
 import { colors, fonts, noFakeLight, radii, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoicePreview'>;
 
 export function VoicePreviewScreen({ navigation }: Props) {
-  const { answers, voice, markOnboardingComplete } = useOnboarding();
-  const { alarms } = useAlarms();
+  const { answers, voice } = useOnboarding();
+  const { appleUserId, notificationsReady } = useAppSettings();
   const [playing, setPlaying] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const line = voice.previewText || buildPreviewLine(answers.name);
+  const playerRef = useRef<AudioPlayer | null>(null);
+  const line = voice.previewText || buildAlarmScript(answers.name);
 
   useEffect(() => {
     return () => {
-      sound?.unloadAsync();
+      playerRef.current?.remove();
+      playerRef.current = null;
     };
-  }, [sound]);
+  }, []);
 
   const play = async () => {
     if (!voice.previewUri) return;
-    if (sound) await sound.unloadAsync();
-    const { sound: next } = await Audio.Sound.createAsync(
-      { uri: voice.previewUri },
-      { shouldPlay: true }
-    );
-    setSound(next);
+    playerRef.current?.remove();
+    const player = createAudioPlayer({ uri: voice.previewUri });
+    playerRef.current = player;
+    player.play();
     setPlaying(true);
-    next.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return;
+    player.addListener('playbackStatusUpdate', (status) => {
       if (status.didJustFinish) setPlaying(false);
     });
   };
 
   const continueNext = () => {
-    markOnboardingComplete();
-    if (alarms.length === 0) {
-      navigation.replace('CreateAlarm');
+    // Account → alerts → trial → alarm → home
+    if (!appleUserId) {
+      navigation.replace('SignIn');
       return;
     }
-    navigation.replace('Home');
+    if (!notificationsReady) {
+      navigation.replace('NotificationPermission');
+      return;
+    }
+    navigation.replace('Paywall');
   };
 
   return (
@@ -63,9 +66,11 @@ export function VoicePreviewScreen({ navigation }: Props) {
         </ScrollView>
 
         <Pressable style={styles.playBtn} onPress={play}>
-          <Text style={styles.playText}>
-            {playing ? 'Playing…' : 'Play AI voice preview'}
-          </Text>
+          {playing ? (
+            <LoadingLabel text="Playing" style={styles.playText} />
+          ) : (
+            <Text style={styles.playText}>Play your voice</Text>
+          )}
         </Pressable>
       </View>
 
@@ -85,61 +90,59 @@ export function VoicePreviewScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   content: {
     flex: 1,
-    paddingTop: spacing.lg,
+    gap: 16,
   },
   kicker: {
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.6,
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontWeight: '400',
-    fontSize: 32,
+    fontSize: 36,
+    lineHeight: 42,
     color: colors.text,
-    marginBottom: spacing.md,
   },
   script: {
-    flexGrow: 1,
-    flexShrink: 1,
-    marginBottom: spacing.md,
+    flex: 1,
   },
   scriptInner: {
-    paddingBottom: spacing.sm,
+    paddingBottom: 12,
   },
   body: {
-    fontFamily: fonts.body,
+    fontFamily: fonts.bodyLight,
     fontSize: 18,
-    lineHeight: 28,
+    lineHeight: 26,
     color: colors.text,
+    ...noFakeLight,
   },
   playBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.inputBg,
-    borderRadius: radii.input,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
+    backgroundColor: colors.text,
+    borderRadius: radii.pill,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
   playText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 16,
-    color: colors.text,
-    ...noFakeLight,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: colors.bg,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: spacing.md,
+    paddingTop: spacing.inset,
   },
   linkBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   linkText: {
     fontFamily: fonts.bodyLight,
-    fontSize: 15,
-    color: colors.textMuted,
-    textDecorationLine: 'underline',
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
     ...noFakeLight,
   },
 });

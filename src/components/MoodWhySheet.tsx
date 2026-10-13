@@ -12,6 +12,7 @@ import {
 import { type Mood } from '../data/moods';
 import { fetchMoodAdvice } from '../services/moodAdvice';
 import { accents, colors, fonts, noFakeBold, radii, spacing } from '../theme';
+import { LoadingLabel } from './LoadingLabel';
 import { LogoSpinner } from './LogoSpinner';
 import { TextArrowButton } from './TextArrowButton';
 
@@ -76,6 +77,10 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
             {phase === 'compose' ? (
               <>
                 <Text style={styles.question}>Why do you feel that way?</Text>
+                <Text style={styles.moodPurpose}>
+                  Future You will use this for tomorrow’s alarm only - one wake,
+                  then it resets.
+                </Text>
                 <TextInput
                   value={note}
                   onChangeText={setNote}
@@ -89,7 +94,7 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
                 />
                 <View style={styles.actions}>
                   <TextArrowButton
-                    label="tell Future You"
+                    label="shape tomorrow"
                     color={mood?.color ?? accents.gold}
                     onPress={() => void submit()}
                   />
@@ -100,7 +105,7 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
             {phase === 'loading' ? (
               <View style={styles.center}>
                 <LogoSpinner size={40} />
-                <Text style={styles.loading}>Sitting with that…</Text>
+                <LoadingLabel text="Sitting with that" style={styles.loading} />
               </View>
             ) : null}
 
@@ -129,7 +134,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(26, 26, 26, 0.28)',
   },
   sheetWrap: {
@@ -165,8 +170,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 26,
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: 8,
     ...noFakeBold,
+  },
+  moodPurpose: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
+    marginBottom: 16,
   },
   input: {
     minHeight: 88,

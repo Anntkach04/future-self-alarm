@@ -38,6 +38,18 @@ function getElevenKey() {
   return process.env.ELEVENLABS_API_KEY || '';
 }
 
+function elevenErrorMessage(data, fallback = 'Voice clone failed') {
+  const walk = (value) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value.message === 'string') return value.message;
+    if (value.detail) return walk(value.detail);
+    if (Array.isArray(value) && value[0]) return walk(value[0]);
+    return '';
+  };
+  return walk(data) || fallback;
+}
+
 function defaultTtsModel() {
   // Newest quality model when the account has it; override via .env.
   return process.env.ELEVENLABS_TTS_MODEL || 'eleven_v4';
@@ -100,7 +112,7 @@ async function cloneVoice({ buffer, originalname, mimetype, name, files }) {
     [
       'This is my real voice talking to myself in the morning.',
       'Keep my exact accent, mouth shape, breath, and uneven pacing.',
-      'Sound intimate and close — never like a podcast host, audiobook, or AI assistant.',
+      'Sound intimate and close, never like a podcast host, audiobook, or AI assistant.',
     ].join(' ')
   );
   form.append('remove_background_noise', 'false');
@@ -122,9 +134,7 @@ async function cloneVoice({ buffer, originalname, mimetype, name, files }) {
 
   const data = await response.json();
   if (!response.ok) {
-    const error = new Error(
-      data?.detail || data?.message || 'Voice clone failed'
-    );
+    const error = new Error(elevenErrorMessage(data, 'Voice clone failed'));
     error.status = response.status;
     error.details = data;
     throw error;
@@ -351,15 +361,35 @@ function prepareSpokenText(text) {
     .replace(/\[[^\]]+\]/g, '') // strip any leftover stage tags
     .replace(/\r\n/g, '\n')
     .replace(/\n+/g, ' ')
-    .replace(/\s*—\s*/g, ' — ')
+    .replace(/\s*[—–]\s*/g, '. ')
     .replace(/\s*\.\.\.\s*/g, ', ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+/** Best-effort delete of a cloned voice (account deletion). */
+async function deleteVoice(voiceId) {
+  const key = getElevenKey();
+  const id = String(voiceId || '').trim();
+  if (!key || !id) return false;
+  const response = await fetch(`${ELEVEN_BASE}/voices/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { 'xi-api-key': key },
+  });
+  if (!response.ok && response.status !== 404) {
+    const text = await response.text().catch(() => '');
+    throw Object.assign(
+      new Error(`ElevenLabs delete voice failed (${response.status}): ${text.slice(0, 200)}`),
+      { status: 502 }
+    );
+  }
+  return true;
+}
+
 module.exports = {
   cloneVoice,
   synthesizeSpeech,
+  deleteVoice,
   getElevenKey,
   realisticVoiceSettings,
   defaultTtsModel,

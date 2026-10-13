@@ -5,9 +5,12 @@ alwaysApply: true
 
 # Later onboarding (do not skip)
 
-After the current onboarding (name → feelings → voice → home), add screens **before Home**:
+After voice preview, screens **before Home**:
 
-1. **Login / account** — the person needs to be signed in.
-2. **Notification permission** — Future Self cannot wake them without iOS/Android alert access. Ask clearly, then deep-link to system settings if denied.
+1. **Sign in with Apple** (no Google).
+2. **Notification permission** — ask clearly, deep-link to Settings if denied. Do **not** also request Mic, Speech, AlarmKit, or ATT on this screen.
+3. **Paywall** — 7-day free trial, then monthly (RevenueCat / App Store).
+
+Just-in-time for everything else (see `docs/PERMISSIONS.md`): Microphone + Speech on first Voice Record tap; AlarmKit only if Kit schedule is used; no ATT.
 
 Do not pretend a sound picker controls the iPhone Clock app. The alarm is the cloned voice via notifications; a chime-before-voice picker can come later, bundled in the app.

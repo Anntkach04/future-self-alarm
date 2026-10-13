@@ -3,6 +3,27 @@ const { buildScriptMessages } = require('./prompt');
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
+const MOOD_MODEL = process.env.OPENAI_MOOD_MODEL || 'gpt-4o-mini';
+const MOOD_MAX_WORDS = 32;
+
+function clampMoodAdvice(text) {
+  const cleaned = String(text)
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/[—–―‑]/g, '-')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/\s+/g, ' ');
+  if (!cleaned) return cleaned;
+
+  const sentences =
+    cleaned.match(/[^.!?]+[.!?]+/g)?.map((part) => part.trim()) ?? [cleaned];
+  let short = sentences.slice(0, 2).join(' ').trim();
+  const words = short.split(/\s+/).filter(Boolean);
+  if (words.length > MOOD_MAX_WORDS) {
+    short = `${words.slice(0, MOOD_MAX_WORDS).join(' ').replace(/[.,!?]+$/, '')}.`;
+  }
+  return short;
+}
 
 function getOpenAiKey() {
   return process.env.OPENAI_API_KEY || '';
@@ -27,8 +48,10 @@ async function generateMorningScript(answers) {
     },
     body: JSON.stringify({
       model: MODEL,
-      temperature: 0.8,
-      max_tokens: 700,
+      temperature: 1.05,
+      presence_penalty: 0.55,
+      frequency_penalty: 0.45,
+      max_tokens: 420,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -68,7 +91,7 @@ async function generateMoodAdvice({ mood, note, name }) {
   if (!apiKey) {
     return {
       advice:
-        "That's allowed. You don't have to sort the whole day tonight. Tomorrow, start with one small thing — I'll be there when you wake.",
+        "That's not the real you - you're strong, capable, and already winning. Rest up; tomorrow you're going to crush it.",
     };
   }
 
@@ -79,18 +102,29 @@ async function generateMoodAdvice({ mood, note, name }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.7,
-      max_tokens: 420,
+      model: MOOD_MODEL,
+      temperature: 0.85,
+      max_tokens: 55,
       messages: [
         {
           role: 'system',
-          content:
-            "You are the user's Future Self. Speak in first person as them, like a warm letter to tonight. 5–8 sentences. Warm, specific, not clinical, not a therapist, no quotes, no bullets, no emoji. Acknowledge the feeling in their own words, sit with it, then offer one small next step. Longer than a slogan — a real note.",
+          content: [
+            'You are the user\'s Future Self, their hype person, not their therapist.',
+            'Write EXACTLY 2 short sentences. Hard limit: 30 words total.',
+            'Tone: pep talk, warm, confident, energetic, loving. Pump them up.',
+            'Tell them they\'re strong, capable, amazing, already winning.',
+            'Point to tomorrow as a fresh start where they will crush it.',
+            'NEVER repeat or echo their negative words (no "bad person", "heavy", "mistakes", "imperfect").',
+            'NEVER therapize: no "I know it\'s hard", "give yourself grace", "being human", "take a deep breath", "act of kindness".',
+            'NEVER analyze feelings. Just hype them up like a best friend before bed.',
+            'Use only the short hyphen "-" (never em or en dashes). Example: "That\'s not you - you\'re powerful and you\'ve got this. Sleep, reset, tomorrow you\'re going to kill it."',
+            'Bad: "I know it feels overwhelming and being human means being imperfect..."',
+            'No bullets, quotes, emoji, or name at the start.',
+          ].join(' '),
         },
         {
           role: 'user',
-          content: `Name: ${name || 'friend'}\nMood: ${mood}\nThey wrote: ${note || '(nothing more)'}`,
+          content: `Mood: ${mood}\nThey wrote: ${note || '(nothing)'}`,
         },
       ],
     }),
@@ -105,9 +139,9 @@ async function generateMoodAdvice({ mood, note, name }) {
     throw error;
   }
 
-  const advice = String(data?.choices?.[0]?.message?.content || '')
-    .trim()
-    .replace(/^["']|["']$/g, '');
+  const advice = clampMoodAdvice(
+    String(data?.choices?.[0]?.message?.content || '')
+  );
 
   if (!advice) {
     const error = new Error('OpenAI returned empty advice');
@@ -115,7 +149,7 @@ async function generateMoodAdvice({ mood, note, name }) {
     throw error;
   }
 
-  return { advice, model: data.model || MODEL };
+  return { advice, model: data.model || MOOD_MODEL };
 }
 
 module.exports = { generateMorningScript, generateMoodAdvice, getOpenAiKey };

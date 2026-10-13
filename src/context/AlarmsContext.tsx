@@ -5,10 +5,13 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { InteractionManager } from 'react-native';
 import {
   cancelScheduledAlarm,
+  consumeAlarmKitLaunch,
   rescheduleAllAlarms,
 } from '../services/alarmScheduler';
 import { cancelAllAlarmNotifications } from '../services/resetApp';
@@ -21,10 +24,30 @@ export type Alarm = {
   label: string;
   enabled: boolean;
   days: number[];
+  /** If true, voice re-rings after snoozeMinutes until the person dismisses. */
+  snoozeEnabled: boolean;
   snoozeMinutes: number;
   audioUri?: string | null;
   scriptText?: string | null;
 };
+
+export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
+  return {
+    id: raw.id,
+    hour: typeof raw.hour === 'number' ? raw.hour : 7,
+    minute: typeof raw.minute === 'number' ? raw.minute : 30,
+    label: typeof raw.label === 'string' ? raw.label : 'Morning Future Self',
+    enabled: raw.enabled !== false,
+    days: Array.isArray(raw.days) ? raw.days : [],
+    snoozeEnabled: raw.snoozeEnabled !== false,
+    snoozeMinutes:
+      typeof raw.snoozeMinutes === 'number' && raw.snoozeMinutes > 0
+        ? raw.snoozeMinutes
+        : 10,
+    audioUri: raw.audioUri ?? null,
+    scriptText: raw.scriptText ?? null,
+  };
+}
 
 type AlarmsContextValue = {
   alarms: Alarm[];
@@ -102,8 +125,8 @@ export function formatAlarmTime(alarm: Pick<Alarm, 'hour' | 'minute'>) {
 export function formatAlarmDays(days: number[]) {
   if (!days.length) return 'once';
   if (sameDays(days, EVERY_DAY)) return 'every day';
-  if (sameDays(days, WEEKDAYS)) return 'mon–fri';
-  if (sameDays(days, WEEKENDS)) return 'sat–sun';
+  if (sameDays(days, WEEKDAYS)) return 'mon-fri';
+  if (sameDays(days, WEEKENDS)) return 'sat-sun';
   return [...days]
     .sort((a, b) => a - b)
     .map((d) => DAY_NAMES[d].toLowerCase())
@@ -113,16 +136,30 @@ export function formatAlarmDays(days: number[]) {
 export function AlarmsProvider({ children }: { children: React.ReactNode }) {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [ready, setReady] = useState(false);
+  const alarmsRef = useRef(alarms);
+  alarmsRef.current = alarms;
 
   useEffect(() => {
     let cancelled = false;
+    const fallback = setTimeout(() => {
+      if (!cancelled) setReady(true);
+    }, 2000);
+
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (cancelled) return;
         if (raw) {
-          const parsed = JSON.parse(raw) as Alarm[];
-          setAlarms(Array.isArray(parsed) ? parsed : []);
+          const parsed = JSON.parse(raw) as Partial<Alarm>[];
+          setAlarms(
+            Array.isArray(parsed)
+              ? parsed
+                  .filter((a): a is Partial<Alarm> & { id: string } =>
+                    Boolean(a && typeof a.id === 'string')
+                  )
+                  .map(normalizeAlarm)
+              : []
+          );
         }
       } catch {
         // ignore corrupt storage
@@ -130,8 +167,10 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setReady(true);
       }
     })();
+
     return () => {
       cancelled = true;
+      clearTimeout(fallback);
     };
   }, []);
 
@@ -153,10 +192,30 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   }, []);
 
+  // Defer heavy native scheduling so Home paints first. Create/edit still
+  // schedules immediately via scheduleAlarmNotifications.
+  // Deps = [ready] only — re-running on every alarms change froze the UI.
   useEffect(() => {
     if (!ready) return;
-    void refreshSchedules();
-  }, [ready, refreshSchedules]);
+    const timer = setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
+        const list = alarmsRef.current;
+        const audioByAlarmId = Object.fromEntries(
+          list.map((a) => [a.id, a.audioUri ?? null])
+        );
+        void rescheduleAllAlarms(list, audioByAlarmId).catch(() => {});
+      });
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const audioByAlarmId = Object.fromEntries(
+      alarmsRef.current.map((a) => [a.id, a.audioUri ?? null])
+    );
+    void consumeAlarmKitLaunch(audioByAlarmId).catch(() => {});
+  }, [ready]);
 
   const value = useMemo<AlarmsContextValue>(
     () => ({
@@ -165,13 +224,15 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
       nextAlarm: pickNext(alarms),
       refreshSchedules,
       addAlarm: (alarm) => {
-        const next = { ...alarm, id: makeId() };
+        const next = normalizeAlarm({ ...alarm, id: makeId() });
         setAlarms((prev) => [...prev, next]);
         return next;
       },
       updateAlarm: (id, patch) =>
         setAlarms((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, ...patch } : a))
+          prev.map((a) =>
+            a.id === id ? normalizeAlarm({ ...a, ...patch, id }) : a
+          )
         ),
       toggleAlarm: (id) =>
         setAlarms((prev) =>

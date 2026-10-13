@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { displayWords, spokenDisplayCount } from '../services/speechMatch';
 import { brightPalette, colors, fonts, noFakeBold } from '../theme';
 
 type Props = {
@@ -9,36 +10,44 @@ type Props = {
 
 const SPOKEN = brightPalette[6];
 
+/** Word chips in a wrapping row — avoids nested-Text edge clipping. */
 export function KaraokeLine({ text, spokenCount }: Props) {
-  const words = useMemo(
-    () => text.split(/\s+/).filter((word) => !/^[—–-]+$/.test(word)),
-    [text]
+  const words = useMemo(() => displayWords(text), [text]);
+  const highlighted = useMemo(
+    () => spokenDisplayCount(text, spokenCount),
+    [spokenCount, text]
   );
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.line}>
-        {words.map((word, i) => (
-          <Text
-            key={`${text}-${i}`}
-            style={i < spokenCount ? styles.spoken : styles.unspoken}
-          >
-            {word}
-            {i < words.length - 1 ? ' ' : ''}
-          </Text>
-        ))}
-      </Text>
+      {words.map((word, i) => (
+        <Text
+          key={`${text}-${i}`}
+          style={[styles.word, i < highlighted ? styles.spoken : styles.unspoken]}
+        >
+          {word}
+        </Text>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  line: {
+  wrap: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    rowGap: 4,
+    columnGap: 6,
+  },
+  word: {
     fontFamily: fonts.headingRegular,
-    fontSize: 28,
+    fontSize: 26,
     lineHeight: 34,
     letterSpacing: 0.2,
-    textAlign: 'center',
     ...noFakeBold,
   },
   spoken: {
@@ -48,10 +57,5 @@ const styles = StyleSheet.create({
   unspoken: {
     color: colors.text,
     ...noFakeBold,
-  },
-  wrap: {
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: 8,
   },
 });

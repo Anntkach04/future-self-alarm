@@ -23,10 +23,7 @@ type Props = {
   plus?: boolean;
 };
 
-/**
- * Bubble pop: tiny → overshoot spring → soft idle float.
- * Pass increasing `delay` per chip so they appear one by one.
- */
+/** Visible immediately; spring + float are motion-only (opacity always 1). */
 export function BubbleChip({
   label = '',
   color,
@@ -38,25 +35,23 @@ export function BubbleChip({
   style,
   plus = false,
 }: Props) {
-  const scale = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const rise = useRef(new Animated.Value(18)).current;
+  const scale = useRef(new Animated.Value(0.86)).current;
+  const rise = useRef(new Animated.Value(14)).current;
   const float = useRef(new Animated.Value(0)).current;
+  const startDelay = Math.min(Math.max(delay, 0), 160);
+  const floatLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
+    scale.setValue(0.86);
+    rise.setValue(14);
+
     const enter = Animated.sequence([
-      Animated.delay(delay),
+      Animated.delay(startDelay),
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1,
           friction: 5.2,
           tension: 128,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
-          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.spring(rise, {
@@ -68,30 +63,42 @@ export function BubbleChip({
       ]),
     ]);
 
+    const failsafe = setTimeout(() => {
+      scale.setValue(1);
+      rise.setValue(0);
+    }, startDelay + 500);
+
     enter.start(({ finished }) => {
       if (!finished) return;
-      Animated.loop(
+      scale.setValue(1);
+      rise.setValue(0);
+      floatLoop.current = Animated.loop(
         Animated.sequence([
           Animated.timing(float, {
             toValue: 1,
-            duration: 2400 + (delay % 400),
+            duration: 2400 + (startDelay % 400),
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(float, {
             toValue: 0,
-            duration: 2400 + (delay % 400),
+            duration: 2400 + (startDelay % 400),
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      floatLoop.current.start();
     });
 
     return () => {
+      clearTimeout(failsafe);
       enter.stop();
+      floatLoop.current?.stop();
+      scale.setValue(1);
+      rise.setValue(0);
     };
-  }, [delay, float, opacity, rise, scale]);
+  }, [float, rise, scale, startDelay]);
 
   const floatY = float.interpolate({
     inputRange: [0, 1],
@@ -99,10 +106,7 @@ export function BubbleChip({
   });
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.hit, style]}
-    >
+    <Pressable onPress={onPress} style={[styles.hit, style]}>
       <Animated.View
         pointerEvents="none"
         style={[
@@ -110,7 +114,7 @@ export function BubbleChip({
           plus && styles.plusChip,
           {
             backgroundColor: selected ? colors.text : color,
-            opacity,
+            opacity: 1,
             transform: [
               { translateY: Animated.add(rise, floatY) },
               { scale },
@@ -161,6 +165,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderRadius: radii.chip,
+    // Same density on every chip screen (goals / proud / tone / …).
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 0,
@@ -180,7 +185,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bodyLight,
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 20,
     flexShrink: 0,
     ...(Platform.OS === 'web'
       ? ({ whiteSpace: 'nowrap' } as object)

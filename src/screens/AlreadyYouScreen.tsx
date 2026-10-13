@@ -12,14 +12,12 @@ export function AlreadyYouScreen({ navigation }: Props) {
   return (
     <ChipQuestionScreen
       question={"3 things you're\nalready proud of"}
-      subtitle="Or pick from the chips below."
       options={ALREADY_YOU_OPTIONS}
       selected={answers.alreadyProud}
       onToggle={toggleAlreadyProud}
       onAddCustom={addAlreadyProud}
-      addPlaceholder="3 things you're already proud of…"
-      inputAlwaysVisible
-      onSubmit={() => navigation.navigate('VoiceStyle')}
+      addPlaceholder="Something you already are"
+      onSubmit={() => navigation.navigate('HardMornings')}
     />
   );
 }

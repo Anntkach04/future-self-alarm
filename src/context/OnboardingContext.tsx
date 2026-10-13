@@ -7,6 +7,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
+import { getDefaultPremadeVoiceId } from '../services/defaultVoice';
 import { APP_STORAGE_KEYS } from '../services/resetApp';
 import { WEEKDAYS } from './AlarmsContext';
 
@@ -60,6 +62,13 @@ type OnboardingContextValue = {
   clearVoice: () => void;
   markOnboardingComplete: () => void;
   resetOnboarding: () => Promise<void>;
+  /** Restore answers + voiceId from server (sample audio stays local). */
+  hydrateFromCloud: (input: {
+    answers: Partial<OnboardingAnswers>;
+    voiceId?: string | null;
+    isDemoVoice?: boolean;
+    onboardingComplete?: boolean;
+  }) => void;
 };
 
 const defaultAnswers: OnboardingAnswers = {
@@ -105,6 +114,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let cancelled = false;
+    const fallback = setTimeout(() => {
+      if (!cancelled) setReady(true);
+    }, 2000);
+
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -129,10 +142,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         if (!cancelled) setReady(true);
       }
     })();
+
     return () => {
       cancelled = true;
+      clearTimeout(fallback);
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready || !TEMP_ELEVENLABS_TTS_ONLY || voice.voiceId) return;
+    setVoice((prev) => ({
+      ...prev,
+      voiceId: getDefaultPremadeVoiceId(),
+      isDemo: true,
+    }));
+  }, [ready, voice.voiceId]);
 
   useEffect(() => {
     if (!ready) return;
@@ -153,6 +177,30 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   }, []);
 
+  const hydrateFromCloud = useCallback(
+    (input: {
+      answers: Partial<OnboardingAnswers>;
+      voiceId?: string | null;
+      isDemoVoice?: boolean;
+      onboardingComplete?: boolean;
+    }) => {
+      setAnswers((prev) => ({ ...prev, ...input.answers }));
+      if (input.voiceId !== undefined) {
+        setVoice((prev) => ({
+          ...prev,
+          voiceId: input.voiceId ?? null,
+          isDemo: Boolean(input.isDemoVoice),
+          // Cloud does not store the sample file.
+          sampleUri: input.voiceId ? prev.sampleUri : null,
+        }));
+      }
+      if (input.onboardingComplete !== undefined) {
+        setOnboardingComplete(Boolean(input.onboardingComplete));
+      }
+    },
+    []
+  );
+
   const value = useMemo<OnboardingContextValue>(
     () => ({
       answers,
@@ -161,6 +209,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       onboardingComplete,
       markOnboardingComplete,
       resetOnboarding,
+      hydrateFromCloud,
       setName: (name) => setAnswers((prev) => ({ ...prev, name })),
       toggleMorningFeeling: (value) =>
         setAnswers((prev) => ({
@@ -238,7 +287,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         })),
       clearVoice: () => setVoice(defaultVoice),
     }),
-    [answers, voice, ready, onboardingComplete, markOnboardingComplete, resetOnboarding]
+    [
+      answers,
+      voice,
+      ready,
+      onboardingComplete,
+      markOnboardingComplete,
+      resetOnboarding,
+      hydrateFromCloud,
+    ]
   );
 
   return (

@@ -1,6 +1,6 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '../components/BackButton';
@@ -15,33 +15,29 @@ type Props = NativeStackScreenProps<RootStackParamList, 'VoiceReview'>;
 export function VoiceReviewScreen({ navigation }: Props) {
   const { voice } = useOnboarding();
   const [playing, setPlaying] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const playerRef = useRef<AudioPlayer | null>(null);
 
   useEffect(() => {
     return () => {
-      sound?.unloadAsync();
+      playerRef.current?.remove();
+      playerRef.current = null;
     };
-  }, [sound]);
+  }, []);
 
   const play = async () => {
     if (!voice.sampleUri) return;
-    if (sound) {
-      await sound.unloadAsync();
-    }
-    const { sound: next } = await Audio.Sound.createAsync(
-      { uri: voice.sampleUri },
-      { shouldPlay: true }
-    );
-    setSound(next);
+    playerRef.current?.remove();
+    const player = createAudioPlayer({ uri: voice.sampleUri });
+    playerRef.current = player;
+    player.play();
     setPlaying(true);
-    next.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return;
+    player.addListener('playbackStatusUpdate', (status) => {
       if (status.didJustFinish) setPlaying(false);
     });
   };
 
   const stop = async () => {
-    await sound?.stopAsync();
+    playerRef.current?.pause();
     setPlaying(false);
   };
 
@@ -81,40 +77,46 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     paddingHorizontal: spacing.inset,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.inset,
   },
   content: {
     flex: 1,
+    gap: 12,
+    paddingTop: 72,
   },
   kicker: {
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.6,
+    ...noFakeLight,
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 30,
+    fontSize: 36,
+    lineHeight: 42,
     color: colors.text,
-    marginBottom: spacing.md,
     ...noFakeBold,
   },
   body: {
+    fontFamily: fonts.bodyLight,
     fontSize: 16,
     lineHeight: 24,
-    color: colors.textMuted,
-    marginBottom: spacing.xl,
+    color: colors.text,
+    ...noFakeLight,
   },
   playBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.inputBg,
-    borderRadius: radii.input,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
+    marginTop: 8,
+    backgroundColor: colors.text,
+    borderRadius: radii.pill,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
   playText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 16,
-    color: colors.text,
-    ...noFakeLight,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: colors.bg,
   },
   footer: {
     flexDirection: 'row',
@@ -123,13 +125,12 @@ const styles = StyleSheet.create({
   },
   linkBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   linkText: {
     fontFamily: fonts.bodyLight,
-    fontSize: 15,
-    color: colors.textMuted,
-    textDecorationLine: 'underline',
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
     ...noFakeLight,
   },
 });

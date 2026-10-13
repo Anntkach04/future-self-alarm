@@ -1,5 +1,6 @@
 import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
 import { buildAlarmScript } from '../data/alarmScript';
+import { ensureGuestSession } from './apiAuth';
 import { savePreviewAudio } from './audioPreview';
 import {
   checkVoiceApiHealth,
@@ -49,8 +50,15 @@ export async function cloneOnboardingVoice(params: {
   const health: VoiceApiHealth = await checkVoiceApiHealth();
   if (!health.hasKey && !health.elevenLabs) {
     throw new Error(
-      'Voice server is offline. On the Mac run npm run server in the project folder.'
+      'Cannot reach the voice server. Check Wi-Fi, then try again.'
     );
+  }
+
+  // Clone runs before Sign in with Apple — mint a guest JWT if needed.
+  try {
+    await ensureGuestSession();
+  } catch (error) {
+    console.warn('Guest session failed', error);
   }
 
   // TEMPORARY — skip Instant Voice Cloning; TTS only with a premade EL voice.

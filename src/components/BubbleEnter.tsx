@@ -9,28 +9,28 @@ type Props = {
   fromScale?: number;
 };
 
-/** Bubble pop: fade + overshoot spring — used on every onboarding element. */
+/**
+ * Motion only — opacity stays 1 forever.
+ * Stalled springs must never hide fields/buttons.
+ */
 export function BubbleEnter({
   children,
   delay = 0,
   style,
   fromY = 16,
-  fromScale = 0.9,
+  fromScale = 0.92,
 }: Props) {
-  const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(fromY)).current;
   const scale = useRef(new Animated.Value(fromScale)).current;
+  const startDelay = Math.min(Math.max(delay, 0), 120);
 
   useEffect(() => {
+    translateY.setValue(fromY);
+    scale.setValue(fromScale);
+
     const enter = Animated.sequence([
-      Animated.delay(delay),
+      Animated.delay(startDelay),
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
         Animated.spring(translateY, {
           toValue: 0,
           friction: 7,
@@ -45,9 +45,26 @@ export function BubbleEnter({
         }),
       ]),
     ]);
-    enter.start();
-    return () => enter.stop();
-  }, [delay, opacity, scale, translateY]);
+
+    const failsafe = setTimeout(() => {
+      translateY.setValue(0);
+      scale.setValue(1);
+    }, startDelay + 500);
+
+    enter.start(({ finished }) => {
+      if (finished) {
+        translateY.setValue(0);
+        scale.setValue(1);
+      }
+    });
+
+    return () => {
+      clearTimeout(failsafe);
+      enter.stop();
+      translateY.setValue(0);
+      scale.setValue(1);
+    };
+  }, [fromScale, fromY, scale, startDelay, translateY]);
 
   return (
     <Animated.View
@@ -55,7 +72,7 @@ export function BubbleEnter({
       style={[
         style,
         {
-          opacity,
+          opacity: 1,
           transform: [{ translateY }, { scale }],
         },
       ]}

@@ -46,7 +46,9 @@ export function TextQuestionScreen({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <BackButton />
+          <BubbleEnter delay={0} fromY={10}>
+            <BackButton />
+          </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
             <Text style={styles.question}>{question}</Text>
           </BubbleEnter>
@@ -55,7 +57,7 @@ export function TextQuestionScreen({
               <Text style={styles.subtitle}>{subtitle}</Text>
             </BubbleEnter>
           ) : null}
-          <BubbleEnter delay={100} fromY={14}>
+          <BubbleEnter delay={40} fromY={10}>
             <InputPill
               value={value}
               onChangeText={onChangeText}

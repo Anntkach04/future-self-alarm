@@ -11,14 +11,12 @@ export function FutureSelfScreen({ navigation }: Props) {
 
   return (
     <ChipQuestionScreen
-      question={"Why do you want\nto wake up early?"}
-      subtitle="Or pick from the chips below."
+      question={"Write 3 of your\nmain goals in life"}
       options={FUTURE_SELF_OPTIONS}
       selected={answers.futureSelf}
       onToggle={toggleFutureSelf}
       onAddCustom={addFutureSelf}
-      addPlaceholder="Write your own reason…"
-      inputAlwaysVisible
+      addPlaceholder="Write a goal in your own words"
       onSubmit={() => navigation.navigate('AlreadyYou')}
     />
   );

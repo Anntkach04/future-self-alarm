@@ -8,7 +8,6 @@ export type RootStackParamList = {
   Welcome: undefined;
   Intro: undefined;
   Name: undefined;
-  MorningFeeling: undefined;
   FutureSelf: undefined;
   AlreadyYou: undefined;
   HardMornings: undefined;
@@ -20,6 +19,9 @@ export type RootStackParamList = {
   VoiceReview: undefined;
   VoiceCloning: undefined;
   VoicePreview: undefined;
+  SignIn: undefined;
+  NotificationPermission: undefined;
+  Paywall: undefined;
   CreateAlarm: { alarmId?: string } | undefined;
   Alarms: undefined;
   Home: undefined;

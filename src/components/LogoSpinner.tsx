@@ -87,7 +87,7 @@ export function LogoSpinner({ size = SIZE, style }: Props) {
       >
         <Image
           source={LOGO}
-          style={{ width: size, height: size }}
+          style={{ width: size, height: size, backgroundColor: 'transparent' }}
           resizeMode="contain"
           accessibilityLabel="Loading"
         />
@@ -99,14 +99,14 @@ export function LogoSpinner({ size = SIZE, style }: Props) {
     <Animated.View
       style={[
         styles.wrap,
-        { width: size, height: size },
+        { width: size, height: size, backgroundColor: 'transparent' },
         { transform: [{ rotate: spin }] },
         style,
       ]}
     >
       <Image
         source={LOGO}
-        style={{ width: size, height: size }}
+        style={{ width: size, height: size, backgroundColor: 'transparent' }}
         resizeMode="contain"
         accessibilityLabel="Loading"
       />
@@ -118,5 +118,8 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
+    // Keep transform origin = box center (default); clip stray padding.
+    overflow: 'hidden',
   },
 });

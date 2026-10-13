@@ -6,85 +6,82 @@ export type BubbleOption = {
   color: string;
   text: string;
   caption?: string;
-  /** Shift chip right in the cloud layout (px). */
-  nudgeRight?: number;
+  /** Extra shift on the row (px). Positive = right. */
+  nudge?: number;
+  /** Force row alignment when laid out alone. */
+  align?: 'left' | 'right' | 'center';
 };
 
 function bubble(
   label: string,
   color: string,
-  caption?: string,
-  id?: string
+  extras?: Partial<Pick<BubbleOption, 'caption' | 'id' | 'nudge' | 'align'>>
 ): BubbleOption {
-  return { label, color, text: ink, caption, id };
+  return { label, color, text: ink, ...extras };
 }
 
-/** Mood-matched, no repeats — each chip gets its own colour. */
+/** Mood-matched — max ~6, staggered for cloud layout. */
 export const MORNING_FEELING_OPTIONS: BubbleOption[] = [
-  bubble('Calm & grounded', '#8FBDB7'),
-  bubble('Light & happy', '#FEC554'),
-  bubble('Strong & focused', '#E98D73'),
-  bubble('Loved & safe', '#E8A8C0'),
-  bubble('Proud of myself', '#B9ADD9'),
-  bubble('Full of energy', '#B9F34A'),
-  bubble('Soft & unhurried', '#EDB28C'),
-  bubble('Inspired to create', '#6B91FF'),
+  bubble('Calm & grounded', '#8FBDB7', { align: 'left', nudge: 0 }),
+  bubble('Light & happy', '#FEC554', { align: 'right', nudge: -8 }),
+  bubble('Strong & focused', '#E98D73', { align: 'left', nudge: 36 }),
+  bubble('Loved & safe', '#E8A8C0', { align: 'right', nudge: 0 }),
+  bubble('Proud of myself', '#B9ADD9', { align: 'left', nudge: 12 }),
+  bubble('Soft & unhurried', '#EDB28C', { align: 'right', nudge: -20 }),
 ];
 
 export const FUTURE_SELF_OPTIONS: BubbleOption[] = [
-  bubble('Build a morning routine', '#8FBDB7'),
-  bubble('Have more energy', '#ADDEFF'),
-  bubble('Work on my own project', '#FEC554'),
-  bubble('Move my body', '#B9F34A'),
-  bubble('Read before the day starts', '#AFC9A8'),
-  bubble('Meditate or breathe', '#EDB28C'),
-  bubble('Have quiet time for myself', '#FF7FB5'),
-  bubble('Get ahead of my to-do list', '#7E9BFF'),
-  bubble('Feel less rushed', '#D8C29E'),
-  bubble('Invest in my growth', '#C5E86A'),
+  bubble('Build a morning routine', '#8FBDB7', { align: 'left', nudge: 0 }),
+  bubble('Have more energy', '#ADDEFF', { align: 'right', nudge: 0 }),
+  bubble('Work on my own project', '#FEC554', { align: 'left', nudge: 28 }),
+  bubble('Move my body', '#B9F34A', { align: 'right', nudge: -12 }),
+  bubble('Have quiet time for myself', '#FF7FB5', { align: 'left', nudge: 8 }),
+  bubble('Feel less rushed', '#D8C29E', { align: 'right', nudge: -4 }),
 ];
 
 export const ALREADY_YOU_OPTIONS: BubbleOption[] = [
-  bubble('I start even when scared', '#E98D73'),
-  bubble("I'm gentle with myself", '#EDB28C'),
-  bubble('I make space to create', '#B9ADD9'),
-  bubble('I keep showing up', '#8FBDB7'),
-  bubble('I trust my own pace', '#D8C29E'),
-  bubble('I deserve peace', '#ADDEFF'),
-  bubble('I rest without guilt', '#AFC9A8'),
-  bubble('I choose myself', '#FEC554'),
+  bubble('I start even when scared', '#E98D73', { align: 'left', nudge: 4 }),
+  bubble("I'm gentle with myself", '#EDB28C', { align: 'right', nudge: 0 }),
+  bubble('I keep showing up', '#8FBDB7', { align: 'left', nudge: 40 }),
+  bubble('I trust my own pace', '#D8C29E', { align: 'right', nudge: -16 }),
+  bubble('I rest without guilt', '#AFC9A8', { align: 'left', nudge: 0 }),
+  bubble('I choose myself', '#FEC554', { align: 'right', nudge: 8 }),
 ];
 
 export const HARD_MORNING_OPTIONS: BubbleOption[] = [
-  bubble('You are enough.', '#ADDEFF'),
-  bubble('One step is enough.', '#B9F34A'),
-  bubble('You are loved as you are.', '#E8A8C0'),
-  bubble("You're not behind.", '#D8C29E'),
-  bubble('Today can feel lighter.', '#EDB28C'),
-  bubble('Your body is home.', '#AFC9A8'),
-  bubble('Good things are coming.', '#FEC554'),
-  bubble('Keep your promise to yourself.', '#8FBDB7'),
+  bubble('You are enough.', '#ADDEFF', { align: 'left', nudge: 0 }),
+  bubble('One step is enough.', '#B9F34A', { align: 'right', nudge: -8 }),
+  bubble("You're not behind.", '#D8C29E', { align: 'left', nudge: 32 }),
+  bubble('Today can feel lighter.', '#EDB28C', { align: 'right', nudge: 0 }),
+  bubble('Good things are coming.', '#FEC554', { align: 'left', nudge: 16 }),
+  bubble('Keep your promise to yourself.', '#8FBDB7', {
+    align: 'right',
+    nudge: -4,
+  }),
 ];
 
 export const VOICE_STYLE_OPTIONS: BubbleOption[] = [
-  bubble('Warm, almost a whisper', '#EDB28C'),
-  bubble('Calm & confident', '#ADDEFF'),
-  bubble('Like my best friend', '#FEC554'),
-  bubble('Gentle coach', '#AFC9A8'),
-  bubble('Bright & smiling', '#B9F34A'),
-  bubble('Wise & unhurried', '#B9ADD9'),
+  bubble('Warm, almost a whisper', '#EDB28C', { align: 'left', nudge: 0 }),
+  bubble('Calm & confident', '#ADDEFF', { align: 'right', nudge: 0 }),
+  bubble('Like my best friend', '#FEC554', { align: 'left', nudge: 24 }),
+  bubble('Gentle coach', '#AFC9A8', { align: 'right', nudge: -12 }),
+  bubble('Bright & smiling', '#B9F34A', { align: 'left', nudge: 8 }),
+  bubble('Wise & unhurried', '#B9ADD9', { align: 'right', nudge: 0 }),
 ];
 
 export const MESSAGE_LENGTH_OPTIONS: BubbleOption[] = [
-  bubble('About 30 seconds', '#ADDEFF', 'one calm morning letter'),
+  bubble('About 30 seconds', '#ADDEFF', { caption: 'one calm morning letter' }),
 ];
 
 export const MUSIC_BED_OPTIONS: BubbleOption[] = [
-  bubble('Bali morning', '#EDB28C', 'warm air', 'bali-morning'),
-  bubble('Yoga air', '#ADDEFF', 'open & light', 'yoga-air'),
-  bubble('Soft massage', '#AFC9A8', 'slow & round', 'soft-massage'),
-  bubble('Light water', '#B9ADD9', 'quiet flow', 'light-water'),
-  bubble('Warm earth', '#D8C29E', 'grounded', 'warm-earth'),
+  bubble('Bali morning', '#EDB28C', { caption: 'warm air', id: 'bali-morning' }),
+  bubble('Yoga air', '#ADDEFF', { caption: 'open & light', id: 'yoga-air' }),
+  bubble('Soft massage', '#AFC9A8', {
+    caption: 'slow & round',
+    id: 'soft-massage',
+  }),
+  bubble('Light water', '#B9ADD9', { caption: 'quiet flow', id: 'light-water' }),
+  bubble('Warm earth', '#D8C29E', { caption: 'grounded', id: 'warm-earth' }),
 ];
 
 /** Brighter plus chip */

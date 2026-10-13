@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gift - Future Self Alarm</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header" data-header>
+      <div class="page inner">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark" aria-hidden="true">
+            <img src="./assets/illustrations/logo-mark.png" alt="" />
+          </span>
+          <span class="brand-name">Future Self Alarm</span>
+        </a>
+        <nav class="nav">
+          <a href="./contact.html">Contact</a>
+          <a class="nav-cta" href="./index.html#pricing">Get the app</a>
+        </nav>
+        <button class="menu-btn" type="button" data-menu aria-label="Open menu">☰</button>
+      </div>
+      <div class="page mobile-nav" data-mobile-nav>
+        <a href="./contact.html">Contact</a>
+        <a href="./index.html#pricing">Get the app →</a>
+      </div>
+    </header>
+    <main class="page contact-hero reveal">
+      <p class="eyebrow">Gift</p>
+      <h1>Gift a membership</h1>
+      <p class="hero-copy">
+        Enter their email - they get Future Self Alarm access, you send the spark.
+        (Checkout wiring lands with App Store / RevenueCat.)
+      </p>
+      <form class="form-card" style="max-width: 28rem; margin-top: 1.5rem" onsubmit="event.preventDefault(); alert('Gift checkout coming with App Store billing.');">
+        <div class="field">
+          <label for="their-email">Their email</label>
+          <input id="their-email" type="email" required placeholder="friend@email.com" />
+        </div>
+        <div class="field">
+          <label for="note">Short note</label>
+          <textarea id="note" placeholder="Wake gently - from me."></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          Send gift <span class="btn-arrow" aria-hidden="true">→</span>
+        </button>
+      </form>
+    </main>
+    <footer class="site-footer">
+      <div class="page footer-links">
+        <a href="./index.html">Home</a>
+        <a href="./contact.html">Contact & FAQ</a>
+        <a href="https://api-production-5d0f.up.railway.app/privacy">Privacy</a>
+        <a href="https://api-production-5d0f.up.railway.app/terms">Terms</a>
+      </div>
+    </footer>
+    <script src="./script.js"></script>
+  </body>
+</html>

@@ -61,10 +61,61 @@ function probeDurationSec(filePath) {
   });
 }
 
+const CLONE_MAX_SECONDS = 150;
+const CLONE_MAX_BYTES = 9 * 1024 * 1024;
+
+function cloneSampleFromFile(filePath, name) {
+  return {
+    buffer: fs.readFileSync(filePath),
+    originalname: name,
+    mimetype: 'audio/mpeg',
+  };
+}
+
+/** Mono MP3 well under ElevenLabs' 11MB upload cap (iOS persist is often huge PCM). */
+async function transcodeCloneMp3(inPath, outPath, opts = {}) {
+  const maxSeconds = opts.maxSeconds ?? CLONE_MAX_SECONDS;
+  const bitrate = opts.bitrate ?? '64k';
+  const rate = opts.rate ?? '22050';
+  const extra = [];
+  if (opts.start != null) extra.push('-ss', Number(opts.start).toFixed(2));
+  extra.push('-t', Number(opts.duration ?? maxSeconds).toFixed(2));
+  await runFfmpeg([
+    '-y',
+    ...extra,
+    '-i',
+    inPath,
+    '-ac',
+    '1',
+    '-ar',
+    rate,
+    '-c:a',
+    'libmp3lame',
+    '-b:a',
+    bitrate,
+    outPath,
+  ]);
+}
+
+async function compressWholeTake(inPath, stamp) {
+  const outPath = path.join(os.tmpdir(), `fs-clone-full-${stamp}.mp3`);
+  await transcodeCloneMp3(inPath, outPath, { bitrate: '64k', rate: '22050' });
+  let sample = cloneSampleFromFile(outPath, 'sample.mp3');
+  if (sample.buffer.length > CLONE_MAX_BYTES) {
+    await transcodeCloneMp3(inPath, outPath, {
+      bitrate: '48k',
+      rate: '16000',
+      maxSeconds: 75,
+    });
+    sample = cloneSampleFromFile(outPath, 'sample.mp3');
+  }
+  return { sample, outPath };
+}
+
 /**
  * Hybrid IVC (fast + better + cheap, no PVC):
- * one user take → up to 3 overlapping clips for ElevenLabs multi-file Instant Clone.
- * Short takes stay single-file so onboarding remains quick.
+ * one user take → compressed clips for ElevenLabs Instant Clone.
+ * Always transcode — never upload raw iOS CAF/PCM (hits the 11MB cap).
  */
 async function buildHybridCloneSamples(buffer, originalname, mimetype) {
   const fallback = [
@@ -83,15 +134,26 @@ async function buildHybridCloneSamples(buffer, originalname, mimetype) {
 
   const outPaths = [];
   try {
-    let duration = 0;
-    try {
-      duration = await probeDurationSec(inPath);
-    } catch {
-      return fallback;
+    const compressed = await compressWholeTake(inPath, stamp);
+    outPaths.push(compressed.outPath);
+    if (compressed.sample.buffer.length > CLONE_MAX_BYTES) {
+      throw new Error('Compressed clone sample still exceeds 11MB');
     }
 
-    // Too short → don't bother splitting (keeps clone fast).
-    if (!(duration >= 42)) return fallback;
+    let duration = 0;
+    try {
+      duration = await probeDurationSec(compressed.outPath);
+    } catch {
+      duration = 0;
+    }
+
+    // Too short → single compressed file.
+    if (!(duration >= 42)) {
+      console.log(
+        `[clone] single IVC: ${(compressed.sample.buffer.length / 1024).toFixed(0)}KB from ${duration.toFixed(1)}s take`
+      );
+      return [compressed.sample];
+    }
 
     const windows =
       duration >= 75
@@ -111,38 +173,33 @@ async function buildHybridCloneSamples(buffer, originalname, mimetype) {
       const len = Math.max(0.8, end - start);
       const outPath = path.join(os.tmpdir(), `fs-clone-part-${stamp}-${i}.mp3`);
       outPaths.push(outPath);
-      await runFfmpeg([
-        '-y',
-        '-ss',
-        start.toFixed(2),
-        '-t',
-        len.toFixed(2),
-        '-i',
-        inPath,
-        '-ac',
-        '1',
-        '-ar',
-        '44100',
-        '-c:a',
-        'libmp3lame',
-        '-b:a',
-        '192k',
-        outPath,
-      ]);
-      samples.push({
-        buffer: fs.readFileSync(outPath),
-        originalname: `sample-${i + 1}.mp3`,
-        mimetype: 'audio/mpeg',
+      await transcodeCloneMp3(inPath, outPath, {
+        start,
+        duration: len,
+        bitrate: '64k',
+        rate: '22050',
       });
+      samples.push(cloneSampleFromFile(outPath, `sample-${i + 1}.mp3`));
+    }
+
+    const total = samples.reduce((sum, row) => sum + row.buffer.length, 0);
+    if (!samples.length || total > CLONE_MAX_BYTES) {
+      console.log('[clone] hybrid too large, using single compressed take');
+      return [compressed.sample];
     }
 
     console.log(
-      `[clone] hybrid IVC: ${samples.length} clips from ${duration.toFixed(1)}s take`
+      `[clone] hybrid IVC: ${samples.length} clips, ${(total / 1024).toFixed(0)}KB from ${duration.toFixed(1)}s take`
     );
-    return samples.length ? samples : fallback;
+    return samples;
   } catch (error) {
-    console.warn('[clone] hybrid split failed, single file', error?.message || error);
-    return fallback;
+    console.warn('[clone] compress/split failed', error?.message || error);
+    if (buffer.length <= CLONE_MAX_BYTES) return fallback;
+    const tooBig = new Error(
+      'Recording is too large for voice clone. Tap re-record and keep it around one minute.'
+    );
+    tooBig.status = 400;
+    throw tooBig;
   } finally {
     for (const file of [inPath, ...outPaths]) {
       try {
@@ -154,7 +211,7 @@ async function buildHybridCloneSamples(buffer, originalname, mimetype) {
   }
 }
 
-async function mixVoiceWithBed(voiceBuffer, bedId) {
+async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
   const bedFile = findBedFile(bedId);
   if (!bedFile) {
     return { buffer: voiceBuffer, mixed: false, reason: 'no_bed' };
@@ -162,6 +219,13 @@ async function mixVoiceWithBed(voiceBuffer, bedId) {
   if (!getFfmpegPath()) {
     return { buffer: voiceBuffer, mixed: false, reason: 'no_ffmpeg' };
   }
+
+  // Map 0–1 UI levels onto ffmpeg volumes (defaults match prior mix).
+  const voiceUi =
+    typeof levels.voiceLevel === 'number' ? levels.voiceLevel : 0.85;
+  const bedUi = typeof levels.bedLevel === 'number' ? levels.bedLevel : 0.35;
+  const voiceVol = (0.9 + voiceUi * 1.1).toFixed(2); // ~0.9–2.0
+  const bedVol = (0.02 + bedUi * 0.12).toFixed(3); // ~0.02–0.14
 
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const voicePath = path.join(os.tmpdir(), `fs-voice-${stamp}.mp3`);
@@ -182,9 +246,8 @@ async function mixVoiceWithBed(voiceBuffer, bedId) {
       [
         // Beds are longer than the spoken line — trim to voice. Avoid
         // -stream_loop on m4a (ffmpeg emits bogus negative timestamps).
-        // Soft bed under clear voice — original balance users liked.
-        '[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=1.55,acompressor=threshold=-18dB:ratio=3:attack=5:release=50[voice]',
-        '[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=0.06,highpass=f=120,lowpass=f=4200,afade=t=in:d=3[bed]',
+        `[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${voiceVol},acompressor=threshold=-18dB:ratio=3:attack=5:release=50[voice]`,
+        `[1:a]aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${bedVol},highpass=f=120,lowpass=f=4200,afade=t=in:d=3[bed]`,
         '[voice][bed]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[mix]',
         '[mix]loudnorm=I=-12:TP=-1.2:LRA=8,areverse,afade=t=in:d=2.5,areverse[out]',
       ].join(';'),
