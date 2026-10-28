@@ -25,4 +25,5 @@ export const VOICE_TIPS = [
 ];
 
 export const MIN_RECORDING_SECONDS = 35;
+/** On-screen recording bar fills to this. About a minute is the stronger clone target. */
 export const TARGET_RECORDING_SECONDS = 60;

@@ -9,6 +9,18 @@ import { lineWordCount, matchedPrefixCount } from '../services/speechMatch';
 
 export type DictaphoneStatus = 'idle' | 'recording' | 'stopped';
 
+export type RecordingTake = {
+  uri: string | null;
+  durationSec: number;
+};
+
+type Clock = {
+  running: boolean;
+  paused: boolean;
+  baseMs: number;
+  anchor: number;
+};
+
 function formatMs(ms: number) {
   const total = Math.floor(ms / 1000);
   const m = Math.floor(total / 60)
@@ -17,6 +29,13 @@ function formatMs(ms: number) {
   const s = (total % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
+
+const idleClock = (): Clock => ({
+  running: false,
+  paused: false,
+  baseMs: 0,
+  anchor: 0,
+});
 
 export function useSmartDictaphone(currentLine: string) {
   const [status, setStatus] = useState<DictaphoneStatus>('idle');
@@ -27,6 +46,8 @@ export function useSmartDictaphone(currentLine: string) {
   const [hearing, setHearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recognitionReady, setRecognitionReady] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [canPause, setCanPause] = useState(false);
 
   const spokenRef = useRef(0);
   const lineRef = useRef(currentLine);
@@ -36,9 +57,83 @@ export function useSmartDictaphone(currentLine: string) {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const uriRef = useRef<string | null>(null);
   const usesNativePersistRef = useRef(false);
-  const durationStartedAtRef = useRef(0);
+  const durationMsRef = useRef(0);
+  const clockRef = useRef<Clock>(idleClock());
+  const uriWaiterRef = useRef<((uri: string | null) => void) | null>(null);
 
   lineRef.current = currentLine;
+
+  const publishDuration = useCallback((ms: number) => {
+    const next = Math.max(0, ms);
+    durationMsRef.current = next;
+    setDurationMs(next);
+  }, []);
+
+  const sampleElapsed = useCallback(() => {
+    const clock = clockRef.current;
+    if (!clock.running || clock.paused) return clock.baseMs;
+    return clock.baseMs + (Date.now() - clock.anchor);
+  }, []);
+
+  const beginClock = useCallback(() => {
+    clockRef.current = {
+      running: true,
+      paused: false,
+      baseMs: 0,
+      anchor: Date.now(),
+    };
+    setPaused(false);
+    publishDuration(0);
+  }, [publishDuration]);
+
+  const pauseClock = useCallback(() => {
+    const clock = clockRef.current;
+    if (!clock.running) return clock.baseMs;
+    if (!clock.paused) {
+      clock.baseMs = sampleElapsed();
+      clock.paused = true;
+      setPaused(true);
+    }
+    publishDuration(clock.baseMs);
+    return clock.baseMs;
+  }, [publishDuration, sampleElapsed]);
+
+  const resumeClock = useCallback(() => {
+    const clock = clockRef.current;
+    if (!clock.running || !clock.paused) return;
+    clock.anchor = Date.now();
+    clock.paused = false;
+    setPaused(false);
+  }, []);
+
+  const freezeClock = useCallback(() => {
+    const elapsed = sampleElapsed();
+    clockRef.current = {
+      running: false,
+      paused: false,
+      baseMs: elapsed,
+      anchor: 0,
+    };
+    setPaused(false);
+    publishDuration(elapsed);
+    return elapsed;
+  }, [publishDuration, sampleElapsed]);
+
+  const clearClock = useCallback(() => {
+    clockRef.current = idleClock();
+    setPaused(false);
+    publishDuration(0);
+  }, [publishDuration]);
+
+  useEffect(() => {
+    if (status !== 'recording') return undefined;
+    const id = setInterval(() => {
+      const clock = clockRef.current;
+      if (!clock.running || clock.paused) return;
+      publishDuration(sampleElapsed());
+    }, 100);
+    return () => clearInterval(id);
+  }, [publishDuration, sampleElapsed, status]);
 
   useEffect(() => {
     spokenRef.current = 0;
@@ -116,9 +211,14 @@ export function useSmartDictaphone(currentLine: string) {
   });
 
   useSpeechRecognitionEvent('audioend', (event) => {
-    if (!event.uri) return;
-    uriRef.current = event.uri;
-    setUri(event.uri);
+    const next = event.uri ?? null;
+    if (next) {
+      uriRef.current = next;
+      setUri(next);
+    }
+    const waiter = uriWaiterRef.current;
+    uriWaiterRef.current = null;
+    waiter?.(next);
   });
 
   useSpeechRecognitionEvent('error', (event) => {
@@ -134,6 +234,23 @@ export function useSmartDictaphone(currentLine: string) {
       );
     }
   });
+
+  const waitForPersistedClip = useCallback((timeoutMs: number) => {
+    if (uriRef.current) return Promise.resolve(uriRef.current);
+    return new Promise<string | null>((resolve) => {
+      let settled = false;
+      const finish = (value: string | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (uriWaiterRef.current === finish) uriWaiterRef.current = null;
+        resolve(value ?? uriRef.current);
+      };
+      const timer = setTimeout(() => finish(uriRef.current), timeoutMs);
+      uriWaiterRef.current = finish;
+      if (uriRef.current) finish(uriRef.current);
+    });
+  }, []);
 
   const startAvRecording = useCallback(async () => {
     await Audio.setAudioModeAsync({
@@ -154,7 +271,6 @@ export function useSmartDictaphone(currentLine: string) {
 
     recording.setOnRecordingStatusUpdate((next) => {
       if (!next.isRecording) return;
-      setDurationMs(next.durationMillis || 0);
       if (typeof next.metering === 'number') {
         setMetering(next.metering);
       }
@@ -162,6 +278,7 @@ export function useSmartDictaphone(currentLine: string) {
 
     await recording.startAsync();
     recordingRef.current = recording;
+    setCanPause(true);
   }, []);
 
   const stopAvRecording = useCallback(async () => {
@@ -171,6 +288,7 @@ export function useSmartDictaphone(currentLine: string) {
     await recording.stopAndUnloadAsync();
     const nextUri = recording.getURI();
     recordingRef.current = null;
+    setCanPause(false);
 
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
@@ -195,6 +313,16 @@ export function useSmartDictaphone(currentLine: string) {
       });
     } catch (e) {
       if (Platform.OS !== 'web') throw e;
+    }
+  }, []);
+
+  const stopRecognition = useCallback(() => {
+    try {
+      if (ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+        ExpoSpeechRecognitionModule.stop();
+      }
+    } catch {
+      /* ignore */
     }
   }, []);
 
@@ -231,11 +359,12 @@ export function useSmartDictaphone(currentLine: string) {
       setError(null);
       setUri(null);
       uriRef.current = null;
-      setDurationMs(0);
       spokenRef.current = 0;
       setSpokenCount(0);
       setHearing(false);
       finalsRef.current = '';
+      clearClock();
+      setCanPause(false);
 
       const granted = await requestPermission();
       if (!granted) return;
@@ -262,26 +391,38 @@ export function useSmartDictaphone(currentLine: string) {
         await startRecognition();
       }
 
-      durationStartedAtRef.current = Date.now();
+      beginClock();
       setStatus('recording');
     } catch (e) {
       keepListeningRef.current = false;
+      clearClock();
+      setCanPause(false);
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync().catch(() => undefined);
+        recordingRef.current = null;
+      }
+      try {
+        ExpoSpeechRecognitionModule.abort();
+      } catch {
+        /* ignore */
+      }
       setError(e instanceof Error ? e.message : 'Could not start recording');
       setStatus('idle');
     }
-  }, [requestPermission, startAvRecording, startRecognition]);
+  }, [
+    beginClock,
+    clearClock,
+    requestPermission,
+    startAvRecording,
+    startRecognition,
+  ]);
 
-  const stop = useCallback(async () => {
+  const stop = useCallback(async (): Promise<RecordingTake> => {
     keepListeningRef.current = false;
+    const elapsed = freezeClock();
 
     try {
-      if (ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
-        try {
-          ExpoSpeechRecognitionModule.stop();
-        } catch {
-          /* ignore */
-        }
-      }
+      stopRecognition();
 
       let finalUri = uriRef.current;
 
@@ -294,23 +435,98 @@ export function useSmartDictaphone(currentLine: string) {
         }
       }
 
-      if (durationStartedAtRef.current) {
-        setDurationMs(Date.now() - durationStartedAtRef.current);
+      if (!finalUri && usesNativePersistRef.current) {
+        finalUri = await waitForPersistedClip(2500);
+        if (finalUri) {
+          uriRef.current = finalUri;
+          setUri(finalUri);
+        }
       }
 
       setStatus('stopped');
       setHearing(false);
-      return finalUri;
+      setCanPause(false);
+      return {
+        uri: finalUri,
+        durationSec: Math.floor(elapsed / 1000),
+      };
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not stop recording');
       setStatus('idle');
-      return null;
+      setCanPause(false);
+      return {
+        uri: null,
+        durationSec: Math.floor(elapsed / 1000),
+      };
     }
-  }, [stopAvRecording]);
+  }, [freezeClock, stopAvRecording, stopRecognition, waitForPersistedClip]);
+
+  const cancel = useCallback(async () => {
+    keepListeningRef.current = false;
+    clearClock();
+    spokenRef.current = 0;
+    setSpokenCount(0);
+    finalsRef.current = '';
+    setHearing(false);
+    setCanPause(false);
+
+    try {
+      ExpoSpeechRecognitionModule.abort();
+    } catch {
+      /* ignore */
+    }
+
+    if (recordingRef.current) {
+      await stopAvRecording().catch(() => undefined);
+    } else {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      }).catch(() => undefined);
+    }
+
+    const waiter = uriWaiterRef.current;
+    uriWaiterRef.current = null;
+    waiter?.(null);
+
+    uriRef.current = null;
+    setUri(null);
+    setStatus('stopped');
+  }, [clearClock, stopAvRecording]);
+
+  const pause = useCallback(async () => {
+    if (!clockRef.current.running || clockRef.current.paused) return;
+    if (!recordingRef.current) return;
+
+    pauseClock();
+    try {
+      await recordingRef.current.pauseAsync();
+    } catch {
+      resumeClock();
+      setError('This device can’t pause the recording. Keep going, or tap the mic to start over.');
+    }
+  }, [pauseClock, resumeClock]);
+
+  const resume = useCallback(async () => {
+    if (!clockRef.current.running || !clockRef.current.paused) return;
+    const recording = recordingRef.current;
+    if (!recording) {
+      resumeClock();
+      return;
+    }
+
+    try {
+      await recording.startAsync();
+      resumeClock();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not resume recording');
+    }
+  }, [resumeClock]);
 
   useEffect(() => {
     return () => {
       keepListeningRef.current = false;
+      clockRef.current = idleClock();
       recordingRef.current?.stopAndUnloadAsync().catch(() => undefined);
       try {
         ExpoSpeechRecognitionModule.abort();
@@ -332,8 +548,13 @@ export function useSmartDictaphone(currentLine: string) {
     hearing,
     error,
     recognitionReady,
+    paused,
+    canPause,
     requestPermission,
     start,
     stop,
+    cancel,
+    pause,
+    resume,
   };
 }

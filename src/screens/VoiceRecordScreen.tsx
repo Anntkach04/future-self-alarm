@@ -16,10 +16,14 @@ import { KaraokeLine } from '../components/KaraokeLine';
 import { LiveWaveform } from '../components/LiveWaveform';
 import { LogoSpinner } from '../components/LogoSpinner';
 import { MicRecordButton } from '../components/MicRecordButton';
+import { RecordingProgressBar } from '../components/RecordingProgressBar';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { VOICE_ONBOARDING_SKIP_ENABLED } from '../config/devBypass';
-import { buildVoiceScriptLines } from '../data/voiceScript';
+import {
+  buildVoiceScriptLines,
+  TARGET_RECORDING_SECONDS,
+} from '../data/voiceScript';
 import { useSmartDictaphone } from '../hooks/useSmartDictaphone';
 import { RootStackParamList } from '../navigation/types';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
@@ -41,8 +45,11 @@ export function VoiceRecordScreen({ navigation }: Props) {
 
   const currentLine = lines[lineIndex] ?? '';
   const dictaphone = useSmartDictaphone(currentLine);
+  const dictaphoneRef = useRef(dictaphone);
+  dictaphoneRef.current = dictaphone;
 
   const recording = dictaphone.status === 'recording' && !complete;
+  const micLock = useRef(false);
 
   const lineOpacity = useRef(new Animated.Value(1)).current;
   const lineY = useRef(new Animated.Value(0)).current;
@@ -64,9 +71,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
     if (finishingRef.current) return;
     finishingRef.current = true;
 
-    const uri = await dictaphone.stop();
-    if (uri) {
-      setVoiceSample(uri, dictaphone.durationSec);
+    const take = await dictaphoneRef.current.stop();
+    if (take.uri) {
+      setVoiceSample(take.uri, take.durationSec);
     }
     setComplete(true);
 
@@ -93,7 +100,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
         }),
       ]),
     ]).start();
-  }, [completeOpacity, dictaphone, goldHeight, readOpacity, setVoiceSample]);
+  }, [completeOpacity, goldHeight, readOpacity, setVoiceSample]);
 
   const advanceLine = useCallback(() => {
     if (advancingRef.current || finishingRef.current) return;
@@ -153,7 +160,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
   }, [lineIndex]);
 
   useEffect(() => {
-    if (!recording || complete || advancingRef.current) return;
+    if (!recording || complete || advancingRef.current || dictaphone.paused) return;
     if (!lineReadyRef.current) return;
     if (dictaphone.spokenCount < dictaphone.wordCount || dictaphone.wordCount === 0) {
       return;
@@ -165,30 +172,45 @@ export function VoiceRecordScreen({ navigation }: Props) {
   }, [
     advanceLine,
     complete,
+    dictaphone.paused,
     dictaphone.spokenCount,
     dictaphone.wordCount,
     lineIndex,
     recording,
   ]);
 
-  const onMicPress = async () => {
-    if (complete) return;
-    if (dictaphone.status === 'recording') {
-      finishingRef.current = false;
-      await dictaphone.stop();
-      setLineIndex(0);
-      doneLineRef.current = -1;
-      lineOpacity.setValue(1);
-      lineY.setValue(0);
-      advancingRef.current = false;
-      return;
-    }
-    finishingRef.current = false;
+  const resetLine = () => {
     setLineIndex(0);
     doneLineRef.current = -1;
     lineOpacity.setValue(1);
     lineY.setValue(0);
-    await dictaphone.start();
+    advancingRef.current = false;
+  };
+
+  const onMicPress = async () => {
+    if (complete || micLock.current) return;
+    micLock.current = true;
+    try {
+      if (dictaphone.status === 'recording') {
+        finishingRef.current = false;
+        await dictaphone.cancel();
+        resetLine();
+        return;
+      }
+      finishingRef.current = false;
+      resetLine();
+      await dictaphone.start();
+    } finally {
+      micLock.current = false;
+    }
+  };
+
+  const onBack = () => {
+    if (dictaphone.status !== 'recording') {
+      navigation.goBack();
+      return;
+    }
+    void dictaphone.cancel().finally(() => navigation.goBack());
   };
 
   const goReview = () => {
@@ -214,8 +236,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
     extrapolate: 'clamp',
   });
 
-  const hint =
-    dictaphone.status === 'recording'
+  const hint = dictaphone.paused && recording
+    ? 'Paused'
+    : dictaphone.status === 'recording'
       ? dictaphone.hearing
         ? 'Keep reading the highlighted words'
         : 'I’m listening — read the line aloud'
@@ -246,7 +269,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
           pointerEvents={complete ? 'none' : 'auto'}
           style={[styles.readLayer, { opacity: readOpacity }]}
         >
-          <BackButton />
+          <BackButton onPress={onBack} />
           <BubbleEnter delay={0} fromY={16}>
             <Text style={styles.title}>{`Read this\nout loud`}</Text>
           </BubbleEnter>
@@ -279,8 +302,14 @@ export function VoiceRecordScreen({ navigation }: Props) {
 
           <BubbleEnter delay={100} fromY={16}>
             <View style={styles.controls}>
-              <LiveWaveform
+              <RecordingProgressBar
+                elapsedMs={recording ? dictaphone.durationMs : 0}
+                targetSeconds={TARGET_RECORDING_SECONDS}
                 active={recording}
+                paused={dictaphone.paused}
+              />
+              <LiveWaveform
+                active={recording && !dictaphone.paused}
                 metering={dictaphone.metering}
                 hearing={dictaphone.hearing}
               />
@@ -289,7 +318,25 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 onPress={onMicPress}
               />
               <Text style={styles.hint}>{hint}</Text>
-              {recording && lineIndex < lines.length - 1 ? (
+              {recording && dictaphone.canPause ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    dictaphone.paused ? 'Resume recording' : 'Pause recording'
+                  }
+                  onPress={() => {
+                    void (dictaphone.paused
+                      ? dictaphone.resume()
+                      : dictaphone.pause());
+                  }}
+                  style={styles.nextLineBtn}
+                >
+                  <Text style={styles.nextLineText}>
+                    {dictaphone.paused ? 'Resume' : 'Pause'}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {recording && !dictaphone.paused && lineIndex < lines.length - 1 ? (
                 <Pressable
                   accessibilityRole="button"
                   onPress={advanceLine}

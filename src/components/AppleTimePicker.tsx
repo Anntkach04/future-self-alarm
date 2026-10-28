@@ -247,7 +247,7 @@ function WheelColumn({
         style={[
           { height: wheelH },
           Platform.OS === 'web'
-            ? (styles.wheelScrollWeb as object)
+            ? (wheelScrollWeb as object)
             : null,
         ]}
         keyboardShouldPersistTaps="handled"
@@ -266,13 +266,13 @@ function WheelColumn({
           return (
             <Pressable
               key={item}
-              delayPressIn={80}
+              unstable_pressDelay={80}
               onPress={() => handleItemPress(i)}
               accessibilityRole="button"
               accessibilityLabel={`${accessibilityLabel} ${label}`}
               style={[
                 { height: itemH, alignItems: 'center', justifyContent: 'center' },
-                Platform.OS === 'web' ? (styles.itemSnapWeb as object) : null,
+                Platform.OS === 'web' ? (itemSnapWeb as object) : null,
               ]}
             >
               <Text
@@ -423,14 +423,6 @@ const styles = StyleSheet.create({
   wheel: {
     overflow: 'hidden',
   },
-  wheelScrollWeb: {
-    scrollSnapType: 'y mandatory',
-    overscrollBehavior: 'contain',
-  },
-  itemSnapWeb: {
-    scrollSnapAlign: 'center',
-    scrollSnapStop: 'normal',
-  },
   itemText: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
@@ -482,3 +474,14 @@ const styles = StyleSheet.create({
       : null),
   },
 });
+
+/** Web-only snap. Not part of React Native's style type. */
+const wheelScrollWeb = {
+  scrollSnapType: 'y mandatory',
+  overscrollBehavior: 'contain',
+} as const;
+
+const itemSnapWeb = {
+  scrollSnapAlign: 'center',
+  scrollSnapStop: 'normal',
+} as const;
