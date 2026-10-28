@@ -32,6 +32,7 @@ export function RecordingProgressBar({
   });
   const fillWidth =
     trackWidth > 0 ? Math.round(trackWidth * progress.ratio) : 0;
+  const valueNow = done ? progress.targetSeconds : progress.elapsedSeconds;
 
   const onTrackLayout = (event: LayoutChangeEvent) => {
     const next = Math.round(event.nativeEvent.layout.width);
@@ -42,13 +43,19 @@ export function RecordingProgressBar({
     <View
       accessible
       accessibilityRole="progressbar"
+      role="progressbar"
       accessibilityLabel="Voice recording progress"
+      aria-label="Voice recording progress"
       accessibilityValue={{
         min: 0,
         max: progress.targetSeconds,
-        now: done ? progress.targetSeconds : progress.elapsedSeconds,
+        now: valueNow,
         text: label,
       }}
+      aria-valuemin={0}
+      aria-valuemax={progress.targetSeconds}
+      aria-valuenow={valueNow}
+      aria-valuetext={label}
       style={styles.wrap}
     >
       <View style={styles.track} onLayout={onTrackLayout}>
