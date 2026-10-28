@@ -4,7 +4,7 @@
 
 ### Added
 
-While you record your voice for cloning, a bar fills toward one minute and shows the time left (for example, “0:18 left”). One minute is the length this app already aims for, because a longer take makes a stronger voice clone. When the minute is up, the bar says “Enough audio” and stays full if you keep reading. Starting over, tapping the mic to discard the take, or leaving the screen clears the bar. If the recorder can pause the file, Pause freezes the bar and Resume continues it from the same spot.
+While you record your voice for cloning, a bar fills toward one minute and shows the time left (for example, “0:18 left”). One minute is the length this app already aims for, because a longer take makes a stronger voice clone. When the minute is up, the bar says “Enough audio” and stays full if you keep reading. Starting over, tapping the mic to discard the take, or leaving the screen clears the bar. If the recorder can pause the file, Pause freezes the bar and Resume continues it from the same spot. Screen readers can read the bar as a progress bar with the time left.
 
 ### Fixed
 
