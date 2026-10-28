@@ -9,3 +9,9 @@
  */
 export const VOICE_ONBOARDING_SKIP_ENABLED = true;
 export const ONBOARDING_RESET_ENABLED = true;
+
+/**
+ * When true, skip Instant Voice Cloning and speak with a premade voice.
+ * Off so a recording is still what gets cloned.
+ */
+export const TEMP_ELEVENLABS_TTS_ONLY = false;
