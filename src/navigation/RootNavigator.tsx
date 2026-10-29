@@ -1,7 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { WaitingView } from '../components/WaitingView';
-import { useAlarms } from '../context/AlarmsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { IntroCarouselScreen } from '../screens/IntroCarouselScreen';
@@ -31,23 +29,17 @@ import { colors } from '../theme';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  const { ready: onboardingReady, onboardingComplete } = useOnboarding();
-  const { ready: alarmsReady } = useAlarms();
-
-  if (!onboardingReady || !alarmsReady) {
-    return <WaitingView />;
-  }
-
+  const { onboardingComplete } = useOnboarding();
   const initialRoute = onboardingComplete ? 'Home' : 'Intro';
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        key={initialRoute}
         initialRouteName={initialRoute}
         screenOptions={{
           headerShown: false,
           animation: 'fade',
+          animationDuration: 220,
           contentStyle: { backgroundColor: colors.bg, overflow: 'visible' },
         }}
       >

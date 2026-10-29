@@ -131,6 +131,14 @@ export const spacing = {
   webTop: Platform.OS === 'web' ? 20 : 0,
 };
 
+/**
+ * Extra top padding for a screen that already applies the safe-area inset.
+ * `webTop` is only needed when the inset is 0; adding both leaves a dead band.
+ */
+export function contentTopGap(safeTop: number, extra = 0): number {
+  return (safeTop > 0 ? 0 : spacing.webTop) + extra;
+}
+
 /** Instrument Serif glyphs clip when line-height is tight or overflow is hidden. */
 export const headingClipFix =
   Platform.OS === 'web'

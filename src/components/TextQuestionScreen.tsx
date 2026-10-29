@@ -5,11 +5,11 @@ import {
   StyleSheet,
   Text,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton } from './BackButton';
 import { BubbleEnter } from './BubbleEnter';
 import { InputPill } from './InputPill';
-import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
+import { accents, colors, contentTopGap, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = {
   question: string;
@@ -34,6 +34,7 @@ export function TextQuestionScreen({
   autoFocus = true,
   accentColor = accents.gold,
 }: Props) {
+  const insets = useSafeAreaInsets();
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
@@ -42,7 +43,10 @@ export function TextQuestionScreen({
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: contentTopGap(insets.top) },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -83,7 +87,6 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.webTop,
     paddingBottom: spacing.inset,
   },
   question: {
@@ -93,7 +96,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     letterSpacing: 0.2,
-    marginBottom: 20,
+    marginBottom: 12,
     ...noFakeBold,
     ...headingClipFix,
   },
@@ -104,7 +107,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     letterSpacing: 0.37,
-    marginBottom: 32,
+    marginBottom: 20,
     ...(Platform.OS === 'web'
       ? ({ fontWeight: '300', fontSynthesis: 'none' } as object)
       : { fontWeight: '300' as const }),

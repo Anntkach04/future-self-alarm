@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton } from './BackButton';
 import { BubbleChip } from './BubbleChip';
 import { BubbleEnter } from './BubbleEnter';
@@ -25,6 +25,7 @@ import {
   noFakeBold,
   noFakeLight,
   radii,
+  contentTopGap,
   spacing,
 } from '../theme';
 
@@ -107,6 +108,7 @@ export function ChipQuestionScreen({
   const [adding, setAdding] = useState(inputAlwaysVisible);
   const [custom, setCustom] = useState('');
   const window = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [wrapW, setWrapW] = useState(() =>
     Math.max(0, window.width - spacing.inset * 2)
   );
@@ -180,7 +182,10 @@ export function ChipQuestionScreen({
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.page}
+          contentContainerStyle={[
+            styles.page,
+            { paddingTop: contentTopGap(insets.top) },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -302,7 +307,6 @@ const styles = StyleSheet.create({
   },
   page: {
     flexGrow: 1,
-    paddingTop: spacing.webTop,
     paddingBottom: spacing.inset,
     paddingHorizontal: spacing.inset,
     overflow: 'visible' as const,
@@ -409,6 +413,6 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'flex-end',
     paddingHorizontal: 0,
-    paddingTop: 32,
+    paddingTop: 16,
   },
 });

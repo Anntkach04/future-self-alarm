@@ -319,8 +319,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
             styles.completeInner,
             {
               opacity: completeOpacity,
-              paddingTop: Math.max(insets.top, 48) + 32,
-              paddingBottom: Math.max(insets.bottom, 16) + 20,
+              paddingTop: Math.max(insets.top, spacing.sm),
+              paddingBottom: Math.max(insets.bottom, spacing.sm),
             },
           ]}
         >
@@ -443,8 +443,7 @@ const styles = StyleSheet.create({
   completeInner: {
     flex: 1,
     paddingHorizontal: spacing.inset,
-    paddingTop: 80,
-    paddingBottom: 36,
+    paddingBottom: spacing.lg,
     justifyContent: 'space-between',
   },
   completeCopy: {

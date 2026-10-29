@@ -16,8 +16,8 @@ import { fonts, noFakeBold } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
 const WELCOME_BLUE = '#BADFFF';
-const HOLD_MS = 2200;
-const RETRACT_MS = 1000;
+const HOLD_MS = 1000;
+const RETRACT_MS = 620;
 
 /**
  * Splash → blue pill retracts upward (Figma frames 3→15) → hand off to Intro.

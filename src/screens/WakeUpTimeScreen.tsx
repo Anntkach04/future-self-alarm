@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlarmDayPicker } from '../components/AlarmDayPicker';
 import { AppleTimePicker } from '../components/AppleTimePicker';
 import { BackButton } from '../components/BackButton';
@@ -9,16 +9,17 @@ import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import { ensureNotificationPermissions } from '../services/alarmScheduler';
-import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
+import { colors, contentTopGap, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeUpTime'>;
 
 export function WakeUpTimeScreen({ navigation }: Props) {
   const { answers, setWakeTime, setWakeDays } = useOnboarding();
+  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
-      <View style={styles.page}>
+      <View style={[styles.page, { paddingTop: contentTopGap(insets.top) }]}>
         <View style={styles.header}>
           <BackButton style={styles.back} />
           <BubbleEnter delay={0} fromY={16}>
@@ -72,7 +73,6 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.webTop,
   },
   header: {
     paddingBottom: 8,
@@ -98,13 +98,12 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   timeZone: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 120,
-    paddingVertical: 24,
+    paddingVertical: 12,
   },
   footer: {
+    marginTop: 'auto',
     paddingTop: 8,
     paddingBottom: spacing.inset,
     gap: 12,

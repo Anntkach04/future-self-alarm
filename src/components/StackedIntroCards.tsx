@@ -116,25 +116,25 @@ export function StackedIntroCards({
         Animated.spring(anim.x, {
           toValue: slot.x,
           friction: 8,
-          tension: 60,
+          tension: 90,
           useNativeDriver: true,
         }),
         Animated.spring(anim.y, {
           toValue: slot.y,
           friction: 8,
-          tension: 60,
+          tension: 90,
           useNativeDriver: true,
         }),
         Animated.spring(anim.rotate, {
           toValue: slot.rotate,
           friction: 8,
-          tension: 60,
+          tension: 90,
           useNativeDriver: true,
         }),
         Animated.spring(anim.scale, {
           toValue: slot.scale,
           friction: 8,
-          tension: 60,
+          tension: 90,
           useNativeDriver: true,
         }),
       ]);
@@ -153,7 +153,7 @@ export function StackedIntroCards({
       Animated.parallel(snapOrSpring.filter(Boolean) as Animated.CompositeAnimation[]),
       Animated.timing(contentFade, {
         toValue: 1,
-        duration: 280,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();

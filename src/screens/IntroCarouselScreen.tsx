@@ -23,8 +23,8 @@ import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Intro'>;
 
 const WELCOME_BLUE = '#BADFFF';
-const HOLD_MS = 2200;
-const RETRACT_MS = 1000;
+const HOLD_MS = 1000;
+const RETRACT_MS = 620;
 const LAST = INTRO_SLIDES.length - 1;
 
 /**
@@ -104,7 +104,7 @@ export function IntroCarouselScreen({ navigation }: Props) {
     fn();
     setTimeout(() => {
       lock.current = false;
-    }, 280);
+    }, 180);
   };
 
   const goNextCard = () => {
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.webTop + 8,
+    paddingTop: spacing.webTop + 4,
     paddingBottom: spacing.inset,
     overflow: 'visible',
   },
@@ -213,16 +213,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.374,
     color: '#1A1A1A',
     textAlign: 'left',
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 8,
+    marginBottom: 8,
     minHeight: 44,
     ...noFakeBold,
     ...headingClipFix,
   },
   stageWrap: {
-    flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
+    paddingTop: 4,
     width: '100%',
     position: 'relative',
     zIndex: 1,
@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
   nextWrap: {
     width: '100%',
     alignItems: 'flex-end',
+    marginTop: 16,
     zIndex: 3,
   },
   bluePill: {

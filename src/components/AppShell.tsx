@@ -54,14 +54,11 @@ function AppShellWeb({ children }: Props) {
     );
   }
 
-  const preferTablet = windowWidth >= 900;
-  const maxFrameWidth = preferTablet
-    ? BREAKPOINTS.tabletMax
-    : BREAKPOINTS.phoneMax;
-  const frameWidth = Math.min(windowWidth - 32, maxFrameWidth);
+  // Phone width on web — a tablet frame stretches Home into empty space.
+  const frameWidth = Math.min(windowWidth - 32, BREAKPOINTS.phoneMax);
   const frameHeight = Math.min(
     windowHeight - 32,
-    preferTablet ? windowHeight - 48 : Math.round(frameWidth * (19.5 / 9))
+    Math.round(frameWidth * (19.5 / 9))
   );
 
   const onFrameLayout = (e: LayoutChangeEvent) => {
@@ -85,7 +82,7 @@ function AppShellWeb({ children }: Props) {
             width: frameWidth,
             height: Math.max(frameHeight, 640),
             maxHeight: windowHeight - 24,
-            borderRadius: preferTablet ? 28 : 60,
+            borderRadius: 60,
           },
         ]}
         onLayout={onFrameLayout}

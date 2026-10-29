@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MoodWhySheet } from '../components/MoodWhySheet';
 import { RecapPills } from '../components/RecapPills';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -28,7 +28,8 @@ import {
 } from '../data/onboardingOptions';
 import { BASE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
-import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
+import { BREAKPOINTS } from '../layout/LayoutContext';
+import { accents, colors, contentTopGap, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 import { colorsForRecapSections } from '../utils/optionColors';
 import { uiLabel } from '../utils/labels';
 
@@ -50,6 +51,7 @@ export function HomeScreen({ navigation }: Props) {
   const { answers } = useOnboarding();
   const { alarms } = useAlarms();
   const { today, saveCheckIn } = useMoodCheckIn();
+  const insets = useSafeAreaInsets();
   const [sheetMood, setSheetMood] = useState<Mood | null>(null);
 
   const greeting = greetingForHour(new Date().getHours());
@@ -90,7 +92,10 @@ export function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: contentTopGap(insets.top, spacing.xs) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Pressable
@@ -239,8 +244,10 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.md + spacing.webTop,
-    paddingBottom: 48,
+    paddingBottom: 32,
+    width: '100%',
+    maxWidth: BREAKPOINTS.phoneMax,
+    alignSelf: 'center',
   },
   menuBtn: {
     width: 40,
@@ -257,7 +264,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     color: colors.text,
-    marginBottom: 32,
+    marginBottom: 20,
     ...noFakeBold,
     ...headingClipFix,
   },
@@ -277,6 +284,7 @@ const styles = StyleSheet.create({
   mood: {
     flex: 1,
     aspectRatio: 1,
+    maxWidth: 96,
     borderRadius: 18,
     padding: 8,
     justifyContent: 'flex-end',
@@ -295,8 +303,8 @@ const styles = StyleSheet.create({
   },
   moreRow: {
     alignItems: 'flex-end',
-    marginTop: 12,
-    marginBottom: 28,
+    marginTop: 8,
+    marginBottom: 16,
   },
   block: {
     borderWidth: 1.5,

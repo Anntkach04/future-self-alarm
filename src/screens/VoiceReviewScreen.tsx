@@ -2,18 +2,19 @@ import { Audio } from 'expo-av';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton } from '../components/BackButton';
 import { BubbleEnter } from '../components/BubbleEnter';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, noFakeBold, noFakeLight, radii, spacing } from '../theme';
+import { colors, contentTopGap, fonts, noFakeBold, noFakeLight, radii, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceReview'>;
 
 export function VoiceReviewScreen({ navigation }: Props) {
   const { voice } = useOnboarding();
+  const insets = useSafeAreaInsets();
   const [playing, setPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
@@ -46,7 +47,10 @@ export function VoiceReviewScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.safe, { paddingTop: contentTopGap(insets.top) }]}
+      edges={['top', 'bottom', 'left', 'right']}
+    >
       <BackButton />
       <BubbleEnter delay={40} fromY={14} style={styles.content}>
         <Text style={styles.kicker}>Review</Text>

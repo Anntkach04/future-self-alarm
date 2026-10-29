@@ -1,9 +1,9 @@
 import { ReactNode } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BubbleEnter } from './BubbleEnter';
-import { useLayout } from '../layout/LayoutContext';
-import { colors, spacing } from '../theme';
+import { BREAKPOINTS, useLayout } from '../layout/LayoutContext';
+import { colors, contentTopGap } from '../theme';
 
 type Props = {
   children: ReactNode;
@@ -15,6 +15,7 @@ type Props = {
 
 export function Screen({ children, style, edges, static: noAnim }: Props) {
   const layout = useLayout();
+  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView
@@ -26,8 +27,8 @@ export function Screen({ children, style, edges, static: noAnim }: Props) {
           styles.column,
           {
             paddingHorizontal: layout.horizontalPadding,
-            paddingTop: spacing.webTop,
-            maxWidth: layout.contentMaxWidth,
+            paddingTop: contentTopGap(insets.top),
+            maxWidth: BREAKPOINTS.phoneMax,
             alignSelf: 'center',
             width: '100%',
             overflow: 'visible',

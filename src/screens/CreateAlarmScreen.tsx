@@ -90,7 +90,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         return;
       }
       markOnboardingComplete();
-      navigation.replace('Home');
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save alarm');
     } finally {

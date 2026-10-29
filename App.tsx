@@ -16,9 +16,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AlarmWakeBanner } from './src/components/AlarmWakeBanner';
 import { AppShell } from './src/components/AppShell';
 import { WaitingView } from './src/components/WaitingView';
-import { AlarmsProvider } from './src/context/AlarmsContext';
+import { AlarmsProvider, useAlarms } from './src/context/AlarmsContext';
 import { MoodCheckInProvider } from './src/context/MoodCheckInContext';
-import { OnboardingProvider } from './src/context/OnboardingContext';
+import { OnboardingProvider, useOnboarding } from './src/context/OnboardingContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { initAlarmNotifications } from './src/services/alarmScheduler';
 import { lockWebViewport } from './src/utils/lockWebViewport';
@@ -39,23 +39,33 @@ export default function App() {
     return lockWebViewport();
   }, []);
 
-  if (!loaded) {
-    return <WaitingView />;
-  }
-
   return (
     <SafeAreaProvider>
       <OnboardingProvider>
         <AlarmsProvider>
           <MoodCheckInProvider>
-            <AppShell>
-              <StatusBar style="dark" />
-              <RootNavigator />
-              <AlarmWakeBanner />
-            </AppShell>
+            <AppGate fontsLoaded={loaded} />
           </MoodCheckInProvider>
         </AlarmsProvider>
       </OnboardingProvider>
     </SafeAreaProvider>
+  );
+}
+
+/** Fonts and saved session load together, then the app mounts once. */
+function AppGate({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const { ready: onboardingReady } = useOnboarding();
+  const { ready: alarmsReady } = useAlarms();
+
+  if (!fontsLoaded || !onboardingReady || !alarmsReady) {
+    return <WaitingView />;
+  }
+
+  return (
+    <AppShell>
+      <StatusBar style="dark" />
+      <RootNavigator />
+      <AlarmWakeBanner />
+    </AppShell>
   );
 }

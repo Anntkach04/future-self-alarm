@@ -46,7 +46,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
       navigation.replace('CreateAlarm');
       return;
     }
-    navigation.replace('Home');
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };
 
   return (
