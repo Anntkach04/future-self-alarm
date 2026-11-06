@@ -1,72 +1,246 @@
-import { Audio } from 'expo-av';
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+} from 'expo-audio';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KaraokeScript, type KaraokeWord } from '../components/KaraokeScript';
+import { LoadingLabel } from '../components/LoadingLabel';
 import { Screen } from '../components/Screen';
 import { RoundArrowButton } from '../components/RoundArrowButton';
-import { useAlarms } from '../context/AlarmsContext';
+import { TextArrowButton } from '../components/TextArrowButton';
+import { useAppSettings } from '../context/AppSettingsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { buildPreviewLine } from '../services/elevenlabs';
-import { colors, fonts, noFakeLight, radii, spacing } from '../theme';
+import { buildAlarmScript } from '../data/alarmScript';
+import { ensureGuestSession } from '../services/apiAuth';
+import { savePreviewAudio } from '../services/audioPreview';
+import { synthesizeSpeech } from '../services/elevenlabs';
+import { userFacingError } from '../services/userFacingError';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoicePreview'>;
 
+function playableUri(uri: string) {
+  if (
+    uri.startsWith('file://') ||
+    uri.startsWith('http') ||
+    uri.startsWith('blob:')
+  ) {
+    return uri;
+  }
+  return `file://${uri}`;
+}
+
+/** Even spacing when ElevenLabs alignment is missing — still looks like karaoke. */
+function estimateWords(text: string, durationSec: number): KaraokeWord[] {
+  const parts = text.split(/\s+/).filter(Boolean);
+  if (!parts.length) return [];
+  const dur = Math.max(durationSec, parts.length * 0.28);
+  const slot = dur / parts.length;
+  return parts.map((w, i) => ({
+    text: w,
+    start: i * slot,
+    end: (i + 1) * slot,
+  }));
+}
+
 export function VoicePreviewScreen({ navigation }: Props) {
-  const { answers, voice, markOnboardingComplete } = useOnboarding();
-  const { alarms } = useAlarms();
+  const { answers, voice, setPreview } = useOnboarding();
+  const { notificationsReady, alarmKitReady, appleUserId } = useAppSettings();
   const [playing, setPlaying] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const line = voice.previewText || buildPreviewLine(answers.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [words, setWords] = useState<KaraokeWord[] | null>(null);
+  const playerRef = useRef<AudioPlayer | null>(null);
+  const statusSubRef = useRef<{ remove: () => void } | null>(null);
+  const previewCacheRef = useRef<{
+    uri: string;
+    words: KaraokeWord[] | null;
+  } | null>(null);
+  const line =
+    voice.previewText ||
+    buildAlarmScript(answers.name, null, answers.morningHabits);
+
+  const detachPlayer = () => {
+    statusSubRef.current?.remove();
+    statusSubRef.current = null;
+    playerRef.current?.remove();
+    playerRef.current = null;
+  };
 
   useEffect(() => {
     return () => {
-      sound?.unloadAsync();
+      detachPlayer();
     };
-  }, [sound]);
+  }, []);
+
+  /** Prefetch TTS + word timings so karaoke is ready on first play. */
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!voice.voiceId) return;
+      try {
+        await ensureGuestSession();
+        const text =
+          voice.previewText ||
+          buildAlarmScript(answers.name, null, answers.morningHabits);
+        const tts = await synthesizeSpeech({
+          voiceId: voice.voiceId,
+          text,
+          withTimestamps: true,
+        });
+        if (cancelled) return;
+        const path = await savePreviewAudio(tts.base64);
+        const nextWords = Array.isArray(tts.words) && tts.words.length
+          ? (tts.words as KaraokeWord[])
+          : null;
+        setPreview(path, text);
+        setWords(nextWords);
+        previewCacheRef.current = { uri: path, words: nextWords };
+      } catch {
+        // Play will retry; keep screen quiet.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [voice.voiceId, voice.previewText, answers.name, answers.morningHabits, setPreview]);
+
+  const ensurePreviewUri = async (): Promise<{
+    uri: string;
+    words: KaraokeWord[] | null;
+  } | null> => {
+    if (previewCacheRef.current?.uri) {
+      return previewCacheRef.current;
+    }
+    if (!voice.voiceId) return null;
+    await ensureGuestSession();
+    const text =
+      voice.previewText ||
+      buildAlarmScript(answers.name, null, answers.morningHabits);
+    const tts = await synthesizeSpeech({
+      voiceId: voice.voiceId,
+      text,
+      withTimestamps: true,
+    });
+    const path = await savePreviewAudio(tts.base64);
+    setPreview(path, text);
+    const nextWords = Array.isArray(tts.words) && tts.words.length
+      ? (tts.words as KaraokeWord[])
+      : null;
+    setWords(nextWords);
+    previewCacheRef.current = { uri: path, words: nextWords };
+    return previewCacheRef.current;
+  };
 
   const play = async () => {
-    if (!voice.previewUri) return;
-    if (sound) await sound.unloadAsync();
-    const { sound: next } = await Audio.Sound.createAsync(
-      { uri: voice.previewUri },
-      { shouldPlay: true }
-    );
-    setSound(next);
-    setPlaying(true);
-    next.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded) return;
-      if (status.didJustFinish) setPlaying(false);
-    });
+    if (busy || playing) return;
+    setBusy(true);
+    setError(null);
+    setCurrentTime(0);
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: false,
+      });
+      const ready = await ensurePreviewUri();
+      if (!ready?.uri) {
+        setError('Preview audio is not ready yet. Try again in a moment.');
+        return;
+      }
+      detachPlayer();
+      // Fast status ticks so word highlight tracks speech (default is 500ms).
+      const player = createAudioPlayer(
+        { uri: playableUri(ready.uri) },
+        { updateInterval: 40 }
+      );
+      playerRef.current = player;
+      statusSubRef.current = player.addListener(
+        'playbackStatusUpdate',
+        (status) => {
+          const t = Number(status.currentTime) || 0;
+          setCurrentTime(t);
+          if (
+            (!ready.words || ready.words.length === 0) &&
+            status.duration > 0.5
+          ) {
+            const estimated = estimateWords(line, status.duration);
+            if (estimated.length) {
+              setWords(estimated);
+              previewCacheRef.current = {
+                uri: ready.uri,
+                words: estimated,
+              };
+            }
+          }
+          if (status.didJustFinish) {
+            setPlaying(false);
+            setCurrentTime(0);
+          }
+        }
+      );
+      player.play();
+      setPlaying(true);
+      if (ready.words?.length) setWords(ready.words);
+    } catch (e) {
+      setPlaying(false);
+      setCurrentTime(0);
+      setError(userFacingError(e, 'Could not play preview'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const continueNext = () => {
-    markOnboardingComplete();
-    if (alarms.length === 0) {
-      navigation.replace('CreateAlarm');
+    // Value first: the user has heard their voice — now ask them to save it.
+    if (!appleUserId) {
+      navigation.navigate('SignIn', { mode: 'save' });
       return;
     }
-    navigation.replace('Home');
+    if (!notificationsReady || !alarmKitReady) {
+      navigation.replace('AlarmPermission');
+      return;
+    }
+    navigation.replace('Paywall');
   };
 
   return (
     <Screen>
-      <View style={styles.content}>
-        <Text style={styles.kicker}>Voice ready</Text>
-        <Text style={styles.title}>This is you from the future</Text>
-        <ScrollView
-          style={styles.script}
-          contentContainerStyle={styles.scriptInner}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.body}>{line}</Text>
-        </ScrollView>
+      <View style={styles.stage}>
+        <View style={styles.centerBlock}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.heading}>Voice is ready</Text>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.subheading}>this is you from the future</Text>
+          <View style={styles.scriptWrap}>
+            <KaraokeScript
+              text={line}
+              words={words}
+              currentTime={currentTime}
+              active={playing}
+            />
+          </View>
 
-        <Pressable style={styles.playBtn} onPress={play}>
-          <Text style={styles.playText}>
-            {playing ? 'Playing…' : 'Play AI voice preview'}
-          </Text>
-        </Pressable>
+          {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
+
+          <View style={styles.playRow}>
+            {playing || busy ? (
+              <LoadingLabel
+                text={playing ? 'Playing' : 'Loading'}
+                style={styles.loading}
+              />
+            ) : (
+              <TextArrowButton
+                label="play your voice"
+                color={accents.gold}
+                onPress={() => void play()}
+                disabled={busy}
+              />
+            )}
+          </View>
+        </View>
       </View>
 
       <View style={styles.actions}>
@@ -74,7 +248,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
           onPress={() => navigation.replace('VoiceRecord')}
           style={styles.linkBtn}
         >
-          <Text style={styles.linkText}>re-record</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.linkText}>re-record</Text>
         </Pressable>
         <RoundArrowButton onPress={continueNext} color={colors.fab} />
       </View>
@@ -83,63 +257,68 @@ export function VoicePreviewScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: {
+  stage: {
     flex: 1,
-    paddingTop: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
   },
-  kicker: {
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
+  centerBlock: {
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    gap: 18,
   },
-  title: {
+  heading: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.text,
+    opacity: 0.65,
+    textAlign: 'center',
+  },
+  subheading: {
     fontFamily: fonts.headingRegular,
-    fontWeight: '400',
-    fontSize: 32,
+    fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
-    marginBottom: spacing.md,
+    textAlign: 'center',
+    ...noFakeBold,
   },
-  script: {
-    flexGrow: 1,
-    flexShrink: 1,
-    marginBottom: spacing.md,
+  scriptWrap: {
+    width: '100%',
+    maxWidth: 320,
+    paddingHorizontal: 4,
   },
-  scriptInner: {
-    paddingBottom: spacing.sm,
-  },
-  body: {
+  error: {
     fontFamily: fonts.body,
-    fontSize: 18,
-    lineHeight: 28,
-    color: colors.text,
+    fontSize: 14,
+    color: '#C0392B',
+    textAlign: 'center',
   },
-  playBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.inputBg,
-    borderRadius: radii.input,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 14,
+  playRow: {
+    marginTop: 4,
+    alignItems: 'center',
   },
-  playText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 16,
+  loading: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
     color: colors.text,
-    ...noFakeLight,
+    textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: spacing.md,
+    paddingTop: spacing.inset,
   },
   linkBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   linkText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 15,
-    color: colors.textMuted,
-    textDecorationLine: 'underline',
-    ...noFakeLight,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
   },
 });

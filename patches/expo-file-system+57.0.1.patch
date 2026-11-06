@@ -1,0 +1,22 @@
+diff --git a/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift b/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
+index 1111111..2222222 100644
+--- a/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
++++ b/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
+@@ -59,6 +59,12 @@ internal func getResourceValues(from directory: URL?, forKeys: Set<URLResourceKe
+   }
+ }
+ 
+ internal func ensurePathPermission(_ appContext: AppContext?, path: String, flag: EXFileSystemPermissionFlags) throws {
++  // Custom notification / wake sounds must live in the app container's
++  // Library/Sounds. Expo's default sandbox only allows Documents + Caches.
++  let standardized = (path as NSString).standardizingPath
++  if standardized.contains("/Library/Sounds") {
++    return
++  }
+   guard let fileSystemManager = appContext?.fileSystem else {
+     throw Exceptions.PermissionsModuleNotFound()
+   }
+   guard fileSystemManager.getPathPermissions(path).contains(flag) else {
+     throw flag == .read ? FileNotReadableException(path) : FileNotWritableException(path)
+   }
+ }

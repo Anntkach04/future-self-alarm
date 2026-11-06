@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { brightPalette, mutedPalette } from '../theme';
 
 type Props = {
   active: boolean;
-  metering: number;
+  /** Kept for API compatibility; animation no longer depends on every meter tick. */
+  metering?: number;
   hearing?: boolean;
 };
 
@@ -23,42 +24,74 @@ const WAVE_COLORS = [
   brightPalette[5],
 ];
 
-export function LiveWaveform({ active, metering, hearing = false }: Props) {
-  const [tick, setTick] = useState(0);
+/**
+ * Lightweight waveform — Animated only, no setState every frame.
+ * (React state + metering updates was freezing the dictaphone UI.)
+ */
+export function LiveWaveform({ active, hearing = false }: Props) {
+  const phases = useRef(
+    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0))
+  ).current;
 
   useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setTick((t) => t + 1), 90);
-    return () => clearInterval(id);
-  }, [active]);
+    const animations = phases.map((phase, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(phase, {
+            toValue: 1,
+            duration: 380 + i * 35,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: false,
+          }),
+          Animated.timing(phase, {
+            toValue: 0,
+            duration: 380 + i * 35,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: false,
+          }),
+        ])
+      )
+    );
 
-  const heights = useMemo(() => {
-    const fromMeter = active ? Math.min(1, Math.max(0, (metering + 48) / 42)) : 0;
-    const energy = active ? Math.max(fromMeter, hearing ? 0.55 : 0.18) : 0.12;
+    if (active) {
+      animations.forEach((anim) => anim.start());
+    } else {
+      animations.forEach((anim) => anim.stop());
+      phases.forEach((phase) => phase.setValue(0.15));
+    }
 
-    return Array.from({ length: BAR_COUNT }, (_, i) => {
-      const wave = Math.sin((i * 0.72 + tick * 0.38) * 1.15) * 0.5 + 0.5;
-      const bounce = Math.sin((tick + i * 3) * 0.55) * 0.25 + 0.75;
-      const quiet = 14 + i % 4;
-      return Math.max(quiet, 24 + 62 * energy * wave * bounce);
-    });
-  }, [active, hearing, metering, tick]);
+    return () => {
+      animations.forEach((anim) => anim.stop());
+    };
+  }, [active, phases]);
+
+  const energy = active ? (hearing ? 1 : 0.55) : 0.2;
 
   return (
-    <View style={styles.row} accessibilityRole="image" accessibilityLabel="Voice waveform">
-      {heights.map((h, i) => (
-        <View
-          key={i}
-          style={[
-            styles.bar,
-            {
-              height: h,
-              backgroundColor: WAVE_COLORS[i % WAVE_COLORS.length],
-              opacity: active ? 1 : 0.45,
-            },
-          ]}
-        />
-      ))}
+    <View
+      style={styles.row}
+      accessibilityRole="image"
+      accessibilityLabel="Voice waveform"
+    >
+      {phases.map((phase, i) => {
+        const height = phase.interpolate({
+          inputRange: [0, 1],
+          outputRange: [12 + (i % 3) * 2, 18 + 58 * energy],
+        });
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.bar,
+              {
+                height,
+                backgroundColor: WAVE_COLORS[i % WAVE_COLORS.length],
+                opacity: active ? 1 : 0.45,
+              },
+            ]}
+          />
+        );
+      })}
     </View>
   );
 }

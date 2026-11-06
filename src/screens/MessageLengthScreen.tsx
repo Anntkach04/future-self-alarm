@@ -17,7 +17,7 @@ export function MessageLengthScreen({ navigation }: Props) {
       selected={answers.messageLength ? [answers.messageLength] : []}
       onToggle={setMessageLength}
       allowAdd={false}
-      onSubmit={() => navigation.navigate('WakeUpTime')}
+      onSubmit={() => navigation.navigate('VoiceRecord')}
     />
   );
 }

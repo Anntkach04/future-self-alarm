@@ -8,7 +8,6 @@ import { BubbleEnter } from '../components/BubbleEnter';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { ensureNotificationPermissions } from '../services/alarmScheduler';
 import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeUpTime'>;
@@ -20,14 +19,16 @@ export function WakeUpTimeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.page}>
         <View style={styles.header}>
-          <BackButton style={styles.back} />
+          <BubbleEnter delay={0} fromY={10}>
+            <BackButton style={styles.back} />
+          </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
-            <Text style={styles.question}>
-              {"What time should\nFuture You wake\nyou up?"}
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.question}>
+              {"What time should\nFuture You wake you up?"}
             </Text>
           </BubbleEnter>
           <BubbleEnter delay={50} fromY={12}>
-            <Text style={styles.subtitle}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.subtitle}>
               Choose when you’d like to hear your morning message.
             </Text>
           </BubbleEnter>
@@ -48,13 +49,10 @@ export function WakeUpTimeScreen({ navigation }: Props) {
           <BubbleEnter delay={90} fromY={8}>
             <AlarmDayPicker days={answers.wakeDays} onChange={setWakeDays} />
           </BubbleEnter>
-          <Text style={styles.helper}>You can change this anytime.</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.helper}>You can change this anytime.</Text>
           <View style={styles.nextRow}>
             <RoundArrowButton
-              onPress={() => {
-                void ensureNotificationPermissions();
-                navigation.navigate('VoiceRecord');
-              }}
+              onPress={() => navigation.navigate('VoiceRecord')}
               color={colors.fab}
             />
           </View>
@@ -92,7 +90,7 @@ const styles = StyleSheet.create({
     ...headingClipFix,
   },
   subtitle: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 22,
     color: colors.text,
@@ -110,7 +108,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   helper: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,

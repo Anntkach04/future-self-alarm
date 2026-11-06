@@ -12,12 +12,11 @@ export function VoiceStyleScreen({ navigation }: Props) {
   return (
     <ChipQuestionScreen
       question={"What tone should\nmornings have?"}
-      subtitle="This shapes how Future You speaks - pick once."
       options={VOICE_STYLE_OPTIONS}
       selected={answers.voiceStyle ? [answers.voiceStyle] : []}
       onToggle={setVoiceStyle}
       allowAdd={false}
-      onSubmit={() => navigation.navigate('WakeUpTime')}
+      onSubmit={() => navigation.navigate('VoiceRecord')}
     />
   );
 }

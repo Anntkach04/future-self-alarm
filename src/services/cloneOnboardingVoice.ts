@@ -1,5 +1,6 @@
 import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
 import { buildAlarmScript } from '../data/alarmScript';
+import { ensureGuestSession } from './apiAuth';
 import { savePreviewAudio } from './audioPreview';
 import {
   checkVoiceApiHealth,
@@ -36,7 +37,7 @@ async function previewWithPremadeVoice(
   voiceId: string,
   answers: OnboardingAnswers
 ): Promise<Omit<CloneResult, 'voiceId'>> {
-  const text = buildAlarmScript(answers.name);
+  const text = buildAlarmScript(answers.name, null, answers.morningHabits);
   const tts = await synthesizeSpeech({ voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return { previewPath, previewText: text, isDemo: true };
@@ -49,8 +50,15 @@ export async function cloneOnboardingVoice(params: {
   const health: VoiceApiHealth = await checkVoiceApiHealth();
   if (!health.hasKey && !health.elevenLabs) {
     throw new Error(
-      'Voice server is offline. On the Mac run npm run server in the project folder.'
+      'Cannot reach the voice server. Check Wi-Fi, then try again.'
     );
+  }
+
+  // Clone runs before Sign in with Apple — mint a guest JWT if needed.
+  try {
+    await ensureGuestSession();
+  } catch (error) {
+    console.warn('Guest session failed', error);
   }
 
   // TEMPORARY — skip Instant Voice Cloning; TTS only with a premade EL voice.
@@ -82,12 +90,22 @@ export async function cloneOnboardingVoice(params: {
     return {
       voiceId: clone.voiceId,
       previewPath,
-      previewText: alarm.text || buildAlarmScript(params.answers.name),
+      previewText:
+        alarm.text ||
+        buildAlarmScript(
+          params.answers.name,
+          null,
+          params.answers.morningHabits
+        ),
       isDemo: false,
     };
   }
 
-  const text = buildAlarmScript(params.answers.name);
+  const text = buildAlarmScript(
+    params.answers.name,
+    null,
+    params.answers.morningHabits
+  );
   const tts = await synthesizeSpeech({ voiceId: clone.voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return {

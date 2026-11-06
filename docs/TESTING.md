@@ -65,7 +65,7 @@ npx expo start --dev-client
 | Voice record → mic tap | **Microphone** + **Speech recognition** |
 | Save alarm | Notifications again if denied |
 
-Configured in `app.json` (expo-av, expo-notifications, expo-speech-recognition).
+Configured in `app.json` (expo-audio, expo-notifications, expo-speech-recognition). Min iOS **26.1**.
 
 ## Data & dev tools
 
@@ -82,3 +82,14 @@ To remove reset later, tell Cursor: «Прибери dev reset онбордин�
 - [ ] Mood advice varies (not the same fallback text)
 - [ ] Voice record highlights words when you read the script
 - [ ] Alarm saves and notification is scheduled
+
+## Alarm engine (device — before release)
+
+See **`docs/ALARM_ENGINE.md`**. After adding `assets/sounds/fs_fallback.caf`, rebuild native iOS.
+
+- [ ] Lock screen: custom voice CAF plays (≤~28s), not only default beep
+- [ ] Open app from alert: full MP3 can play; **I'm up** stops further rings
+- [ ] Force-quit → wake → wait ~10 min → second ring without opening app
+- [ ] I'm up → no more rings that morning
+- [ ] Missing AI CAF → bundled fallback chime still plays
+- [ ] Build requires iOS 26.1+ (no install on ≤25)

@@ -1,27 +1,43 @@
+import { Platform } from 'react-native';
 import type { OnboardingAnswers } from '../context/OnboardingContext';
+import { installAlarmSystemSound } from './alarmSoundFile';
 import { saveAlarmAudio } from './audioPreview';
-import {
-  buildPreviewLine,
-  generateMorningAlarm,
-  synthesizeSpeech,
-} from './elevenlabs';
+import { generateMorningAlarm } from './elevenlabs';
 
 export async function buildAlarmAudioForId(params: {
   alarmId: string;
   voiceId: string;
   answers: OnboardingAnswers;
-  useOpenAi: boolean;
+  /** Today's mood — shapes tomorrow morning only. */
+  mood?: { label: string; note?: string } | null;
+  voiceLevel?: number;
+  bedLevel?: number;
 }) {
-  const { alarmId, voiceId, answers, useOpenAi } = params;
+  const { alarmId, voiceId, answers, mood, voiceLevel, bedLevel } = params;
+  // Server owns wake script + expressive delivery (don't pin stale client text).
+  const generated = await generateMorningAlarm({
+    voiceId,
+    answers,
+    mood: mood ?? undefined,
+    voiceLevel,
+    bedLevel,
+  });
+  const uri = await saveAlarmAudio(generated.base64, alarmId);
+  const text = generated.text;
 
-  if (useOpenAi) {
-    const alarm = await generateMorningAlarm({ voiceId, answers });
-    const uri = await saveAlarmAudio(alarm.base64, alarmId);
-    return { uri, text: alarm.text };
+  let systemSound: Awaited<ReturnType<typeof installAlarmSystemSound>> | null =
+    null;
+  try {
+    systemSound = await installAlarmSystemSound({ alarmId, mp3Uri: uri });
+  } catch (error) {
+    // On iOS, without CAF the phone only plays a generic alarm tone.
+    if (Platform.OS === 'ios') {
+      throw error instanceof Error
+        ? error
+        : new Error('Could not build wake voice sound');
+    }
+    console.warn('System wake sound failed', error);
   }
 
-  const text = buildPreviewLine(answers.name);
-  const tts = await synthesizeSpeech({ voiceId, text });
-  const uri = await saveAlarmAudio(tts.base64, alarmId);
-  return { uri, text };
+  return { uri, text, systemSound };
 }

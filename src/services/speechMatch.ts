@@ -1,4 +1,4 @@
-const NUMBER_WORDS: Record<string, string> = {
+const DIGIT_TO_WORD: Record<string, string> = {
   '1': 'one',
   '2': 'two',
   '3': 'three',
@@ -11,6 +11,55 @@ const NUMBER_WORDS: Record<string, string> = {
   '10': 'ten',
 };
 
+/** STT often mis-hears number words — map common mistakes to the script words. */
+const HOMOPHONES: Record<string, string> = {
+  to: 'two',
+  too: 'two',
+  tu: 'two',
+  won: 'one',
+  wan: 'one',
+  for: 'four',
+  fore: 'four',
+  forth: 'four',
+  floor: 'four',
+  flor: 'four',
+  fall: 'four',
+  full: 'four',
+  foul: 'four',
+  poor: 'four',
+  or: 'four',
+  ate: 'eight',
+  sex: 'six',
+  siks: 'six',
+  sick: 'six',
+  sics: 'six',
+  then: 'ten',
+  tin: 'ten',
+  den: 'ten',
+  teen: 'ten',
+  nien: 'nine',
+  fine: 'five',
+  // seven — Apple STT frequently mangles this
+  sever: 'seven',
+  sven: 'seven',
+  heaven: 'seven',
+  sebben: 'seven',
+  sevn: 'seven',
+  sev: 'seven',
+  several: 'seven',
+  second: 'seven',
+  settle: 'seven',
+  // common conversational slips
+  its: 'its',
+  it: 'it',
+  yeah: 'yes',
+  yep: 'yes',
+  gonna: 'going',
+  wanna: 'want',
+  kinda: 'kind',
+};
+
+/** Filler only — never strip content words that appear in the script (and/up/keep). */
 const FILLER_WORDS = new Set([
   'um',
   'uh',
@@ -18,23 +67,76 @@ const FILLER_WORDS = new Set([
   'umm',
   'er',
   'erm',
+  'ah',
+  'ahh',
+  'hmm',
+  'hm',
   'like',
   'blah',
   'blab',
-  'la',
-  'da',
-  'na',
 ]);
+
+function expandGluedDigits(token: string): string[] {
+  // "12345" / "67" → separate digit words; keep "10" as ten
+  if (/^\d+$/.test(token)) {
+    if (DIGIT_TO_WORD[token]) return [DIGIT_TO_WORD[token]];
+    return token.split('').flatMap((d) =>
+      DIGIT_TO_WORD[d] ? [DIGIT_TO_WORD[d]] : []
+    );
+  }
+  return [token];
+}
+
+function canonicalize(word: string) {
+  if (DIGIT_TO_WORD[word]) return DIGIT_TO_WORD[word];
+  return HOMOPHONES[word] || word;
+}
 
 export function tokenize(text: string) {
   return text
     .toLowerCase()
     .replace(/[—–-]/g, ' ')
+    .replace(/i'm/g, 'im')
+    .replace(/i am/g, 'im')
+    .replace(/it's/g, 'its')
+    .replace(/that's/g, 'thats')
+    .replace(/you're/g, 'youre')
+    .replace(/don't/g, 'dont')
+    .replace(/won't/g, 'wont')
+    .replace(/can't/g, 'cant')
     .split(/\s+/)
     .map((word) => word.replace(/[^a-z0-9']/g, ''))
     .filter(Boolean)
     .filter((word) => !FILLER_WORDS.has(word))
-    .map((word) => NUMBER_WORDS[word] || word.replace(/'/g, ''));
+    .flatMap((word) => expandGluedDigits(word.replace(/'/g, '')))
+    .map((word) => canonicalize(word));
+}
+
+/** Visible words for karaoke (keeps fillers so the line still wraps). */
+export function displayWords(text: string) {
+  return text.split(/\s+/).filter((word) => !/^[—–-]+$/.test(word));
+}
+
+/**
+ * Map tokenized spoken count → display-word index so highlight + wrap stay in sync.
+ */
+export function spokenDisplayCount(text: string, spokenTokenCount: number) {
+  const words = displayWords(text);
+  if (spokenTokenCount <= 0) return 0;
+  if (!words.length) return 0;
+
+  let tokensSeen = 0;
+  for (let i = 0; i < words.length; i += 1) {
+    const tokens = tokenize(words[i]!);
+    if (tokens.length === 0) {
+      // Filler display word — count it once we've passed prior content.
+      if (tokensSeen > 0 && tokensSeen <= spokenTokenCount) continue;
+      continue;
+    }
+    tokensSeen += tokens.length;
+    if (tokensSeen >= spokenTokenCount) return i + 1;
+  }
+  return words.length;
 }
 
 function levenshtein(a: string, b: string) {
@@ -56,32 +158,86 @@ function levenshtein(a: string, b: string) {
 }
 
 export function wordsMatch(heard: string, expected: string) {
-  const a = NUMBER_WORDS[heard] || heard;
-  const b = NUMBER_WORDS[expected] || expected;
+  const a = canonicalize(heard);
+  const b = canonicalize(expected);
   if (a === b) return true;
-  if (a.length >= 3 && b.length >= 3 && levenshtein(a, b) <= 1) return true;
-  if (a.length >= 5 && b.length >= 5 && levenshtein(a, b) <= 2) return true;
-  return false;
+  if (!a || !b) return false;
+  // Short number words: allow fuzzy early (fo→four, sev→seven)
+  if (b.length <= 5 && a.length >= 2 && b.startsWith(a)) return true;
+  if (a.length >= 2 && b.startsWith(a)) return true;
+  if (b.length >= 2 && a.startsWith(b)) return true;
+  if (a.length <= 1 || b.length <= 1) return false;
+  const maxLen = Math.max(a.length, b.length);
+  const dist = levenshtein(a, b);
+  if (maxLen <= 3) return dist <= 1;
+  if (maxLen <= 6) return dist <= 2;
+  return dist <= Math.ceil(maxLen * 0.4);
 }
 
+/**
+ * How much of the expected line appears in `heard`.
+ * Only the recent window is used so prior karaoke lines can't poison matching.
+ */
 export function matchedPrefixCount(expectedLine: string, heard: string) {
   const expected = tokenize(expectedLine);
-  const got = tokenize(heard);
-  let i = 0;
-  for (const word of got) {
-    if (i >= expected.length) break;
-    if (wordsMatch(word, expected[i])) {
-      i += 1;
-    } else if (
-      i + 1 < expected.length &&
-      wordsMatch(word, expected[i + 1])
-    ) {
-      i += 2;
-    }
+  const allGot = tokenize(heard);
+  if (!expected.length || !allGot.length) return 0;
+
+  const window = Math.max(expected.length + 12, 24);
+  const got = allGot.slice(-window);
+
+  let best = 0;
+  const starts: number[] = [];
+  for (let start = 0; start < got.length; start += 1) {
+    if (wordsMatch(got[start]!, expected[0]!)) starts.push(start);
   }
-  return i;
+  // Newest candidate starts first.
+  const limited = (starts.length > 14 ? starts.slice(-14) : starts).reverse();
+
+  for (const start of limited) {
+    let i = 0;
+    let miss = 0;
+    for (let g = start; g < got.length && i < expected.length; g += 1) {
+      const word = got[g]!;
+      if (wordsMatch(word, expected[i]!)) {
+        i += 1;
+        miss = 0;
+        continue;
+      }
+      if (i + 1 < expected.length && wordsMatch(word, expected[i + 1]!)) {
+        i += 2;
+        miss = 0;
+        continue;
+      }
+      miss += 1;
+      if (miss >= 5) break;
+    }
+    if (i > best) best = i;
+    if (best >= expected.length) break;
+  }
+
+  return best;
 }
 
 export function lineWordCount(line: string) {
   return tokenize(line).length;
+}
+
+/**
+ * Near-complete only — do NOT fire after the first word.
+ * User must finish (or nearly finish) the line before auto-advance.
+ */
+export function isLineHeardEnough(spokenCount: number, wordCount: number) {
+  if (wordCount <= 0 || spokenCount <= 0) return false;
+  if (spokenCount >= wordCount) return true;
+  if (wordCount <= 3) return spokenCount >= wordCount;
+  // Allow missing the last word (STT often drops the tail).
+  return spokenCount >= wordCount - 1;
+}
+
+/** True when karaoke has lit every visible word (same signal the user sees). */
+export function isLineFullyLit(text: string, spokenTokenCount: number) {
+  const words = displayWords(text);
+  if (!words.length || spokenTokenCount <= 0) return false;
+  return spokenDisplayCount(text, spokenTokenCount) >= words.length;
 }

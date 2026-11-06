@@ -125,8 +125,10 @@ export const spacing = {
   lg: 24,
   xl: 32,
   xxl: 48,
-  /** Minimum margin on every screen edge */
-  inset: 40,
+  /** Side margin on every screen (one value app-wide). */
+  inset: 28,
+  /** Gap between the safe area and the first element (back / menu). */
+  screenTop: 12,
   /** Extra top gap on mobile web — Safari chrome reports 0 safe-area. */
   webTop: Platform.OS === 'web' ? 20 : 0,
 };

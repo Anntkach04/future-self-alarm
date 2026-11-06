@@ -11,14 +11,12 @@ export function HardMorningsScreen({ navigation }: Props) {
 
   return (
     <ChipQuestionScreen
-      question={"What do you need\nto hear on hard\nmornings?"}
-      subtitle="Choose the words that would actually help you get out of bed."
-      helperText="We'll weave this into your mornings."
+      question={"What do you need to\nhear on hard mornings?"}
       options={HARD_MORNING_OPTIONS}
       selected={answers.hardMornings}
       onToggle={toggleHardMorning}
       onAddCustom={addHardMorning}
-      addPlaceholder="Write your personal morning mantra..."
+      addPlaceholder="Write your personal morning mantra…"
       onSubmit={() => navigation.navigate('VoiceStyle')}
     />
   );

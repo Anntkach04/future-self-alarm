@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  InputAccessoryView,
+  Keyboard,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,19 +15,9 @@ import {
 import { playPickerTick } from '../services/pickerTick';
 import { accents, colors, fonts, inkStroke, noFakeBold } from '../theme';
 
-const SETTLE_MS = 120;
-
-type WheelProps = {
-  values: number[];
-  value: number;
-  onChange: (value: number) => void;
-  accessibilityLabel: string;
-  itemH: number;
-  pad: number;
-  visible: number;
-  scrollEnabled: boolean;
-  onCenterPress?: () => void;
-};
+const TIME_ACCESSORY_ID = 'future-self-time-input';
+/** Many copies so edges feel endless; we recenter to the middle band. */
+const LOOP_COPIES = 20;
 
 function clampPart(n: number, max: number) {
   if (Number.isNaN(n)) return 0;
@@ -72,230 +64,231 @@ export function parseUnifiedTime(
   };
 }
 
+function formatTime(hour: number, minute: number) {
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function mod(n: number, m: number) {
+  return ((n % m) + m) % m;
+}
+
+type WheelProps = {
+  values: number[];
+  value: number;
+  onChange: (value: number) => void;
+  onTap?: () => void;
+  accessibilityLabel: string;
+  itemH: number;
+  pad: number;
+  visible: number;
+  scrollEnabled: boolean;
+};
+
+/**
+ * Infinite wheel: … 58, 59, 00, 01 … / … 22, 23, 00, 01 …
+ * No top/bottom stop — list is repeated and recentered to the middle copy.
+ */
 function WheelColumn({
   values,
   value,
   onChange,
+  onTap,
   accessibilityLabel,
   itemH,
   pad,
   visible,
   scrollEnabled,
-  onCenterPress,
 }: WheelProps) {
-  const scrollRef = useRef<ScrollView>(null);
-  const index = Math.max(0, values.indexOf(value));
-  const [offsetY, setOffsetY] = useState(index * itemH);
-  const offsetYRef = useRef(index * itemH);
-  const dragging = useRef(false);
-  const didDrag = useRef(false);
-  const dragStartY = useRef(0);
-  const programmatic = useRef(false);
+  const baseLen = values.length;
+  const midBase = Math.floor(LOOP_COPIES / 2) * baseLen;
+  const looped = useMemo(
+    () =>
+      Array.from({ length: baseLen * LOOP_COPIES }, (_, i) => values[i % baseLen]!),
+    [values, baseLen]
+  );
+
+  const midIndexFor = (v: number) => {
+    const vi = Math.max(0, values.indexOf(v));
+    return midBase + vi;
+  };
+
+  const scrollRef = useRef<any>(null);
+  const scrollY = useRef(new Animated.Value(midIndexFor(value) * itemH)).current;
+  const offsetRef = useRef(midIndexFor(value) * itemH);
+  const lastTickValue = useRef(value);
+  const interacting = useRef(false);
+  const ignorePropUntil = useRef(0);
   const didInit = useRef(false);
-  const lastTickIndex = useRef(index);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const programmaticTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settling = useRef(false);
+  const dragged = useRef(false);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const [ready, setReady] = useState(false);
 
-  const clearSettle = () => {
-    if (settleTimer.current) {
-      clearTimeout(settleTimer.current);
-      settleTimer.current = null;
+  const indexFromY = (y: number) =>
+    Math.max(0, Math.min(looped.length - 1, Math.round(y / itemH)));
+
+  const jumpTo = (y: number, animated: boolean) => {
+    offsetRef.current = y;
+    scrollY.setValue(y);
+    scrollRef.current?.scrollTo({ y, animated });
+  };
+
+  /** If scroll drifts near either end of the repeated list, snap to middle copy. */
+  const recenterIfNearEdge = (y: number) => {
+    const idx = indexFromY(y);
+    const edge = baseLen * 2;
+    if (idx < edge || idx > looped.length - edge) {
+      const logical = mod(idx, baseLen);
+      const target = (midBase + logical) * itemH;
+      jumpTo(target, false);
+      return target;
     }
+    return y;
   };
 
-  const markProgrammatic = (animated: boolean) => {
-    programmatic.current = true;
-    if (programmaticTimer.current) clearTimeout(programmaticTimer.current);
-    programmaticTimer.current = setTimeout(
-      () => {
-        programmatic.current = false;
-      },
-      animated ? 320 : 0
-    );
+  const settle = (y: number) => {
+    if (settling.current) return;
+    settling.current = true;
+    const recentered = recenterIfNearEdge(y);
+    const rawIndex = indexFromY(recentered);
+    const logical = mod(rawIndex, baseLen);
+    const next = values[logical]!;
+    const target = (midBase + logical) * itemH;
+    lastTickValue.current = next;
+    interacting.current = false;
+    ignorePropUntil.current = Date.now() + 700;
+    jumpTo(target, Math.abs(recentered - target) > 0.5);
+    if (next !== valueRef.current) onChange(next);
+    requestAnimationFrame(() => {
+      settling.current = false;
+    });
   };
 
-  const snapToIndex = (rawIndex: number, animated: boolean) => {
-    const clamped = Math.max(0, Math.min(values.length - 1, rawIndex));
-    const target = clamped * itemH;
-    lastTickIndex.current = clamped;
-    if (Math.abs(offsetYRef.current - target) > 0.5) {
-      markProgrammatic(animated);
-      scrollRef.current?.scrollTo({ y: target, animated });
-    }
-    offsetYRef.current = target;
-    setOffsetY(target);
-    const next = values[clamped];
-    if (next !== value) onChange(next);
-  };
-
-  const settle = (y: number, animated: boolean) => {
-    snapToIndex(Math.round(y / itemH), animated);
+  const placeAtValue = (v: number, animated: boolean) => {
+    const target = midIndexFor(v) * itemH;
+    jumpTo(target, animated);
+    lastTickValue.current = v;
   };
 
   useEffect(() => {
-    const target = index * itemH;
     const id = requestAnimationFrame(() => {
       if (!didInit.current) {
         didInit.current = true;
-        scrollRef.current?.scrollTo({ y: target, animated: false });
-        offsetYRef.current = target;
-        setOffsetY(target);
-        lastTickIndex.current = index;
+        placeAtValue(value, false);
+        setReady(true);
         return;
       }
-      if (dragging.current || programmatic.current) return;
-      if (Math.abs(offsetYRef.current - target) <= 1) return;
-      markProgrammatic(true);
-      scrollRef.current?.scrollTo({ y: target, animated: true });
-      offsetYRef.current = target;
-      setOffsetY(target);
+      if (interacting.current || settling.current) return;
+      if (Date.now() < ignorePropUntil.current) return;
+      const target = midIndexFor(value) * itemH;
+      if (Math.abs(offsetRef.current - target) < 1) return;
+      placeAtValue(value, false);
     });
     return () => cancelAnimationFrame(id);
-  }, [index, itemH]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to value/itemH
+  }, [value, itemH]);
 
-  useEffect(
-    () => () => {
-      clearSettle();
-      if (programmaticTimer.current) clearTimeout(programmaticTimer.current);
-    },
-    []
+  const onScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: true,
+      listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const y = e.nativeEvent.contentOffset.y;
+        offsetRef.current = y;
+        const logical = mod(indexFromY(y), baseLen);
+        const v = values[logical]!;
+        if (v !== lastTickValue.current) {
+          lastTickValue.current = v;
+          playPickerTick();
+          // Push to parent while scrolling — waiting for settle left saves at 7:00.
+          if (v !== valueRef.current) onChange(v);
+        }
+      },
+    }
   );
 
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y;
-    offsetYRef.current = y;
-    setOffsetY(y);
-
-    const idx = Math.max(
-      0,
-      Math.min(values.length - 1, Math.round(y / itemH))
-    );
-    if (!programmatic.current && idx !== lastTickIndex.current) {
-      lastTickIndex.current = idx;
-      playPickerTick();
-    }
-
-    if (dragging.current && Math.abs(y - dragStartY.current) > 4) {
-      didDrag.current = true;
-    }
-
-    if (dragging.current) return;
-    if (Platform.OS !== 'web') return;
-    clearSettle();
-    settleTimer.current = setTimeout(() => {
-      settle(offsetYRef.current, true);
-    }, SETTLE_MS);
-  };
-
-  const onScrollBeginDrag = () => {
-    dragging.current = true;
-    didDrag.current = false;
-    dragStartY.current = offsetYRef.current;
-    clearSettle();
-  };
-
-  const onScrollEndDrag = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    dragging.current = false;
-    if (Platform.OS === 'web') {
-      clearSettle();
-      settleTimer.current = setTimeout(() => {
-        settle(offsetYRef.current, true);
-      }, SETTLE_MS);
-      return;
-    }
-    const y = e.nativeEvent.contentOffset.y;
-    const velocity = e.nativeEvent.velocity?.y ?? 0;
-    if (Math.abs(velocity) < 0.04) {
-      settle(y, true);
-    }
-  };
-
-  const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    dragging.current = false;
-    if (Platform.OS === 'web') return;
-    settle(e.nativeEvent.contentOffset.y, true);
-  };
-
-  const handleItemPress = (itemIndex: number) => {
-    if (didDrag.current) {
-      didDrag.current = false;
-      return;
-    }
-    const center = Math.round(offsetYRef.current / itemH);
-    if (itemIndex === center) {
-      onCenterPress?.();
-      return;
-    }
-    snapToIndex(itemIndex, true);
-  };
-
-  const center = offsetY / itemH;
   const wheelH = itemH * visible;
 
   return (
-    <View style={[styles.wheel, { height: wheelH, width: 88 }]}>
-      <ScrollView
+    <View
+      accessible
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="adjustable"
+      style={[styles.wheel, { height: wheelH, width: 88, opacity: ready ? 1 : 0 }]}
+    >
+      <Animated.ScrollView
         ref={scrollRef}
         scrollEnabled={scrollEnabled}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
         snapToInterval={itemH}
         snapToAlignment="start"
         decelerationRate="fast"
-        disableIntervalMomentum={false}
+        disableIntervalMomentum
         scrollEventThrottle={16}
+        nestedScrollEnabled
+        // Pad centers the selection band; loop copies + recenter mean you never hit a hard stop.
         contentContainerStyle={{ paddingVertical: pad }}
-        style={[
-          { height: wheelH },
-          Platform.OS === 'web'
-            ? (styles.wheelScrollWeb as object)
-            : null,
-        ]}
-        keyboardShouldPersistTaps="handled"
+        style={{ height: wheelH }}
+        onLayout={() => {
+          if (!didInit.current) {
+            placeAtValue(valueRef.current, false);
+            didInit.current = true;
+            setReady(true);
+          }
+        }}
         onScroll={onScroll}
-        onScrollBeginDrag={onScrollBeginDrag}
-        onScrollEndDrag={onScrollEndDrag}
-        onMomentumScrollEnd={onMomentumScrollEnd}
+        onScrollBeginDrag={() => {
+          dragged.current = true;
+          interacting.current = true;
+          ignorePropUntil.current = Date.now() + 5000;
+        }}
+        onScrollEndDrag={(e) => {
+          const velocity = Math.abs(e.nativeEvent.velocity?.y ?? 0);
+          if (velocity < 0.08) settle(e.nativeEvent.contentOffset.y);
+        }}
+        onMomentumScrollBegin={() => {
+          interacting.current = true;
+        }}
+        onMomentumScrollEnd={(e) => {
+          settle(e.nativeEvent.contentOffset.y);
+        }}
+        onTouchEnd={() => {
+          if (!dragged.current) onTap?.();
+          dragged.current = false;
+        }}
       >
-        {values.map((item, i) => {
-          const dist = Math.abs(i - center);
-          const near = Math.max(0, 1 - dist);
-          const falloff = Math.max(0, 1 - dist / 2.15);
-          const scale = 0.786 + 0.214 * near;
-          const opacity = 0.26 + 0.74 * falloff;
-          const label = String(item).padStart(2, '0');
+        {looped.map((item, i) => {
+          // Opacity only — scaling Animated.Text rasterizes soft/pixelated glyphs.
+          const inputRange = [
+            (i - 2) * itemH,
+            (i - 1) * itemH,
+            i * itemH,
+            (i + 1) * itemH,
+            (i + 2) * itemH,
+          ];
+          const opacity = scrollY.interpolate({
+            inputRange,
+            outputRange: [0.32, 0.55, 1, 0.55, 0.32],
+            extrapolate: 'clamp',
+          });
           return (
-            <Pressable
-              key={item}
-              delayPressIn={80}
-              onPress={() => handleItemPress(i)}
-              accessibilityRole="button"
-              accessibilityLabel={`${accessibilityLabel} ${label}`}
-              style={[
-                { height: itemH, alignItems: 'center', justifyContent: 'center' },
-                Platform.OS === 'web' ? (styles.itemSnapWeb as object) : null,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.itemText,
-                  {
-                    opacity,
-                    transform: [{ scale }],
-                  },
-                ]}
+            <View key={`${i}-${item}`} style={[styles.item, { height: itemH }]}>
+              <Animated.Text
+                allowFontScaling={false}
+                style={[styles.itemText, { opacity }]}
               >
-                {label}
-              </Text>
-            </Pressable>
+                {String(item).padStart(2, '0')}
+              </Animated.Text>
+            </View>
           );
         })}
-      </ScrollView>
+      </Animated.ScrollView>
       <View
         pointerEvents="none"
-        style={[
-          styles.selection,
-          { top: pad, height: itemH },
-        ]}
+        style={[styles.selection, { top: pad, height: itemH }]}
       />
     </View>
   );
@@ -305,11 +298,9 @@ type Props = {
   hour: number;
   minute: number;
   onChange: (hour: number, minute: number) => void;
-  /** Shorter wheel (3 rows) for screens that also show day picker. */
   compact?: boolean;
 };
 
-/** Dual wheel — scroll to pick, tap center to type HH:MM (or HHMM) at once. */
 export function AppleTimePicker({
   hour,
   minute,
@@ -317,94 +308,120 @@ export function AppleTimePicker({
   compact = false,
 }: Props) {
   const itemH = compact ? 40 : 44;
-  const visible = compact ? 3 : 5;
+  const visible = 5;
   const pad = ((visible - 1) / 2) * itemH;
   const wheelH = itemH * visible;
-
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
   const minutes = useMemo(() => Array.from({ length: 60 }, (_, i) => i), []);
+  // Live refs — wheel onChange must not use stale hour/minute closures
+  // (that bug forced every save back to the default 7:00).
+  const hourRef = useRef(hour);
+  const minuteRef = useRef(minute);
+  hourRef.current = hour;
+  minuteRef.current = minute;
 
-  const [editingAll, setEditingAll] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
-  const startUnifiedEdit = () => {
-    setDraft(
-      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-    );
-    setEditingAll(true);
+  const startEdit = () => {
+    setDraft(formatTime(hour, minute));
+    setEditing(true);
   };
 
-  const commitUnified = (raw: string) => {
+  const commitEdit = (raw: string) => {
     const next = parseUnifiedTime(raw, hour, minute);
     onChange(next.hour, next.minute);
-    setEditingAll(false);
+    setEditing(false);
     setDraft('');
-  };
-
-  const onDraftChange = (text: string) => {
-    const cleaned = text.replace(/[^\d:]/g, '').slice(0, 5);
-    setDraft(cleaned);
-    const digits = cleaned.replace(/\D/g, '');
-    if (
-      digits.length >= 4 ||
-      (cleaned.includes(':') && cleaned.split(':')[1]?.length === 2)
-    ) {
-      const next = parseUnifiedTime(cleaned, hour, minute);
-      onChange(next.hour, next.minute);
-    }
+    Keyboard.dismiss();
   };
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.row, { height: wheelH }]}>
-        <WheelColumn
-          values={hours}
-          value={hour}
-          itemH={itemH}
-          pad={pad}
-          visible={visible}
-          scrollEnabled={!editingAll}
-          accessibilityLabel="Hour"
-          onChange={(h) => onChange(h, minute)}
-          onCenterPress={startUnifiedEdit}
-        />
-        <Pressable onPress={startUnifiedEdit} accessibilityRole="button">
-          <Text style={styles.colon}>:</Text>
-        </Pressable>
-        <WheelColumn
-          values={minutes}
-          value={minute}
-          itemH={itemH}
-          pad={pad}
-          visible={visible}
-          scrollEnabled={!editingAll}
-          accessibilityLabel="Minutes"
-          onChange={(m) => onChange(hour, m)}
-          onCenterPress={startUnifiedEdit}
-        />
-        {editingAll ? (
-          <TextInput
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={TIME_ACCESSORY_ID}>
+          <View style={styles.accessory}>
+            <Pressable
+              onPress={() => commitEdit(draft || formatTime(hour, minute))}
+              hitSlop={12}
+              style={styles.accessoryBtn}
+            >
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.accessoryText}>Done</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
+
+      {editing ? (
+        <View style={[styles.editWrap, { height: wheelH }]}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => commitEdit(draft || formatTime(hour, minute))}
+          />
+          <TextInput maxFontSizeMultiplier={1.2}
             autoFocus
             value={draft}
-            onChangeText={onDraftChange}
-            onBlur={() => commitUnified(draft)}
-            onSubmitEditing={() => commitUnified(draft)}
-            keyboardType="numbers-and-punctuation"
-            inputMode="decimal"
+            onChangeText={(text) => {
+              const cleaned = text.replace(/[^\d:]/g, '').slice(0, 5);
+              setDraft(cleaned);
+            }}
+            onBlur={() => commitEdit(draft || formatTime(hour, minute))}
+            onSubmitEditing={() => commitEdit(draft || formatTime(hour, minute))}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            blurOnSubmit
             maxLength={5}
             selectTextOnFocus
-            accessibilityLabel="Type time as HH:MM"
+            inputAccessoryViewID={
+              Platform.OS === 'ios' ? TIME_ACCESSORY_ID : undefined
+            }
+            style={styles.typedInput}
+            selectionColor={accents.gold}
             placeholder="07:30"
             placeholderTextColor={colors.placeholder}
-            style={[
-              styles.unifiedInput,
-              { top: pad, height: itemH },
-            ]}
-            selectionColor={accents.gold}
-            underlineColorAndroid="transparent"
           />
-        ) : null}
-      </View>
+          <Pressable
+            onPress={() => commitEdit(draft || formatTime(hour, minute))}
+            style={styles.doneBtn}
+          >
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.doneText}>Done</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={[styles.row, { height: wheelH }]}>
+          <WheelColumn
+            values={hours}
+            value={hour}
+            itemH={itemH}
+            pad={pad}
+            visible={visible}
+            scrollEnabled
+            accessibilityLabel="Hour"
+            onChange={(h) => {
+              hourRef.current = h;
+              onChange(h, minuteRef.current);
+            }}
+            onTap={startEdit}
+          />
+          <Pressable onPress={startEdit} accessibilityRole="button">
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.colon}>:</Text>
+          </Pressable>
+          <WheelColumn
+            values={minutes}
+            value={minute}
+            itemH={itemH}
+            pad={pad}
+            visible={visible}
+            scrollEnabled
+            accessibilityLabel="Minutes"
+            onChange={(m) => {
+              minuteRef.current = m;
+              onChange(hourRef.current, m);
+            }}
+            onTap={startEdit}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -420,29 +437,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  editWrap: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   wheel: {
     overflow: 'hidden',
   },
-  wheelScrollWeb: {
-    scrollSnapType: 'y mandatory',
-    overscrollBehavior: 'contain',
-  },
-  itemSnapWeb: {
-    scrollSnapAlign: 'center',
-    scrollSnapStop: 'normal',
+  item: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   itemText: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     fontVariant: ['tabular-nums'],
+    includeFontPadding: false,
+    textAlign: 'center',
     ...noFakeBold,
-    ...(Platform.OS === 'web'
-      ? ({
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-        } as object)
-      : null),
   },
   colon: {
     fontFamily: fonts.headingRegular,
@@ -460,25 +475,42 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: inkStroke,
   },
-  unifiedInput: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 5,
+  typedInput: {
     fontFamily: fonts.headingRegular,
-    fontSize: 28,
+    fontSize: 40,
     color: colors.text,
     textAlign: 'center',
+    minWidth: 160,
     fontVariant: ['tabular-nums'],
-    padding: 0,
-    margin: 0,
-    backgroundColor: colors.bg,
     ...noFakeBold,
-    ...(Platform.OS === 'web'
-      ? ({
-          outlineStyle: 'none',
-          outlineWidth: 0,
-        } as object)
-      : null),
+  },
+  doneBtn: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.text,
+    borderRadius: 999,
+  },
+  doneText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: colors.bg,
+  },
+  accessory: {
+    backgroundColor: '#EFEFEF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C6C6C8',
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  accessoryBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  accessoryText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 17,
+    color: '#007AFF',
   },
 });

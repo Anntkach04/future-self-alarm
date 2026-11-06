@@ -1,11 +1,13 @@
 /**
- * Temporary founder-only bypasses. Turn off before App Store.
+ * Temporary founder-only bypasses. Keep ALL false for App Store / TestFlight.
  *
- * To remove the voice-record skip button later, tell Cursor:
- * «Прибери dev skip на записі голосу (VOICE_ONBOARDING_SKIP_ENABLED)»
- *
- * To remove the onboarding reset button later, tell Cursor:
- * «Прибери dev reset онбордингу (ONBOARDING_RESET_ENABLED)»
+ * To temporarily re-enable local debugging, flip a flag to true, then set false
+ * again before any store build.
  */
-export const VOICE_ONBOARDING_SKIP_ENABLED = true;
-export const ONBOARDING_RESET_ENABLED = true;
+export const VOICE_ONBOARDING_SKIP_ENABLED = false;
+export const ONBOARDING_RESET_ENABLED = false;
+export const FOUNDER_AUTH_SKIP_ENABLED = false;
+export const TEMP_ELEVENLABS_TTS_ONLY = false;
+
+/** TEMP UI REVIEW — do not commit. Seeds a finished profile with a demo voice. */
+export const UI_REVIEW_BYPASS = true;

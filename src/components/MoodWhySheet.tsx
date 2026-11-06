@@ -12,6 +12,7 @@ import {
 import { type Mood } from '../data/moods';
 import { fetchMoodAdvice } from '../services/moodAdvice';
 import { accents, colors, fonts, noFakeBold, radii, spacing } from '../theme';
+import { LoadingLabel } from './LoadingLabel';
 import { LogoSpinner } from './LogoSpinner';
 import { TextArrowButton } from './TextArrowButton';
 
@@ -70,13 +71,17 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
           <View style={styles.sheet}>
             <View style={styles.handle} />
             {mood ? (
-              <Text style={styles.moodName}>{mood.label}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.moodName}>{mood.label}</Text>
             ) : null}
 
             {phase === 'compose' ? (
               <>
-                <Text style={styles.question}>Why do you feel that way?</Text>
-                <TextInput
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.question}>Why do you feel that way?</Text>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.moodPurpose}>
+                  Future You will use this for tomorrow’s alarm only. After one
+                  wake, it resets.
+                </Text>
+                <TextInput maxFontSizeMultiplier={1.5}
                   value={note}
                   onChangeText={setNote}
                   placeholder="A few words, if you want"
@@ -89,7 +94,7 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
                 />
                 <View style={styles.actions}>
                   <TextArrowButton
-                    label="tell Future You"
+                    label="shape tomorrow"
                     color={mood?.color ?? accents.gold}
                     onPress={() => void submit()}
                   />
@@ -100,13 +105,13 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
             {phase === 'loading' ? (
               <View style={styles.center}>
                 <LogoSpinner size={40} />
-                <Text style={styles.loading}>Sitting with that…</Text>
+                <LoadingLabel text="Sitting with that" style={styles.loading} />
               </View>
             ) : null}
 
             {phase === 'advice' ? (
               <>
-                <Text style={styles.advice}>{advice}</Text>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.advice}>{advice}</Text>
                 <View style={styles.actions}>
                   <TextArrowButton
                     label="thank you"
@@ -129,7 +134,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(26, 26, 26, 0.28)',
   },
   sheetWrap: {
@@ -154,8 +159,8 @@ const styles = StyleSheet.create({
   },
   moodName: {
     fontFamily: fonts.headingRegular,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 8,
     ...noFakeBold,
@@ -165,8 +170,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 26,
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: 8,
     ...noFakeBold,
+  },
+  moodPurpose: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
+    marginBottom: 16,
   },
   input: {
     minHeight: 88,
@@ -207,7 +219,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   offline: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,

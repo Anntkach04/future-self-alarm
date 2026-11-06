@@ -5,84 +5,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '../components/BackButton';
 import { BubbleEnter } from '../components/BubbleEnter';
 import { RoundArrowButton } from '../components/RoundArrowButton';
-import { WaitingView } from '../components/WaitingView';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { savePreviewAudio } from '../services/audioPreview';
-import {
-  buildPreviewLine,
-  checkVoiceApiHealth,
-  cloneVoiceFromUri,
-  generateMorningAlarm,
-  synthesizeSpeech,
-} from '../services/elevenlabs';
-import { colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
+import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
+import { LoadingLabel } from '../components/LoadingLabel';
+import { cloneOnboardingVoice } from '../services/cloneOnboardingVoice';
+import { colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceCloning'>;
 
 export function VoiceCloningScreen({ navigation }: Props) {
   const { answers, voice, setVoiceId, setPreview } = useOnboarding();
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const startedRef = useRef(false);
 
-  const saveGeneratedPreview = useCallback(
-    async (voiceId: string, useOpenAi: boolean) => {
-      if (useOpenAi) {
-        const alarm = await generateMorningAlarm({ voiceId, answers });
-        const previewPath = await savePreviewAudio(alarm.base64);
-        setPreview(previewPath, alarm.text);
-        return;
-      }
-
-      const text = buildPreviewLine(answers.name);
-      const tts = await synthesizeSpeech({ voiceId, text });
-      const previewPath = await savePreviewAudio(tts.base64);
-      setPreview(previewPath, text);
-    },
-    [answers, setPreview]
-  );
-
   const runClone = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
-      if (!voice.sampleUri) {
+      if (!voice.sampleUri && !TEMP_ELEVENLABS_TTS_ONLY) {
         throw new Error('No recording found. Go back and record again.');
       }
-
-      const health = await checkVoiceApiHealth();
-      if (!health.hasKey && !health.elevenLabs) {
-        throw new Error(
-          'Voice server is offline. Run npm run server in the project folder.'
-        );
-      }
-
-      const clone = await cloneVoiceFromUri({
-        uri: voice.sampleUri,
-        name: answers.name || 'User',
-        mimeType: voice.sampleUri.includes('.webm')
-          ? 'audio/webm'
-          : 'audio/m4a',
-        fileName: voice.sampleUri.includes('.webm')
-          ? 'sample.webm'
-          : 'sample.m4a',
+      const result = await cloneOnboardingVoice({
+        sampleUri: voice.sampleUri,
+        answers,
       });
-      setVoiceId(clone.voiceId, false);
-      await saveGeneratedPreview(clone.voiceId, health.openai === true);
+      setVoiceId(result.voiceId, result.isDemo);
+      setPreview(result.previewPath, result.previewText);
       navigation.replace('VoicePreview');
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Voice cloning failed';
-      setLoading(false);
-      setError(message);
+      setError(e instanceof Error ? e.message : 'Voice cloning failed');
     }
-  }, [
-    answers.name,
-    navigation,
-    saveGeneratedPreview,
-    setVoiceId,
-    voice.sampleUri,
-  ]);
+  }, [answers, navigation, setPreview, setVoiceId, voice.sampleUri]);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -90,8 +43,15 @@ export function VoiceCloningScreen({ navigation }: Props) {
     void runClone();
   }, [runClone]);
 
-  if (loading) {
-    return <WaitingView />;
+  if (!error) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
+        <View style={styles.page}>
+          <LoadingLabel text="Cloning your voice" style={styles.quiet} />
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.eta}>This usually takes about 1-2 minutes</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -99,12 +59,12 @@ export function VoiceCloningScreen({ navigation }: Props) {
       <View style={styles.page}>
         <BackButton />
         <BubbleEnter delay={40} fromY={14} style={styles.content}>
-        <Text style={styles.title}>Couldn’t clone yet</Text>
-        <Text style={styles.error} numberOfLines={8}>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>couldn’t clone yet</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error} numberOfLines={8}>
           {error}
         </Text>
-        <Text style={styles.hint}>
-          Check your ElevenLabs plan supports voice cloning, then try again or
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.hint}>
+          Check Wi-Fi, that the voice server is online, then try again or
           re-record in a quiet room.
         </Text>
 
@@ -113,10 +73,13 @@ export function VoiceCloningScreen({ navigation }: Props) {
             onPress={() => navigation.replace('VoiceRecord')}
             style={styles.linkBtn}
           >
-            <Text style={styles.linkText}>re-record</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.linkText}>re-record</Text>
           </Pressable>
           <RoundArrowButton
-            onPress={() => void runClone()}
+            onPress={() => {
+              startedRef.current = false;
+              void runClone();
+            }}
             color={colors.fab}
           />
         </View>
@@ -134,6 +97,23 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: spacing.inset,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quiet: {
+    fontFamily: fonts.body,
+    fontSize: 16,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  eta: {
+    marginTop: 10,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
+    textAlign: 'center',
+    opacity: 0.85,
   },
   content: {
     flex: 1,
@@ -143,6 +123,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     textAlign: 'center',
     ...noFakeBold,
@@ -171,10 +152,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   linkText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.textMuted,
     textDecorationLine: 'underline',
-    ...noFakeLight,
   },
 });

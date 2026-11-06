@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { mutedColorForLabel } from '../theme';
-import { fonts, noFakeLight } from '../theme';
+import { fonts } from '../theme';
 import { colors } from '../theme';
 import { uiLabel } from '../utils/labels';
 
@@ -13,7 +13,7 @@ type Props = {
 
 export function RecapPills({ items, colors: itemColors, onPress }: Props) {
   if (!items.length) {
-    return <Text style={styles.empty}>-</Text>;
+    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>-</Text>;
   }
 
   const content = (
@@ -29,7 +29,7 @@ export function RecapPills({ items, colors: itemColors, onPress }: Props) {
             },
           ]}
         >
-          <Text style={styles.pillText}>{uiLabel(item)}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pillText}>{uiLabel(item)}</Text>
         </View>
       ))}
     </View>
@@ -58,16 +58,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   pillText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    ...noFakeLight,
   },
   empty: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textMuted,
     marginBottom: 8,
-    ...noFakeLight,
   },
 });

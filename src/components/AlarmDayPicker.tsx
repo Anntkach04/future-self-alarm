@@ -5,7 +5,7 @@ import {
   WEEKDAYS,
   WEEKENDS,
 } from '../context/AlarmsContext';
-import { colors, fonts, noFakeBold, noFakeLight, radii } from '../theme';
+import { colors, fonts, noFakeBold, radii } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
@@ -32,7 +32,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.section}>{uiLabel('Repeat')}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.section}>{uiLabel('Repeat')}</Text>
       <View style={styles.presets}>
         {[
           { label: 'weekdays', value: WEEKDAYS },
@@ -46,7 +46,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
               onPress={() => onChange([...item.value])}
               style={[styles.preset, active && styles.presetOn]}
             >
-              <Text style={[styles.presetText, active && styles.presetTextOn]}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.presetText, active && styles.presetTextOn]}>
                 {item.label}
               </Text>
             </Pressable>
@@ -62,7 +62,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
               onPress={() => toggleDay(index)}
               style={[styles.day, on && styles.dayOn]}
             >
-              <Text style={[styles.dayText, on && styles.dayTextOn]}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.dayText, on && styles.dayTextOn]}>
                 {label.toLowerCase()}
               </Text>
             </Pressable>
@@ -102,10 +102,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   presetText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.text,
-    ...noFakeLight,
   },
   presetTextOn: {
     color: colors.bg,
@@ -130,10 +129,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   dayText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    ...noFakeLight,
   },
   dayTextOn: {
     color: colors.bg,
