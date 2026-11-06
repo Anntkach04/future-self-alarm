@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     height: BACK_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: BACK_INSET,
+    marginTop: 0,
     marginBottom: 16,
     alignSelf: 'flex-start',
   },

@@ -8,7 +8,7 @@ import { resolveVoiceId } from '../services/defaultVoice';
 
 let regenInFlight = false;
 
-/** Silent host — rebuilds tomorrow’s wake after 21:00 when mood exists. */
+/** Silent host: refreshes the next wake when the mood changes, and daily. */
 export function EveningRegenHost() {
   const { alarms, updateAlarm, ready } = useAlarms();
   const { answers, voice } = useOnboarding();
@@ -48,7 +48,16 @@ export function EveningRegenHost() {
         });
     }, 2500);
     return () => clearTimeout(timer);
-  }, [ready, voice.voiceId, voice.isDemo, voiceLevel, bedLevel, isPaused]);
+  }, [
+    ready,
+    voice.voiceId,
+    voice.isDemo,
+    voiceLevel,
+    bedLevel,
+    isPaused,
+    today?.moodLabel,
+    today?.note,
+  ]);
 
   return null;
 }

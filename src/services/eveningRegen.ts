@@ -12,8 +12,9 @@ function todayKey() {
 }
 
 /**
- * After 21:00 local, rebuild the next enabled alarm with today’s mood
- * so tomorrow’s wake is shaped once — not forever.
+ * Rebuild the next enabled alarm with a fresh personal script:
+ * - right after today's mood is saved or changed (shapes the next wake), and
+ * - once a day otherwise, so the wake message is never the same twice.
  */
 export async function maybeEveningRegen(params: {
   alarms: Alarm[];
@@ -35,18 +36,23 @@ export async function maybeEveningRegen(params: {
     paused,
     updateAlarm,
   } = params;
-  if (paused || !voiceId || !mood) return;
-  const hour = new Date().getHours();
-  if (hour < 21) return;
+  if (paused || !voiceId) return;
 
-  const key = todayKey();
+  // Same day + same mood → already fresh.
+  const key = `${todayKey()}|${mood ? `${mood.label}|${mood.note ?? ''}` : ''}`;
   const last = await AsyncStorage.getItem(LAST_REGEN_KEY).catch(() => null);
   if (last === key) return;
 
+  // The alarm that rings next from now (not the earliest clock time).
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const minutesUntil = (a: Alarm) =>
+    (a.hour * 60 + a.minute - nowMin + 1440) % 1440;
   const next = alarms
     .filter((a) => a.enabled)
-    .sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute))[0];
+    .sort((a, b) => minutesUntil(a) - minutesUntil(b))[0];
   if (!next) return;
+  // Don't swap the audio of an alarm that is about to ring.
+  if (minutesUntil(next) < 10) return;
 
   try {
     const { uri, text } = await buildAlarmAudioForId({

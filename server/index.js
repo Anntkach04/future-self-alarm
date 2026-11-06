@@ -583,9 +583,12 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, async (req, res) => {
     assertVoiceAccess(req, voiceId, authEnforced());
     const providedText = cappedText(req.body?.text);
 
-    // Default: fixed wake script only. Set USE_AI_ALARM_SCRIPTS=true to bring OpenAI back.
-    const useAiScripts = process.env.USE_AI_ALARM_SCRIPTS === 'true';
-    let script;
+    // Personal script by default: name, habits, goals, today's mood + note.
+    // USE_AI_ALARM_SCRIPTS=false forces the fixed template; any OpenAI
+    // failure also falls back to it so an alarm is never left without audio.
+    const useAiScripts =
+      process.env.USE_AI_ALARM_SCRIPTS !== 'false' && Boolean(getOpenAiKey());
+    let script = null;
     if (providedText) {
       const text = String(providedText).trim();
       script = {
@@ -594,8 +597,13 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, async (req, res) => {
         model: 'provided',
       };
     } else if (useAiScripts) {
-      script = await generateMorningScript(answers || {});
-    } else {
+      try {
+        script = await generateMorningScript(answers || {});
+      } catch (error) {
+        console.warn('AI wake script failed, using template', error?.message || error);
+      }
+    }
+    if (!script) {
       const text = buildAlarmScript(
         answers?.name,
         { label: answers?.moodForTomorrow },

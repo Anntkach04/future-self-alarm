@@ -74,7 +74,11 @@ async function generateMorningScript(answers) {
 
   const text = String(data?.choices?.[0]?.message?.content || '')
     .trim()
-    .replace(/^["']|["']$/g, '');
+    .replace(/^["']|["']$/g, '')
+    // Script is shown on screen too: no dashes between words.
+    .replace(/\s*[—–―]\s*/g, ', ')
+    .replace(/\s+-\s+/g, ', ')
+    .replace(/\s+/g, ' ');
 
   if (!text) {
     const error = new Error('OpenAI returned an empty script');

@@ -25,8 +25,7 @@ type Props = {
  */
 export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
   const insets = useSafeAreaInsets();
-  const { alarmKitReady, notificationsReady, setAlarmKitReady } =
-    useAppSettings();
+  const { alarmKitReady, setAlarmKitReady } = useAppSettings();
   const [needs, setNeeds] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -79,20 +78,14 @@ export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
       pointerEvents="box-none"
       style={[
         styles.wrap,
-        // Sit above the alerts nudge when both are visible.
         placement === 'bottom'
-          ? {
-              bottom:
-                Math.max(insets.bottom, 12) + (notificationsReady ? 8 : 88),
-            }
-          : {
-              top: Math.max(insets.top, 8) + (notificationsReady ? 8 : 88),
-            },
+          ? { bottom: Math.max(insets.bottom, 12) + 8 }
+          : { top: Math.max(insets.top, 8) + 8 },
       ]}
     >
       <View style={styles.sheet}>
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
-          Allow alarms so Future You can wake you like a real alarm.
+          Turn on alarms so Future You can wake you.
         </Text>
         <Pressable
           accessibilityRole="button"

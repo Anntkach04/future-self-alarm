@@ -56,8 +56,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
       <BackButton style={styles.back} />
       <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>voice</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
-        Re-clone anytime. Mix levels apply the next time a morning voice is
-        built (save an alarm, or evening regen after 21:00).
+        Re-record anytime. Mix changes apply to your next alarm.
       </Text>
 
       <LevelRow

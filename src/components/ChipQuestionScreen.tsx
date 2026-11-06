@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   page: {
-    paddingTop: spacing.webTop + 12,
+    paddingTop: spacing.webTop + spacing.screenTop,
     paddingBottom: 12,
     paddingHorizontal: spacing.inset,
     overflow: 'visible' as const,

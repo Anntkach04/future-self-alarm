@@ -1,7 +1,9 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
+import { UI_REVIEW_BYPASS } from '../config/devBypass';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -43,7 +45,19 @@ function alarmSortKey(a: Pick<Alarm, 'hour' | 'minute'>) {
 }
 
 export function HomeScreen({ navigation }: Props) {
-  const { answers } = useOnboarding();
+  const { answers, voice, hydrateFromCloud } = useOnboarding();
+  // TEMP UI REVIEW — do not commit.
+  useEffect(() => {
+    if (UI_REVIEW_BYPASS && !voice.voiceId) {
+      hydrateFromCloud({
+        answers: { name: 'Anna', morningHabits: ['journaling', 'drink water first'] },
+        voiceId: '21m00Tcm4TlvDq8ikWAM',
+        isDemoVoice: true,
+        onboardingComplete: true,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { alarms, toggleAlarm } = useAlarms();
   const { today, saveCheckIn } = useMoodCheckIn();
   const { isPaused, pauseUntil } = useAppSettings();
@@ -87,7 +101,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.feeling}>How are you feeling today?</Text>
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.moodHint}>
-          This shapes tomorrow’s wake only - not every morning forever.
+          This will shape tomorrow’s alarm.
         </Text>
         <View style={styles.moodRow}>
           {BASE_MOODS.map((mood) => {
@@ -201,9 +215,16 @@ export function HomeScreen({ navigation }: Props) {
           })
         }
       />
-      <NotificationPermissionNudge placement="bottom" />
-      {/* AlarmKit deny nudge only on Home — not on Create Alarm. */}
-      <AlarmPermissionNudge placement="bottom" />
+      {/*
+        One permission card at a time. On iOS the wake runs through AlarmKit,
+        so "Allow alarms" is the only ask; notification alerts are just the
+        fallback and only matter where AlarmKit does not exist.
+      */}
+      {Platform.OS === 'ios' ? (
+        <AlarmPermissionNudge placement="bottom" />
+      ) : (
+        <NotificationPermissionNudge placement="bottom" />
+      )}
     </SafeAreaView>
   );
 }
@@ -215,7 +236,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.md + spacing.webTop,
+    paddingTop: spacing.webTop + spacing.screenTop,
     paddingBottom: 48,
   },
   menuBtn: {

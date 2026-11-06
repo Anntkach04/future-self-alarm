@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.webTop + 12,
+    paddingTop: spacing.webTop + spacing.screenTop,
     paddingBottom: spacing.inset,
   },
   header: {

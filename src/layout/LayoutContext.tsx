@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
+import { spacing } from '../theme';
 
 export type LayoutInfo = {
   width: number;
@@ -40,7 +41,7 @@ export function LayoutProvider({
       isTablet,
       isPhone,
       contentMaxWidth: isTablet ? 560 : BREAKPOINTS.phoneMax,
-      horizontalPadding: isTablet ? 32 : 24,
+      horizontalPadding: isTablet ? 32 : spacing.inset,
     }),
     [width, height, isTablet]
   );
@@ -61,6 +62,6 @@ export function useLayout() {
     isTablet,
     isPhone: !isTablet,
     contentMaxWidth: isTablet ? 560 : BREAKPOINTS.phoneMax,
-    horizontalPadding: isTablet ? 32 : 24,
+    horizontalPadding: isTablet ? 32 : spacing.inset,
   };
 }

@@ -197,7 +197,7 @@ export function describePlan(
     };
   }
   return {
-    headline: priceString ? per : 'Monthly',
+    headline: priceString ? per : '',
     disclosure: priceString
       ? `${priceString} per month. ${RENEW_NOTE}`
       : `Billed monthly. ${RENEW_NOTE}`,
