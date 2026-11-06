@@ -31,6 +31,8 @@ export type Alarm = {
   vibrate: boolean;
   audioUri?: string | null;
   scriptText?: string | null;
+  /** Last voice build failed — rings with the fallback tone until a retry works. */
+  voiceFailed?: boolean;
 };
 
 export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
@@ -50,6 +52,7 @@ export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
     vibrate: raw.vibrate !== false,
     audioUri: raw.audioUri ?? null,
     scriptText: raw.scriptText ?? null,
+    voiceFailed: raw.voiceFailed === true,
   };
 }
 

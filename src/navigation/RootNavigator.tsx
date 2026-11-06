@@ -8,22 +8,15 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { IntroCarouselScreen } from '../screens/IntroCarouselScreen';
 import { NameScreen } from '../screens/NameScreen';
-import { FutureSelfScreen } from '../screens/FutureSelfScreen';
 import { MorningHabitsScreen } from '../screens/MorningHabitsScreen';
-import { HardMorningsScreen } from '../screens/HardMorningsScreen';
-import { VoiceStyleScreen } from '../screens/VoiceStyleScreen';
-import { WakeUpTimeScreen } from '../screens/WakeUpTimeScreen';
 import { VoiceRecordScreen } from '../screens/VoiceRecordScreen';
-import { VoiceReviewScreen } from '../screens/VoiceReviewScreen';
 import { VoiceCloningScreen } from '../screens/VoiceCloningScreen';
 import { VoicePreviewScreen } from '../screens/VoicePreviewScreen';
 import { SignInScreen } from '../screens/SignInScreen';
-import { NotificationPermissionScreen } from '../screens/NotificationPermissionScreen';
 import { AlarmPermissionScreen } from '../screens/AlarmPermissionScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { CreateAlarmScreen } from '../screens/CreateAlarmScreen';
 import { OnboardingCongratsScreen } from '../screens/OnboardingCongratsScreen';
-import { AlarmsScreen } from '../screens/AlarmsScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MoodMoreScreen } from '../screens/MoodMoreScreen';
 import { MenuScreen } from '../screens/MenuScreen';
@@ -75,20 +68,11 @@ export function RootNavigator() {
           options={{ animation: 'none' }}
         />
         <Stack.Screen name="Name" component={NameScreen} />
-        <Stack.Screen name="FutureSelf" component={FutureSelfScreen} />
         <Stack.Screen name="MorningHabits" component={MorningHabitsScreen} />
-        <Stack.Screen name="HardMornings" component={HardMorningsScreen} />
-        <Stack.Screen name="VoiceStyle" component={VoiceStyleScreen} />
-        <Stack.Screen name="WakeUpTime" component={WakeUpTimeScreen} />
         <Stack.Screen name="VoiceRecord" component={VoiceRecordScreen} />
-        <Stack.Screen name="VoiceReview" component={VoiceReviewScreen} />
         <Stack.Screen name="VoiceCloning" component={VoiceCloningScreen} />
         <Stack.Screen name="VoicePreview" component={VoicePreviewScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
-        <Stack.Screen
-          name="NotificationPermission"
-          component={NotificationPermissionScreen}
-        />
         <Stack.Screen
           name="AlarmPermission"
           component={AlarmPermissionScreen}
@@ -109,7 +93,6 @@ export function RootNavigator() {
             contentStyle: { backgroundColor: '#FEC554' },
           }}
         />
-        <Stack.Screen name="Alarms" component={AlarmsScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="MoodMore" component={MoodMoreScreen} />
         <Stack.Screen name="Menu" component={MenuScreen} />

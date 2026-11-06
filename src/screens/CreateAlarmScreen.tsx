@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { markRingPrepared } from '../services/eveningRegen';
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { AlarmDayPicker } from '../components/AlarmDayPicker';
@@ -35,8 +36,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     clearVoice,
   } = useOnboarding();
   const { today } = useMoodCheckIn();
-  const { voiceLevel, bedLevel, isPaused, setNotificationsReady } =
-    useAppSettings();
+  const { isPaused, setNotificationsReady } = useAppSettings();
   const editingId = route.params?.alarmId;
   const existing = useMemo(
     () => alarms.find((a) => a.id === editingId),
@@ -89,20 +89,38 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     vibrate: boolean;
   }) => {
     void (async () => {
+      const reuseUri = existing?.audioUri ?? null;
+      let uri = reuseUri;
+      let text = existing?.scriptText ?? null;
+
+      // Ring is scheduled right away — with the current voice if we have one,
+      // else the bundled fallback tone — so a slow or failed voice build can
+      // never leave the alarm silent.
+      if (!isPaused) {
+        try {
+          const allowed = await ensureNotificationPermissions();
+          setNotificationsReady(allowed);
+          await scheduleAlarmNotifications(
+            { id: alarmId, ...payload, audioUri: uri, scriptText: text },
+            uri
+          );
+        } catch (e) {
+          console.warn('Initial alarm schedule failed', e);
+        }
+      }
+
       try {
         const voiceId = resolveVoiceId(voice.voiceId);
         if (!voiceId || voice.isDemo || isPremadeDemoVoiceId(voiceId)) return;
-
-        const reuseUri = existing?.audioUri ?? null;
-        let uri = reuseUri;
-        let text = existing?.scriptText ?? null;
 
         // Reuse voice when only time/days/snooze changed.
         if (!uri) {
           const { ensureGuestSession } = await import('../services/apiAuth');
           await ensureGuestSession();
           const health = await checkVoiceApiHealth();
-          if (!health.hasKey && !health.elevenLabs) return;
+          if (!health.hasKey && !health.elevenLabs) {
+            throw new Error('Voice service unavailable');
+          }
 
           const built = await buildAlarmAudioForId({
             alarmId,
@@ -111,12 +129,19 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
             mood: today
               ? { label: today.moodLabel, note: today.note }
               : null,
-            voiceLevel,
-            bedLevel,
           });
           uri = built.uri;
           text = built.text;
-          updateAlarm(alarmId, { audioUri: uri, scriptText: text });
+          updateAlarm(alarmId, {
+            audioUri: uri,
+            scriptText: text,
+            voiceFailed: false,
+          });
+          // Counts as this ring's message — the prep window won't rebuild it.
+          void markRingPrepared(
+            { id: alarmId, ...payload, audioUri: uri, scriptText: text },
+            today ? { label: today.moodLabel, note: today.note } : null
+          );
         }
 
         if (isPaused || !uri) return;
@@ -133,6 +158,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         );
       } catch (e) {
         console.warn('Background alarm voice failed', e);
+        // Visible on Home; the alarm still rings with the fallback tone.
+        if (!uri) updateAlarm(alarmId, { voiceFailed: true });
       }
     })();
   };
@@ -228,9 +255,9 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>10 min</Text>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>snooze</Text>
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
-              Call again if you don’t get up
+              Rings again every 10 minutes until you tap I’m up
             </Text>
           </View>
           <Switch

@@ -32,11 +32,21 @@ export function SubscriptionScreen({}: Props) {
   const [plan, setPlan] = useState<MonthlyPlanDetails | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
+
+  const loadPlan = async () => {
+    setPlanLoading(true);
+    setPlan(await getMonthlyPlanDetails());
+    setPlanLoading(false);
+  };
 
   useEffect(() => {
     void getSubscriptionStatus().then(setStatus);
-    void getMonthlyPlanDetails().then(setPlan);
+    void loadPlan();
   }, []);
+
+  // Guideline 3.1.2: no purchase button without the StoreKit price.
+  const priceMissing = hasPurchasesKey() && !planLoading && !plan?.priceString;
 
   const start = async () => {
     setBusy(true);
@@ -118,7 +128,7 @@ export function SubscriptionScreen({}: Props) {
         ) : null}
         {!hasPurchasesKey() ? (
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.meta}>
-            Dev unlock (no RevenueCat appl_ key yet)
+            {__DEV__ ? 'Dev unlock (no RevenueCat appl_ key yet)' : 'Subscriptions are unavailable right now.'}
           </Text>
         ) : null}
       </View>
@@ -131,13 +141,21 @@ export function SubscriptionScreen({}: Props) {
           label={
             status?.active
               ? 'manage in apple'
-              : plan?.trialDays
-                ? 'start free trial'
-                : 'subscribe'
+              : priceMissing
+                ? 'try again'
+                : plan?.trialDays
+                  ? 'start free trial'
+                  : 'subscribe'
           }
           color={accents.gold}
-          onPress={() => void (status?.active ? manage() : start())}
-          disabled={busy}
+          onPress={() =>
+            void (status?.active
+              ? manage()
+              : priceMissing
+                ? loadPlan()
+                : start())
+          }
+          disabled={busy || (!status?.active && planLoading)}
         />
         <TextArrowButton
           label="restore purchases"

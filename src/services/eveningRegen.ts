@@ -2,74 +2,126 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Alarm } from '../context/AlarmsContext';
 import type { OnboardingAnswers } from '../context/OnboardingContext';
 import { buildAlarmAudioForId } from './alarmGeneration';
-import { scheduleAlarmNotifications } from './alarmScheduler';
+import { nextAlarmOccurrences, scheduleAlarmNotifications } from './alarmScheduler';
 
-const LAST_REGEN_KEY = 'fsa.evening_regen.date';
+/**
+ * Fresh wake message for every ring, built once — close to the ring, not on
+ * every mood tap:
+ * - The "prepare window" opens PREPARE_WINDOW_HOURS before the next ring.
+ *   The first time the app is open inside it, that ring gets a new script.
+ *   Earlier in the day nothing is generated, so the user can still log moods.
+ * - If today's mood changes after that build, one more rebuild is allowed
+ *   (MAX_BUILDS_PER_RING), so a late check-in still counts without paying for
+ *   audio on every tap.
+ * - Never touch audio in the last MIN_LEAD_MINUTES before a ring.
+ * If the app is not opened inside the window, the alarm still rings with the
+ * last message it has (iOS gives us no guaranteed background run).
+ */
+export const PREPARE_WINDOW_HOURS = 10;
+const MIN_LEAD_MINUTES = 10;
+const MAX_BUILDS_PER_RING = 2;
+const STATE_KEY = 'fsa.wake_prep.v1';
 
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+type PrepRecord = { ring: string; builds: number; moodKey: string };
+type PrepState = Record<string, PrepRecord>;
+
+export function moodKeyOf(mood: { label: string; note?: string } | null) {
+  return mood ? `${mood.label}|${mood.note ?? ''}` : '';
+}
+
+async function readState(): Promise<PrepState> {
+  try {
+    const raw = await AsyncStorage.getItem(STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeState(state: PrepState) {
+  await AsyncStorage.setItem(STATE_KEY, JSON.stringify(state)).catch(() => {});
+}
+
+/** Next ring of this alarm, if it falls inside the prepare window. */
+function ringInWindow(alarm: Alarm, now = Date.now()) {
+  const next = nextAlarmOccurrences(alarm, 1)[0];
+  if (!next) return null;
+  const minutes = (next.getTime() - now) / 60000;
+  if (minutes < MIN_LEAD_MINUTES || minutes > PREPARE_WINDOW_HOURS * 60) {
+    return null;
+  }
+  return next.toISOString();
 }
 
 /**
- * Rebuild the next enabled alarm with a fresh personal script:
- * - right after today's mood is saved or changed (shapes the next wake), and
- * - once a day otherwise, so the wake message is never the same twice.
+ * Record a build that happened elsewhere (alarm just created/edited) so the
+ * window does not immediately pay for the same ring again.
  */
+export async function markRingPrepared(
+  alarm: Alarm,
+  mood: { label: string; note?: string } | null
+) {
+  const ring = ringInWindow(alarm);
+  if (!ring) return;
+  const state = await readState();
+  const prev = state[alarm.id];
+  state[alarm.id] = {
+    ring,
+    builds: prev?.ring === ring ? prev.builds + 1 : 1,
+    moodKey: moodKeyOf(mood),
+  };
+  await writeState(state);
+}
+
 export async function maybeEveningRegen(params: {
   alarms: Alarm[];
   voiceId: string | null;
   answers: OnboardingAnswers;
   mood: { label: string; note?: string } | null;
-  voiceLevel?: number;
-  bedLevel?: number;
   paused?: boolean;
   updateAlarm: (id: string, patch: Partial<Alarm>) => void;
 }) {
-  const {
-    alarms,
-    voiceId,
-    answers,
-    mood,
-    voiceLevel,
-    bedLevel,
-    paused,
-    updateAlarm,
-  } = params;
+  const { alarms, voiceId, answers, mood, paused, updateAlarm } = params;
   if (paused || !voiceId) return;
 
-  // Same day + same mood → already fresh.
-  const key = `${todayKey()}|${mood ? `${mood.label}|${mood.note ?? ''}` : ''}`;
-  const last = await AsyncStorage.getItem(LAST_REGEN_KEY).catch(() => null);
-  if (last === key) return;
+  const state = await readState();
+  const moodKey = moodKeyOf(mood);
 
-  // The alarm that rings next from now (not the earliest clock time).
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-  const minutesUntil = (a: Alarm) =>
-    (a.hour * 60 + a.minute - nowMin + 1440) % 1440;
-  const next = alarms
-    .filter((a) => a.enabled)
-    .sort((a, b) => minutesUntil(a) - minutesUntil(b))[0];
-  if (!next) return;
-  // Don't swap the audio of an alarm that is about to ring.
-  if (minutesUntil(next) < 10) return;
-
-  try {
-    const { uri, text } = await buildAlarmAudioForId({
-      alarmId: next.id,
-      voiceId,
-      answers,
-      mood,
-      voiceLevel,
-      bedLevel,
-    });
-    updateAlarm(next.id, { audioUri: uri, scriptText: text });
-    await scheduleAlarmNotifications(
-      { ...next, audioUri: uri, scriptText: text },
-      uri
-    );
-    await AsyncStorage.setItem(LAST_REGEN_KEY, key);
-  } catch (error) {
-    console.warn('Evening regen failed', error);
+  // Drop records for alarms that no longer exist.
+  for (const id of Object.keys(state)) {
+    if (!alarms.some((a) => a.id === id)) delete state[id];
   }
+
+  for (const alarm of alarms) {
+    if (!alarm.enabled) continue;
+    const ring = ringInWindow(alarm);
+    if (!ring) continue;
+
+    const rec = state[alarm.id];
+    const builds = rec?.ring === ring ? rec.builds : 0;
+    const needsFirst = builds === 0;
+    const moodChanged = builds > 0 && rec?.moodKey !== moodKey;
+    if (!needsFirst && !(moodChanged && builds < MAX_BUILDS_PER_RING)) continue;
+
+    try {
+      const { uri, text } = await buildAlarmAudioForId({
+        alarmId: alarm.id,
+        voiceId,
+        answers,
+        mood,
+      });
+      updateAlarm(alarm.id, { audioUri: uri, scriptText: text });
+      await scheduleAlarmNotifications(
+        { ...alarm, audioUri: uri, scriptText: text },
+        uri
+      );
+      state[alarm.id] = { ring, builds: builds + 1, moodKey };
+      await writeState(state);
+    } catch (error) {
+      // Keep the previous message; the alarm still rings with it.
+      console.warn('Wake prep failed', error);
+    }
+  }
+  await writeState(state);
 }

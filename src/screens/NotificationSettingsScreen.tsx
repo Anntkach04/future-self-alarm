@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { formatDateKey } from '../utils/dates';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { BackButton } from '../components/BackButton';
@@ -47,7 +48,7 @@ export function NotificationSettingsScreen({}: Props) {
         <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.blockTitle}>Pause all alarms</Text>
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.blockBody}>
           {isPaused && pauseUntil
-            ? `Paused until ${pauseUntil}.`
+            ? `Paused until ${formatDateKey(pauseUntil)}. Alarms come back on by themselves.`
             : 'Turn everything off for a few days. Vacation mode.'}
         </Text>
         <View style={styles.row}>
@@ -61,11 +62,13 @@ export function NotificationSettingsScreen({}: Props) {
             color={colors.fab}
             onPress={() => setPauseDays(7)}
           />
-          <TextArrowButton
-            label="resume"
-            color={accents.lime}
-            onPress={() => setPauseDays(null)}
-          />
+          {isPaused ? (
+            <TextArrowButton
+              label="resume now"
+              color={accents.lime}
+              onPress={() => setPauseDays(null)}
+            />
+          ) : null}
         </View>
       </View>
 

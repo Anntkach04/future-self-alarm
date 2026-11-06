@@ -7,7 +7,9 @@ import { privacyPolicyUrl } from '../config/legal';
  * third-party AI service. Asked once, before the first voice recording
  * (or the first AI mood note for users who onboarded earlier).
  */
-const CONSENT_KEY = 'fsa.ai_consent.v1';
+// v2: scope grew from mood notes to the daily wake script (name, habits,
+// goals, mood) — earlier consents are asked again.
+const CONSENT_KEY = 'fsa.ai_consent.v2';
 
 let cached: boolean | null = null;
 let pending: Promise<boolean> | null = null;
@@ -43,7 +45,7 @@ function ask(): Promise<boolean> {
     Alert.alert(
       'Your voice & AI services',
       'To create your wake-up voice, your recording is sent to ElevenLabs, which makes a voice clone of you. ' +
-        'Optional mood notes are sent to OpenAI to write a short encouragement. ' +
+        'To write each morning’s message, your name, habits, goals and mood notes are sent to OpenAI. ' +
         'We never sell your data or use it for ads. You can delete your voice anytime in Menu → Account.',
       [
         ...(url

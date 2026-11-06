@@ -31,6 +31,8 @@ export function MoodMoreScreen({}: Props) {
             return (
               <Pressable
                 key={mood.id}
+                accessibilityRole="button"
+                accessibilityLabel={`I feel ${mood.label}`}
                 onPress={() => setSheetMood(mood)}
                 style={[
                   styles.mood,

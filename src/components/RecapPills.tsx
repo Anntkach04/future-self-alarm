@@ -9,11 +9,13 @@ type Props = {
   /** Optional fixed colors per item (from onboarding options). */
   colors?: string[];
   onPress?: () => void;
+  /** Shown when there are no items (default "-"). */
+  emptyLabel?: string;
 };
 
-export function RecapPills({ items, colors: itemColors, onPress }: Props) {
+export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-' }: Props) {
   if (!items.length) {
-    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>-</Text>;
+    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>{emptyLabel}</Text>;
   }
 
   const content = (

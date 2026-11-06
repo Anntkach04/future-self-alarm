@@ -13,6 +13,18 @@ type Props = {
   onChange: (days: number[]) => void;
 };
 
+/** Two letters so Tue/Thu and Sat/Sun are told apart; full names for VoiceOver. */
+const DAY_SHORT = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const;
+const DAY_FULL = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+
 function sortedUnique(days: number[]) {
   return [...new Set(days)].sort((a, b) => a - b);
 }
@@ -43,6 +55,8 @@ export function AlarmDayPicker({ days, onChange }: Props) {
           return (
             <Pressable
               key={item.label}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
               onPress={() => onChange([...item.value])}
               style={[styles.preset, active && styles.presetOn]}
             >
@@ -59,11 +73,14 @@ export function AlarmDayPicker({ days, onChange }: Props) {
           return (
             <Pressable
               key={`${label}-${index}`}
+              accessibilityRole="checkbox"
+              accessibilityLabel={DAY_FULL[index]}
+              accessibilityState={{ checked: on }}
               onPress={() => toggleDay(index)}
               style={[styles.day, on && styles.dayOn]}
             >
-              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.dayText, on && styles.dayTextOn]}>
-                {label.toLowerCase()}
+              <Text maxFontSizeMultiplier={1.3} lineBreakStrategyIOS="push-out" style={[styles.dayText, on && styles.dayTextOn]}>
+                {DAY_SHORT[index]}
               </Text>
             </Pressable>
           );

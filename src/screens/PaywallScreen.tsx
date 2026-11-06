@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -47,17 +47,31 @@ export function PaywallScreen({ navigation, route }: Props) {
       ? 'a week'
       : `${plan?.trialDays ?? 0} days`;
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      await configurePurchases();
-      const next = await getMonthlyPlanDetails();
-      if (!cancelled) setPlan(next);
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const [planLoading, setPlanLoading] = useState(true);
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
   }, []);
+
+  const loadPlan = async () => {
+    setPlanLoading(true);
+    await configurePurchases();
+    const next = await getMonthlyPlanDetails();
+    if (!mounted.current) return;
+    setPlan(next);
+    setPlanLoading(false);
+  };
+
+  useEffect(() => {
+    void loadPlan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Guideline 3.1.2: never offer a purchase without the StoreKit price.
+  // Builds without a RevenueCat key (local dev) skip this.
+  const priceMissing =
+    hasPurchasesKey() && !planLoading && !plan?.priceString;
+  const canBuy = !busy && !planLoading && !priceMissing;
 
   const after = () => {
     if (gated) {
@@ -167,17 +181,20 @@ export function PaywallScreen({ navigation, route }: Props) {
         accessibilityRole="button"
         accessibilityLabel={trial ? 'Start free trial, monthly plan' : 'Subscribe, monthly plan'}
         onPress={() => void startTrial()}
-        disabled={busy}
+        disabled={!canBuy}
         style={({ pressed }) => [
           styles.planCard,
           pressed && styles.planCardPressed,
           busy && styles.planCardBusy,
         ]}
       >
-        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planBadge}>Most people start here</Text>
         <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.planName}>Monthly</Text>
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
-          {plan?.headline ?? 'Monthly'}
+          {planLoading
+            ? 'Loading price…'
+            : priceMissing
+              ? 'Price unavailable'
+              : (plan?.headline ?? 'Monthly')}
         </Text>
         <View style={styles.benefits}>
           {BENEFITS.map((line) => (
@@ -193,6 +210,12 @@ export function PaywallScreen({ navigation, route }: Props) {
 
       <LegalLinks style={styles.legal} />
 
+      {priceMissing ? (
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>
+          We couldn’t load the price from the App Store. Check your connection
+          and try again.
+        </Text>
+      ) : null}
       {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
       {note ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.note}>{note}</Text> : null}
       {busy ? (
@@ -200,12 +223,21 @@ export function PaywallScreen({ navigation, route }: Props) {
       ) : null}
 
       <View style={styles.actions}>
-        <TextArrowButton
-          label={trial ? 'start free trial' : 'subscribe'}
-          color={accents.gold}
-          onPress={() => void startTrial()}
-          disabled={busy}
-        />
+        {priceMissing ? (
+          <TextArrowButton
+            label="try again"
+            color={accents.gold}
+            onPress={() => void loadPlan()}
+            disabled={busy}
+          />
+        ) : (
+          <TextArrowButton
+            label={trial ? 'start free trial' : 'subscribe'}
+            color={accents.gold}
+            onPress={() => void startTrial()}
+            disabled={!canBuy}
+          />
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Restore purchases"
@@ -263,12 +295,6 @@ const styles = StyleSheet.create({
   },
   planCardBusy: {
     opacity: 0.7,
-  },
-  planBadge: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: colors.text,
-    opacity: 0.75,
   },
   planName: {
     fontFamily: fonts.headingRegular,

@@ -298,9 +298,11 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     return { buffer: voiceBuffer, mixed: false, reason: 'no_ffmpeg' };
   }
 
-  const voiceUi =
-    typeof levels.voiceLevel === 'number' ? levels.voiceLevel : 0.85;
-  const bedUi = typeof levels.bedLevel === 'number' ? levels.bedLevel : 0.35;
+  // Client-supplied levels are untrusted: clamp to 0–1 (huge values clip).
+  const unit = (v, fallback) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
+  const voiceUi = unit(levels.voiceLevel, 0.85);
+  const bedUi = unit(levels.bedLevel, 0.35);
   const voiceVol = (0.9 + voiceUi * 1.1).toFixed(2);
   // Quiet calm pad under the call — never spa/bali-loud
   const bedVol = (0.025 + bedUi * 0.06).toFixed(3);

@@ -33,7 +33,11 @@ export function AlarmPermissionScreen({ navigation }: Props) {
       <BackButton style={styles.back} />
       <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Let Future You{'\n'}wake you up</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
-        Continue so Future Self can schedule a real wake alarm with your voice.
+        iPhone will ask twice. Allow both so your voice can wake you, even with
+        the phone locked or a Focus on:
+      </Text>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
+        {'1. Notifications: the alert that carries your voice.\n2. Alarms: a real system alarm, like Clock.'}
       </Text>
 
       <View style={styles.actions}>

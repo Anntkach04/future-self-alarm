@@ -55,6 +55,8 @@ export function InputPill({
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Continue"
+        accessibilityState={{ disabled: !canSubmit }}
         onPress={onSubmit}
         disabled={!canSubmit}
         hitSlop={0}

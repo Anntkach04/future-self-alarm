@@ -10,17 +10,17 @@ export async function buildAlarmAudioForId(params: {
   answers: OnboardingAnswers;
   /** Today's mood — shapes tomorrow morning only. */
   mood?: { label: string; note?: string } | null;
+  /** @deprecated Mix is fixed server-side; ignored. */
   voiceLevel?: number;
+  /** @deprecated Mix is fixed server-side; ignored. */
   bedLevel?: number;
 }) {
-  const { alarmId, voiceId, answers, mood, voiceLevel, bedLevel } = params;
+  const { alarmId, voiceId, answers, mood } = params;
   // Server owns wake script + expressive delivery (don't pin stale client text).
   const generated = await generateMorningAlarm({
     voiceId,
     answers,
     mood: mood ?? undefined,
-    voiceLevel,
-    bedLevel,
   });
   const uri = await saveAlarmAudio(generated.base64, alarmId);
   const text = generated.text;

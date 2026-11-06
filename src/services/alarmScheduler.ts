@@ -77,6 +77,11 @@ async function configureAudioForAlarm() {
   });
 }
 
+/** Stop an in-app replay of the wake message (wake screen "stop"). */
+export async function stopAlarmPlayback() {
+  await stopPlayback();
+}
+
 async function stopPlayback() {
   stopRingHaptics();
   if (!playback) return;

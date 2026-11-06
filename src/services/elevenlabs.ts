@@ -425,6 +425,10 @@ export async function generateMorningAlarm(params: {
   text?: string;
 }): Promise<GeneratedAlarm> {
   const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  // Personal AI script only with the user's consent (App Review 5.1.2);
+  // otherwise the server uses the fixed template.
+  const { hasAiConsent } = await import('./aiConsent');
+  const aiScript = await hasAiConsent();
   const response = await apiFetch('/api/alarm/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -447,6 +451,7 @@ export async function generateMorningAlarm(params: {
           : {}),
       },
       ...(params.text ? { text: params.text } : {}),
+      aiScript,
     }),
   }, 180000);
 

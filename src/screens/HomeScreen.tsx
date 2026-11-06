@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { formatDateKey } from '../utils/dates';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
@@ -81,7 +82,7 @@ export function HomeScreen({ navigation }: Props) {
 
         {isPaused ? (
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedGlobal}>
-            Alarms paused{pauseUntil ? ` until ${pauseUntil}` : ''}. Resume in
+            Alarms paused{pauseUntil ? ` until ${formatDateKey(pauseUntil)}` : ''}. Resume in
             Menu → Notifications when you’re back.
           </Text>
         ) : null}
@@ -96,6 +97,9 @@ export function HomeScreen({ navigation }: Props) {
             return (
               <Pressable
                 key={mood.id}
+                accessibilityRole="button"
+                accessibilityLabel={`I feel ${mood.label}`}
+                accessibilityState={{ selected }}
                 onPress={() => setSheetMood(mood)}
                 style={[
                   styles.mood,
@@ -158,7 +162,9 @@ export function HomeScreen({ navigation }: Props) {
                     </Text>
                     {!alarm.audioUri ? (
                       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.alarmPreparing}>
-                        Preparing your voice…
+                        {alarm.voiceFailed
+                          ? 'Your voice isn’t ready, so this alarm will ring with a soft tone. Tap to try again.'
+                          : 'Preparing your voice…'}
                       </Text>
                     ) : null}
                   </Pressable>

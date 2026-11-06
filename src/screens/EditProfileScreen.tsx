@@ -43,9 +43,17 @@ type SectionProps = {
 
 function Section({ title, items, itemColors, onPress }: SectionProps) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}: ${items.length ? items.join(', ') : 'not set'}. Edit`}
+    >
       <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{uiLabel(title)}</Text>
-      <RecapPills items={items} colors={itemColors} />
+      <RecapPills
+        items={items}
+        colors={itemColors}
+        emptyLabel="Tap to add. It makes your morning message more personal."
+      />
     </Pressable>
   );
 }
@@ -181,8 +189,8 @@ export function EditProfileScreen({ navigation }: Props) {
         <View style={styles.danger}>
           <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.dangerTitle}>Delete account</Text>
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.dangerBody}>
-            Permanently erase your account data on our servers. Required by App
-            Store rules when you create an account.
+            Permanently erase your account, your voice clone and your answers
+            from our servers. Subscriptions are managed in your Apple ID.
           </Text>
           {deleting ? (
             <ActivityIndicator color={colors.text} style={styles.deleteSpinner} />

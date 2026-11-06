@@ -586,8 +586,11 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, async (req, res) => {
     // Personal script by default: name, habits, goals, today's mood + note.
     // USE_AI_ALARM_SCRIPTS=false forces the fixed template; any OpenAI
     // failure also falls back to it so an alarm is never left without audio.
+    // aiScript:false = the user has not agreed to send answers to OpenAI.
     const useAiScripts =
-      process.env.USE_AI_ALARM_SCRIPTS !== 'false' && Boolean(getOpenAiKey());
+      process.env.USE_AI_ALARM_SCRIPTS !== 'false' &&
+      Boolean(getOpenAiKey()) &&
+      req.body?.aiScript !== false;
     let script = null;
     if (providedText) {
       const text = String(providedText).trim();
