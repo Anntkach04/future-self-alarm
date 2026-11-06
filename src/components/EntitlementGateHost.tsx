@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useOnboarding } from '../context/OnboardingContext';
-import { UI_REVIEW_BYPASS } from '../config/devBypass';
 import { navigationRef } from '../navigation/navigationRef';
 import type { RootStackParamList } from '../navigation/types';
 import {
@@ -71,7 +70,7 @@ export function EntitlementGateHost() {
   const locked = useRef(false);
 
   useEffect(() => {
-    if (UI_REVIEW_BYPASS || !ready || !onboardingComplete || !hasPurchasesKey()) {
+    if (!ready || !onboardingComplete || !hasPurchasesKey()) {
       locked.current = false;
       return;
     }

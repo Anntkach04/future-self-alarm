@@ -1,5 +1,4 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { UI_REVIEW_BYPASS } from '../config/devBypass';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
@@ -45,19 +44,7 @@ function alarmSortKey(a: Pick<Alarm, 'hour' | 'minute'>) {
 }
 
 export function HomeScreen({ navigation }: Props) {
-  const { answers, voice, hydrateFromCloud } = useOnboarding();
-  // TEMP UI REVIEW — do not commit.
-  useEffect(() => {
-    if (UI_REVIEW_BYPASS && !voice.voiceId) {
-      hydrateFromCloud({
-        answers: { name: 'Anna', morningHabits: ['journaling', 'drink water first'] },
-        voiceId: '21m00Tcm4TlvDq8ikWAM',
-        isDemoVoice: true,
-        onboardingComplete: true,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { answers } = useOnboarding();
   const { alarms, toggleAlarm } = useAlarms();
   const { today, saveCheckIn } = useMoodCheckIn();
   const { isPaused, pauseUntil } = useAppSettings();

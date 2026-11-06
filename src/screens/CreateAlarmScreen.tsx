@@ -1,5 +1,4 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { UI_REVIEW_BYPASS } from '../config/devBypass';
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { AlarmDayPicker } from '../components/AlarmDayPicker';
@@ -149,7 +148,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         navigation.replace(voice.sampleUri ? 'VoiceCloning' : 'VoiceRecord');
         return;
       }
-      if (!UI_REVIEW_BYPASS && (voice.isDemo || isPremadeDemoVoiceId(voiceId))) {
+      if (voice.isDemo || isPremadeDemoVoiceId(voiceId)) {
         setSaving(false);
         setError(
           'This is a demo voice, not your clone. Re-record your voice first.'
