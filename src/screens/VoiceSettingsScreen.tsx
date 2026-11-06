@@ -54,7 +54,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>voice</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Voice</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         Re-record anytime. Mix changes apply to your next alarm.
       </Text>

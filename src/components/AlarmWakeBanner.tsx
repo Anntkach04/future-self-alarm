@@ -80,14 +80,14 @@ export function AlarmWakeBanner() {
         ]}
       >
         <Text style={styles.kicker} maxFontSizeMultiplier={1.4}>
-          good morning
+          Good morning
         </Text>
         <Text
           style={styles.title}
           maxFontSizeMultiplier={1.15}
           accessibilityRole="header"
         >
-          future you{'\n'}is here
+          Future you{'\n'}is here
         </Text>
         <Text style={styles.body} maxFontSizeMultiplier={1.4} lineBreakStrategyIOS="push-out">
           Your voice is playing. Tap I’m up when you’re awake,

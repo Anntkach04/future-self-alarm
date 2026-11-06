@@ -103,7 +103,7 @@ export const INTRO_SLIDES = [
   {
     label: '',
     title: 'Hear yourself\ntomorrow morning',
-    body: 'Your name and habits,\nin your own voice.',
+    body: 'A new note every day,\nin your own voice.',
     card: 'gold' as const,
   },
 ];

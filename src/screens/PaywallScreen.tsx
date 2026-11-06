@@ -213,7 +213,7 @@ export function PaywallScreen({ navigation, route }: Props) {
           disabled={busy}
           style={styles.restoreLink}
         >
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>Already subscribed? Restore</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>restore purchases</Text>
         </Pressable>
         {gated ? (
           <Pressable
@@ -223,7 +223,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             disabled={busy}
             style={styles.restoreLink}
           >
-            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>Manage account</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>manage account</Text>
           </Pressable>
         ) : null}
       </View>

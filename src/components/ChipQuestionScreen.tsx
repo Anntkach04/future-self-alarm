@@ -22,7 +22,8 @@ import {
   noFakeBold,
   spacing,
 } from '../theme';
-const ROW_GAP = 2;
+/** Same gap under every chip, on every question screen. */
+const CHIP_GAP = 12;
 
 type Props = {
   question: string;
@@ -259,12 +260,13 @@ const styles = StyleSheet.create({
   chipWrap: {
     paddingHorizontal: 0,
     width: '100%',
+    gap: CHIP_GAP,
   },
   chipRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginBottom: ROW_GAP,
+    marginBottom: 0,
   },
   addInputUnderline: {
     width: '100%',

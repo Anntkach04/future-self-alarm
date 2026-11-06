@@ -31,6 +31,11 @@ export type Alarm = {
   vibrate: boolean;
   audioUri?: string | null;
   scriptText?: string | null;
+  /**
+   * True only after wake audio is saved and the system alarm is scheduled.
+   * Missing on older saves: treat an existing file as already armed.
+   */
+  armed?: boolean;
 };
 
 export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
@@ -50,7 +55,14 @@ export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
     vibrate: raw.vibrate !== false,
     audioUri: raw.audioUri ?? null,
     scriptText: raw.scriptText ?? null,
+    armed:
+      typeof raw.armed === 'boolean' ? raw.armed : Boolean(raw.audioUri),
   };
+}
+
+/** Ready to look armed: voice file exists and the wake has been scheduled. */
+export function isAlarmArmed(alarm: Pick<Alarm, 'armed' | 'audioUri'>) {
+  return alarm.armed === true && Boolean(alarm.audioUri);
 }
 
 type AlarmsContextValue = {

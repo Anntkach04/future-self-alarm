@@ -4,6 +4,8 @@ Target: iOS **26.1+** (`app.json` → `ios.deploymentTarget`). AlarmKit does not
 
 Wake path for **cloned** voices: prefer **AlarmKit** (real system alarm UI + CAF in `Library/Sounds`) when authorized; else local **time-sensitive notifications** + CAF. Never schedule both for the same wake (double sound). Not Clock.app.
 
+The wake words are rewritten every day (evening regen, plus today’s mood). That is intentional: a fresh morning note is harder to tune out than one recording on repeat. Evening regen stays. After Save, Home shows Preparing until that wake voice is scheduled, then the normal armed alarm.
+
 ---
 
 ## 1. Custom voice audio (≤30s system limit)

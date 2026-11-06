@@ -36,7 +36,7 @@ export function NotificationSettingsScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>notifications</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Notifications</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {notificationsReady
           ? 'Alerts are on.'

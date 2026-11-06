@@ -63,11 +63,12 @@ export async function maybeEveningRegen(params: {
       voiceLevel,
       bedLevel,
     });
-    updateAlarm(next.id, { audioUri: uri, scriptText: text });
     await scheduleAlarmNotifications(
       { ...next, audioUri: uri, scriptText: text },
       uri
     );
+    // Swap the file only after the new wake is scheduled, so Home stays ready.
+    updateAlarm(next.id, { audioUri: uri, scriptText: text, armed: true });
     await AsyncStorage.setItem(LAST_REGEN_KEY, key);
   } catch (error) {
     console.warn('Evening regen failed', error);

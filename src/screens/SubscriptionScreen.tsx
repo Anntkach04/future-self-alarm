@@ -79,7 +79,7 @@ export function SubscriptionScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>subscription</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Subscription</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {plan?.trialDays
           ? `${plan.trialDays} days free, then monthly. `

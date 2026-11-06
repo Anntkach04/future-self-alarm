@@ -87,9 +87,9 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
         ]}
       >
         <View style={styles.copy}>
-          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{"you’re in"}</Text>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{"You’re in"}</Text>
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.sub}>
-            Tomorrow starts with your own voice. Nice work.
+            Tomorrow starts with your own voice. A new morning note every day.
           </Text>
         </View>
         <View style={styles.footer}>

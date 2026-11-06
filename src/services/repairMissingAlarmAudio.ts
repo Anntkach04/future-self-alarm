@@ -42,7 +42,17 @@ export async function repairMissingAlarmAudio(params: {
     const uriOk =
       Boolean(alarm.audioUri) && (await fileStillExists(alarm.audioUri));
     const mp3Ok = await alarmAudioExists(alarm.id);
-    if (uriOk && mp3Ok) continue;
+    if (uriOk && mp3Ok) {
+      // File is ready but the last save never finished scheduling.
+      if (alarm.armed === false) {
+        if (!paused && alarm.audioUri) {
+          await scheduleAlarmNotifications(alarm, alarm.audioUri);
+        }
+        updateAlarm(alarm.id, { armed: true });
+        repaired += 1;
+      }
+      continue;
+    }
 
     try {
       const { uri, text } = await buildAlarmAudioForId({
@@ -53,13 +63,14 @@ export async function repairMissingAlarmAudio(params: {
         voiceLevel,
         bedLevel,
       });
-      updateAlarm(alarm.id, { audioUri: uri, scriptText: text });
+      updateAlarm(alarm.id, { audioUri: uri, scriptText: text, armed: false });
       if (!paused) {
         await scheduleAlarmNotifications(
           { ...alarm, audioUri: uri, scriptText: text },
           uri
         );
       }
+      updateAlarm(alarm.id, { armed: true });
       repaired += 1;
     } catch (error) {
       failed += 1;

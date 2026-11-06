@@ -14,6 +14,7 @@ import { SwipeDeleteRow } from '../components/SwipeDeleteRow';
 import {
   formatAlarmDays,
   formatAlarmTime,
+  isAlarmArmed,
   useAlarms,
 } from '../context/AlarmsContext';
 import { RootStackParamList } from '../navigation/types';
@@ -28,7 +29,7 @@ export function AlarmsScreen({ navigation }: Props) {
     <Screen>
       <BackButton style={styles.back} />
       <View style={styles.header}>
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>alarms</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Alarms</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
@@ -37,7 +38,9 @@ export function AlarmsScreen({ navigation }: Props) {
             No wakes yet. Tap + to set the first morning with your voice.
           </Text>
         ) : (
-          alarms.map((alarm) => (
+          alarms.map((alarm) => {
+            const armed = isAlarmArmed(alarm);
+            return (
             <SwipeDeleteRow
               key={alarm.id}
               onDelete={() => removeAlarm(alarm.id)}
@@ -51,24 +54,34 @@ export function AlarmsScreen({ navigation }: Props) {
                   }
                 >
                   <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
-                    style={[styles.time, !alarm.enabled && styles.dim]}
+                    style={[styles.time, (!alarm.enabled || !armed) && styles.dim]}
                   >
                     {formatAlarmTime(alarm)}
                   </Text>
-                  <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
-                    style={[styles.meta, !alarm.enabled && styles.dim]}
-                  >
-                    {alarm.label} · {formatAlarmDays(alarm.days)}
-                  </Text>
+                  {armed ? (
+                    <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
+                      style={[styles.meta, !alarm.enabled && styles.dim]}
+                    >
+                      {alarm.label} · {formatAlarmDays(alarm.days)}
+                    </Text>
+                  ) : (
+                    <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.preparing}>
+                      Preparing. Your wake voice isn’t ready yet.
+                    </Text>
+                  )}
                 </Pressable>
                 <Switch
-                  value={alarm.enabled}
-                  onValueChange={() => toggleAlarm(alarm.id)}
+                  value={armed && alarm.enabled}
+                  disabled={!armed}
+                  onValueChange={() => {
+                    if (armed) toggleAlarm(alarm.id);
+                  }}
                   trackColor={{ false: colors.border, true: colors.text }}
                 />
               </View>
             </SwipeDeleteRow>
-          ))
+            );
+          })
         )}
       </ScrollView>
 
@@ -130,6 +143,12 @@ const styles = StyleSheet.create({
   meta: {
     fontFamily: fonts.body,
     color: colors.textMuted,
+  },
+  preparing: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.text,
   },
   dim: {
     opacity: 0.38,

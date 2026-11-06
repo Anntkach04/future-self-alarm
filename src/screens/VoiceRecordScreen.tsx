@@ -47,6 +47,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
     setVoiceSample,
     setVoiceId,
     setPreview,
+    clearVoice,
     markOnboardingComplete,
   } = useOnboarding();
   const lines = buildVoiceScriptLines(answers.name);
@@ -59,6 +60,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const advancingRef = useRef(false);
   const doneLineRef = useRef(-1);
   const cloneStartedRef = useRef(false);
+  /** Bumped on redo so a late clone cannot attach a discarded take. */
+  const cloneGenRef = useRef(0);
   const sampleUriRef = useRef<string | null>(null);
   const insets = useSafeAreaInsets();
 
@@ -110,18 +113,21 @@ export function VoiceRecordScreen({ navigation }: Props) {
     async (sampleUri: string) => {
       if (cloneStartedRef.current) return;
       cloneStartedRef.current = true;
+      const gen = cloneGenRef.current;
       setCloning(true);
       setCloneError(null);
       try {
         const result = await cloneOnboardingVoice({ sampleUri, answers });
+        if (gen !== cloneGenRef.current) return;
         setVoiceId(result.voiceId, result.isDemo);
         setPreview(result.previewPath, result.previewText);
         setCloneReady(true);
       } catch (e) {
+        if (gen !== cloneGenRef.current) return;
         cloneStartedRef.current = false;
         setCloneError(e instanceof Error ? e.message : 'Voice cloning failed');
       } finally {
-        setCloning(false);
+        if (gen === cloneGenRef.current) setCloning(false);
       }
     },
     [answers, setPreview, setVoiceId]
@@ -234,7 +240,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
 
     setComplete(true);
     playCompleteEnter();
-    setCloneError('Your recording didn’t save. Tap re-record to try again.');
+    setCloneError('Your recording didn’t save. Tap redo to try again.');
     finishingRef.current = false;
   }, [playCompleteEnter, setVoiceSample, startClone, stopRecording]);
 
@@ -449,21 +455,29 @@ export function VoiceRecordScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete, cloneReady, cloneError]);
 
-  const rerecordFromComplete = async () => {
-    if (!(await consentToRecord())) return;
+  /**
+   * Throw away this take and stay on the script.
+   * Does not play the recording back. The next take is a full read, not a short demo.
+   */
+  const redoTake = async () => {
+    const dropSavedSample = complete || Boolean(sampleUriRef.current);
+    cloneGenRef.current += 1;
     successLeaveArmedRef.current = false;
-    setComplete(false);
     finishingRef.current = false;
     cloneStartedRef.current = false;
+    advancingRef.current = false;
+    doneLineRef.current = -1;
+    sampleUriRef.current = null;
+    setComplete(false);
     setCloneError(null);
     setCloneReady(false);
+    setCloning(false);
     resetCompleteVisuals();
     setLineIndex(0);
-    doneLineRef.current = -1;
-    advancingRef.current = false;
     lineOpacity.setValue(1);
     lineY.setValue(0);
-    void dictaphone.start();
+    if (dropSavedSample) clearVoice();
+    await dictaphone.discard();
   };
 
   const forceContinue = () => {
@@ -571,7 +585,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
           {/* Title + subtitle in ONE enter so left edges stay aligned (scale was shifting subtitle). */}
           <BubbleEnter delay={0} fromY={16}>
             <View>
-              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{`read this\nout loud`}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{`Read this\nout loud`}</Text>
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.subtitle}>Find a quiet room.</Text>
               <View
                 style={styles.progressTrack}
@@ -642,15 +656,27 @@ export function VoiceRecordScreen({ navigation }: Props) {
               />
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.hint}>{hint}</Text>
               {recording ? (
-                <TextArrowButton
-                  label={
-                    lineIndex >= lines.length - 1 ? 'finish' : 'continue'
-                  }
-                  color={accents.lime}
-                  hideArrow
-                  onPress={forceContinue}
-                  style={styles.nextLineBtn}
-                />
+                <>
+                  <TextArrowButton
+                    label={
+                      lineIndex >= lines.length - 1 ? 'finish' : 'continue'
+                    }
+                    color={accents.lime}
+                    hideArrow
+                    onPress={forceContinue}
+                    style={styles.nextLineBtn}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Redo"
+                    onPress={() => void redoTake()}
+                    style={styles.redoBtn}
+                  >
+                    <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.redoText}>
+                      redo
+                    </Text>
+                  </Pressable>
+                </>
               ) : null}
             </View>
           </BubbleEnter>
@@ -669,78 +695,76 @@ export function VoiceRecordScreen({ navigation }: Props) {
         ]}
       >
         {/* Tap anywhere on success to leave — never trap the user again. */}
-        <Pressable
-          accessibilityRole="button"
-          disabled={!cloneReady || Boolean(cloneError)}
-          onPress={leaveToVoicePreview}
-          style={StyleSheet.absoluteFill}
+        <Animated.View
+          style={[
+            styles.completeInner,
+            {
+              opacity: completeOpacity,
+              paddingTop: Math.max(insets.top, 48) + 32,
+              paddingBottom: Math.max(insets.bottom, 16) + 20,
+              transform: [
+                { translateY: completeEnterY },
+                { scale: completeEnterScale },
+              ],
+            },
+          ]}
         >
-          <Animated.View
-            style={[
-              styles.completeInner,
-              {
-                opacity: completeOpacity,
-                paddingTop: Math.max(insets.top, 48) + 32,
-                paddingBottom: Math.max(insets.bottom, 16) + 20,
-                transform: [
-                  { translateY: completeEnterY },
-                  { scale: completeEnterScale },
-                ],
-              },
-            ]}
+          <Pressable
+            accessibilityRole="button"
+            disabled={!cloneReady || Boolean(cloneError)}
+            onPress={leaveToVoicePreview}
+            style={styles.completeCopy}
           >
-            <View style={styles.completeCopy} pointerEvents="none">
-              {cloning && !cloneReady ? <LogoSpinner /> : null}
-              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.completeTitle}>
-                {cloneError
-                  ? 'Almost'
-                  : cloneReady
-                    ? "You’re all set"
-                    : 'Cloning your voice'}
+            {cloning && !cloneReady ? <LogoSpinner /> : null}
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.completeTitle}>
+              {cloneError
+                ? 'Almost'
+                : cloneReady
+                  ? "You’re all set"
+                  : 'Cloning your voice'}
+            </Text>
+            {cloneError ? (
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.completeError}>{cloneError}</Text>
+            ) : cloneReady ? (
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
+                Your future self has your voice now.
               </Text>
-              {cloneError ? (
-                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.completeError}>{cloneError}</Text>
-              ) : cloneReady ? (
-                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
-                  Your future self has your voice now.
-                </Text>
-              ) : (
-                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
-                  This usually takes about 1–2 minutes
-                </Text>
-              )}
-            </View>
-            <View style={styles.completeFooter}>
-              {cloneError ? (
-                <>
-                  <Pressable
-                    onPress={rerecordFromComplete}
-                    style={styles.goldLinkBtn}
-                  >
-                    <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.goldLinkText}>re-record</Text>
-                  </Pressable>
-                  <RoundArrowButton
-                    onPress={() => {
-                      if (/sign in/i.test(cloneError)) {
-                        navigation.replace('SignIn', { mode: 'resume' });
-                        return;
-                      }
-                      // No saved take → nothing to retry; record again.
-                      if (!sampleUriRef.current) {
-                        void rerecordFromComplete();
-                        return;
-                      }
-                      retryClone();
-                    }}
-                    color={colors.bg}
-                  />
-                </>
-              ) : (
-                <View style={styles.footerPlaceholder} />
-              )}
-            </View>
-          </Animated.View>
-        </Pressable>
+            ) : (
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
+                This usually takes about 1–2 minutes
+              </Text>
+            )}
+          </Pressable>
+          <View style={styles.completeFooter}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Redo"
+              onPress={() => void redoTake()}
+              style={styles.goldLinkBtn}
+            >
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.goldLinkText}>redo</Text>
+            </Pressable>
+            {cloneError ? (
+              <RoundArrowButton
+                onPress={() => {
+                  if (/sign in/i.test(cloneError)) {
+                    navigation.replace('SignIn', { mode: 'resume' });
+                    return;
+                  }
+                  // No saved take → nothing to retry; record again.
+                  if (!sampleUriRef.current) {
+                    void redoTake();
+                    return;
+                  }
+                  retryClone();
+                }}
+                color={colors.bg}
+              />
+            ) : (
+              <View style={styles.footerPlaceholder} />
+            )}
+          </View>
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -834,6 +858,17 @@ const styles = StyleSheet.create({
   nextLineBtn: {
     marginTop: 12,
     alignSelf: 'center',
+  },
+  redoBtn: {
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  redoText: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    color: colors.text,
+    textDecorationLine: 'underline',
   },
   error: {
     fontFamily: fonts.body,

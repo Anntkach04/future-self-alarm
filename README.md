@@ -8,6 +8,7 @@ This is an Expo (React Native) app. GitHub shows the **code**, not the live iPho
 
 - Onboarding: name, feelings, future-self chips, music bed, wake time, voice recording
 - Clones the voice (ElevenLabs) and writes a morning script (OpenAI)
+- A new personal wake script every morning, so the note does not go stale. Evening regen stays on.
 - Mixes a calm bed under the voice
 - Schedules a notification that plays the full audio
 

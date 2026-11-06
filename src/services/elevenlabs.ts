@@ -322,7 +322,7 @@ export async function cloneVoiceFromUri(params: {
     }
     if (/too large|entity too large|413/i.test(message)) {
       throw new Error(
-        'Recording is too long for clone. Tap re-record and keep it around one to two minutes.'
+        'Recording is too long for clone. Tap redo and keep it around one to two minutes.'
       );
     }
     throw new Error(message);
@@ -347,7 +347,7 @@ export async function cloneVoiceFromUri(params: {
     info.size > maxBytes
   ) {
     throw new Error(
-      'Could not upload this recording. Tap re-record and try a shorter take.'
+      'Could not upload this recording. Tap redo and try a shorter take.'
     );
   }
 
@@ -369,7 +369,7 @@ export async function cloneVoiceFromUri(params: {
     const msg = await readError(response);
     if (/too large|entity too large|413/i.test(msg)) {
       throw new Error(
-        'Recording is too long for clone. Tap re-record and keep it around one to two minutes.'
+        'Recording is too long for clone. Tap redo and keep it around one to two minutes.'
       );
     }
     throw new Error(msg);

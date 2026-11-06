@@ -21,7 +21,6 @@ import { resolveVoiceId, isPremadeDemoVoiceId } from '../services/defaultVoice';
 import { checkVoiceApiHealth } from '../services/elevenlabs';
 import { userFacingError } from '../services/userFacingError';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
-import { uiLabel } from '../utils/labels';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateAlarm'>;
 
@@ -92,14 +91,16 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     void (async () => {
       try {
         const voiceId = resolveVoiceId(voice.voiceId);
-        if (!voiceId || voice.isDemo || isPremadeDemoVoiceId(voiceId)) return;
+        const canBuild =
+          Boolean(voiceId) &&
+          !voice.isDemo &&
+          !isPremadeDemoVoiceId(voiceId ?? '');
 
-        const reuseUri = existing?.audioUri ?? null;
-        let uri = reuseUri;
+        let uri = existing?.audioUri ?? null;
         let text = existing?.scriptText ?? null;
 
         // Reuse voice when only time/days/snooze changed.
-        if (!uri) {
+        if (!uri && canBuild && voiceId) {
           const { ensureGuestSession } = await import('../services/apiAuth');
           await ensureGuestSession();
           const health = await checkVoiceApiHealth();
@@ -117,10 +118,18 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
           });
           uri = built.uri;
           text = built.text;
-          updateAlarm(alarmId, { audioUri: uri, scriptText: text });
         }
 
-        if (isPaused || !uri) return;
+        if (!uri) return;
+
+        // Keep Preparing until the system wake is actually scheduled.
+        updateAlarm(alarmId, { audioUri: uri, scriptText: text, armed: false });
+
+        if (isPaused) {
+          updateAlarm(alarmId, { armed: true });
+          return;
+        }
+
         const allowed = await ensureNotificationPermissions();
         setNotificationsReady(allowed);
         await scheduleAlarmNotifications(
@@ -132,6 +141,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
           },
           uri
         );
+        updateAlarm(alarmId, { armed: true });
       } catch (e) {
         console.warn('Background alarm voice failed', e);
       }
@@ -169,6 +179,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         snoozeEnabled: snoozeOnRef.current,
         snoozeMinutes: 10,
         vibrate: vibrateRef.current,
+        // Not armed until wake audio exists and scheduleAlarmNotifications returns.
+        armed: false,
       };
 
       const alarmId = existing ? existing.id : addAlarm(payload).id;
@@ -200,7 +212,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
       <View style={styles.page}>
         <BackButton style={styles.back} />
         <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
-          {uiLabel(existing ? 'edit alarm' : 'set up alarm')}
+          {existing ? 'Edit alarm' : 'Set up alarm'}
         </Text>
 
         <View style={styles.timeZone}>
@@ -246,7 +258,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>vibrate</Text>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>Vibrate</Text>
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
               Buzz when your future self starts talking
             </Text>

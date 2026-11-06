@@ -63,7 +63,7 @@ export function MenuScreen({ navigation }: Props) {
     <Screen>
       <View style={styles.page}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>menu</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Menu</Text>
         <View style={styles.list}>
           {ROWS.map((row) => (
             <Pressable
@@ -92,7 +92,7 @@ export function MenuScreen({ navigation }: Props) {
           }}
           style={styles.supportBtn}
         >
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.supportText}>Contact Us</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.supportText}>contact us</Text>
         </Pressable>
         <LegalLinks style={styles.legal} />
         <View style={styles.thanks}>

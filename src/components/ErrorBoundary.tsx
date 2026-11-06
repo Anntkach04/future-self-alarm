@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           onPress={this.retry}
           style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
         >
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buttonText}>Try again</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buttonText}>try again</Text>
         </Pressable>
       </View>
     );

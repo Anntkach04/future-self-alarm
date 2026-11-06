@@ -82,6 +82,8 @@ To remove reset later, tell Cursor: «Прибери dev reset онбордин�
 - [ ] Mood advice varies (not the same fallback text)
 - [ ] Voice record highlights words when you read the script
 - [ ] Alarm saves and notification is scheduled
+- [ ] Right after save, Home shows Preparing until the wake voice is scheduled, then the normal armed alarm
+- [ ] Voice record: redo throws away the take and starts the script again, without a short listen
 
 ## Alarm engine (device — before release)
 

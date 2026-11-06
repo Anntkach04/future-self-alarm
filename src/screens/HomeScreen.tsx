@@ -20,6 +20,7 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import {
   formatAlarmDays,
   formatAlarmTime,
+  isAlarmArmed,
   useAlarms,
   type Alarm,
 } from '../context/AlarmsContext';
@@ -139,7 +140,9 @@ export function HomeScreen({ navigation }: Props) {
           ) : null}
 
           {hasAlarms ? (
-            listedAlarms.map((alarm, index) => (
+            listedAlarms.map((alarm, index) => {
+              const armed = isAlarmArmed(alarm);
+              return (
               <View
                 key={alarm.id}
                 style={[styles.alarmRow, index > 0 && styles.alarmRowBorder]}
@@ -156,33 +159,43 @@ export function HomeScreen({ navigation }: Props) {
                     <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
                       style={[
                         styles.alarmTime,
-                        !alarm.enabled && styles.alarmDim,
+                        (!alarm.enabled || !armed) && styles.alarmDim,
                       ]}
                     >
                       {formatAlarmTime(alarm)}
                     </Text>
-                    <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
-                      style={[
-                        styles.alarmDays,
-                        !alarm.enabled && styles.alarmDim,
-                      ]}
-                    >
-                      {formatAlarmDays(alarm.days)}
-                    </Text>
-                    {!alarm.audioUri ? (
-                      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.alarmPreparing}>
-                        Preparing your voice…
+                    {armed ? (
+                      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
+                        style={[
+                          styles.alarmDays,
+                          !alarm.enabled && styles.alarmDim,
+                        ]}
+                      >
+                        {formatAlarmDays(alarm.days)}
                       </Text>
-                    ) : null}
+                    ) : (
+                      <View accessibilityRole="text" accessibilityLabel="Preparing">
+                        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.alarmPreparing}>
+                          Preparing
+                        </Text>
+                        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.alarmPreparingBody}>
+                          Your wake voice isn’t ready yet.
+                        </Text>
+                      </View>
+                    )}
                   </Pressable>
                   <Switch
-                    value={alarm.enabled}
-                    onValueChange={() => toggleAlarm(alarm.id)}
+                    value={armed && alarm.enabled}
+                    disabled={!armed}
+                    onValueChange={() => {
+                      if (armed) toggleAlarm(alarm.id);
+                    }}
                     trackColor={{ false: colors.border, true: colors.text }}
                   />
                 </View>
               </View>
-            ))
+              );
+            })
           ) : (
             <View style={styles.alarmRow}>
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.emptyAlarms}>
@@ -191,6 +204,11 @@ export function HomeScreen({ navigation }: Props) {
               </Text>
             </View>
           )}
+          {hasAlarms ? (
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.dailyNote}>
+              A new morning note every day.
+            </Text>
+          ) : null}
           <View style={styles.alarmActions}>
             <TextArrowButton
               label={hasAlarms ? 'add alarm' : 'set wake time'}
@@ -354,10 +372,26 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   alarmPreparing: {
+    fontFamily: fonts.headingRegular,
+    fontSize: 18,
+    lineHeight: 22,
+    color: colors.text,
+    marginTop: 6,
+    ...noFakeBold,
+  },
+  alarmPreparingBody: {
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.textMuted,
-    marginTop: 4,
+    marginTop: 2,
+  },
+  dailyNote: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
+    marginTop: 14,
   },
   alarmActions: {
     flexDirection: 'row',

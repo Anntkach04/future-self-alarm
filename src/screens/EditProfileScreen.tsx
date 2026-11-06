@@ -30,7 +30,6 @@ import { logOutPurchases } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
 import { accents, colors, fonts, noFakeBold } from '../theme';
 import { colorsForRecapSections } from '../utils/optionColors';
-import { uiLabel } from '../utils/labels';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
@@ -44,7 +43,7 @@ type SectionProps = {
 function Section({ title, items, itemColors, onPress }: SectionProps) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{uiLabel(title)}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{title}</Text>
       <RecapPills items={items} colors={itemColors} />
     </Pressable>
   );
@@ -135,33 +134,33 @@ export function EditProfileScreen({ navigation }: Props) {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{uiLabel('account')}</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Account</Text>
         <View style={styles.block}>
           <Section
-            title="name"
+            title="Name"
             items={answers.name ? [answers.name] : []}
             onPress={() => navigation.navigate('EditProfileName')}
           />
           <Section
-            title="goals"
+            title="Goals"
             items={answers.futureSelf}
             itemColors={goalsColors}
             onPress={() => openField('futureSelf')}
           />
           <Section
-            title="morning habits"
+            title="Morning habits"
             items={answers.morningHabits}
             itemColors={habitColors}
             onPress={() => openField('morningHabits')}
           />
           <Section
-            title="hard mornings"
+            title="Hard mornings"
             items={answers.hardMornings}
             itemColors={hardMorningColors}
             onPress={() => openField('hardMornings')}
           />
           <Section
-            title="voice tone"
+            title="Voice tone"
             items={answers.voiceStyle ? [answers.voiceStyle] : []}
             itemColors={answers.voiceStyle ? voiceColors : undefined}
             onPress={() => openField('voiceStyle')}

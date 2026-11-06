@@ -91,6 +91,8 @@ export function useSmartDictaphone(
   const peakVolumeRef = useRef(-2);
   const speechMsRef = useRef(0);
   const speechTickAtRef = useRef(0);
+  /** Redo discards the take. Ignore a late STT file so it cannot become the clone. */
+  const ignorePersistRef = useRef(false);
   const [quiet, setQuiet] = useState(true);
 
   lineRef.current = currentLine;
@@ -235,7 +237,7 @@ export function useSmartDictaphone(
   });
 
   useSpeechRecognitionEvent('audioend', (event) => {
-    if (!event.uri) return;
+    if (ignorePersistRef.current || !event.uri) return;
     uriRef.current = event.uri;
     setUri(event.uri);
     uriWaiterRef.current?.(event.uri);
@@ -331,8 +333,48 @@ export function useSmartDictaphone(
     return { mic: true, speech };
   }, []);
 
+  const discard = useCallback(async () => {
+    keepListeningRef.current = false;
+    ignorePersistRef.current = true;
+    uriWaiterRef.current = null;
+    try {
+      ExpoSpeechRecognitionModule.abort();
+    } catch {
+      /* already stopped */
+    }
+    if (recordingRef.current) {
+      try {
+        await recordingRef.current.stop();
+      } catch {
+        /* already stopped */
+      }
+      recordingRef.current = null;
+    }
+    try {
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+    } catch {
+      /* audio session may already be idle */
+    }
+    uriRef.current = null;
+    setUri(null);
+    setDurationMs(0);
+    durationStartedAtRef.current = 0;
+    setStatus('idle');
+    setHearing(false);
+    setError(null);
+    setQuiet(true);
+    setMetering(-40);
+    spokenRef.current = 0;
+    setSpokenCount(0);
+    finalsRef.current = '';
+  }, []);
+
   const start = useCallback(async () => {
     try {
+      ignorePersistRef.current = false;
       setError(null);
       setUri(null);
       uriRef.current = null;
@@ -516,6 +558,7 @@ export function useSmartDictaphone(
     requestPermission,
     start,
     stop,
+    discard,
     getQualityStats,
   };
 }

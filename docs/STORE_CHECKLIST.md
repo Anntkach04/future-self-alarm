@@ -225,7 +225,7 @@ Record once. Choose how mornings should feel. Optionally check in on your mood t
 
 What you get:
 - Voice clone from a short recording
-- Personalized morning scripts
+- Personalized morning scripts that refresh every day, so the wake note stays fresh instead of a line you learn to ignore
 - Mood check-in that can shape tomorrow’s line
 - Soft music bed under your voice
 - 7-day free trial, then monthly

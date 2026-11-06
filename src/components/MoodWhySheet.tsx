@@ -71,7 +71,9 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
           <View style={styles.sheet}>
             <View style={styles.handle} />
             {mood ? (
-              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.moodName}>{mood.label}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.moodName}>
+                {mood.label.charAt(0).toUpperCase() + mood.label.slice(1)}
+              </Text>
             ) : null}
 
             {phase === 'compose' ? (

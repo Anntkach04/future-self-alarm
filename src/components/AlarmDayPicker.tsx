@@ -6,7 +6,6 @@ import {
   WEEKENDS,
 } from '../context/AlarmsContext';
 import { colors, fonts, noFakeBold, radii } from '../theme';
-import { uiLabel } from '../utils/labels';
 
 type Props = {
   days: number[];
@@ -32,7 +31,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.section}>{uiLabel('Repeat')}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.section}>Repeat</Text>
       <View style={styles.presets}>
         {[
           { label: 'weekdays', value: WEEKDAYS },
