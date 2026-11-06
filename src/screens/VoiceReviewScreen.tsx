@@ -45,14 +45,14 @@ export function VoiceReviewScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
       <BackButton />
       <BubbleEnter delay={40} fromY={14} style={styles.content}>
-        <Text maxFontSizeMultiplier={1.5} style={styles.kicker}>Review</Text>
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>listen to your take</Text>
-        <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.kicker}>Review</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>listen to your take</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
           Duration: {voice.sampleDurationSec}s. If it sounds clear, we’ll clone it with ElevenLabs.
         </Text>
 
         <Pressable style={styles.playBtn} onPress={playing ? stop : play}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.playText}>{playing ? 'Stop' : 'Play recording'}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.playText}>{playing ? 'Stop' : 'Play recording'}</Text>
         </Pressable>
       </BubbleEnter>
 
@@ -61,7 +61,7 @@ export function VoiceReviewScreen({ navigation }: Props) {
           onPress={() => navigation.replace('VoiceRecord')}
           style={styles.linkBtn}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.linkText}>re-record</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.linkText}>re-record</Text>
         </Pressable>
         <RoundArrowButton
           onPress={() => navigation.navigate('VoiceCloning')}

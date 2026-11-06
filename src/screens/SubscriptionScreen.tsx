@@ -79,8 +79,8 @@ export function SubscriptionScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>subscription</Text>
-      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>subscription</Text>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {plan?.trialDays
           ? `${plan.trialDays} days free, then monthly. `
           : 'Billed monthly. '}
@@ -92,7 +92,7 @@ export function SubscriptionScreen({}: Props) {
         {!status ? (
           <LoadingLabel text="Checking" style={styles.status} />
         ) : (
-          <Text maxFontSizeMultiplier={1.2} style={styles.status}>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.status}>
             {status.active
               ? status.inTrial
                 ? 'Trial active'
@@ -101,29 +101,29 @@ export function SubscriptionScreen({}: Props) {
           </Text>
         )}
         {status?.expiresAt ? (
-          <Text maxFontSizeMultiplier={1.5} style={styles.meta}>Renews / ends {status.expiresAt}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.meta}>Renews / ends {status.expiresAt}</Text>
         ) : null}
         {!status?.active ? (
           <>
-            <Text maxFontSizeMultiplier={1.2} style={styles.planName}>Monthly</Text>
-            <Text maxFontSizeMultiplier={1.5} style={styles.planPrice}>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.planName}>Monthly</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
               {plan?.headline ?? 'Monthly'}
             </Text>
             {BENEFITS.map((line) => (
-              <Text maxFontSizeMultiplier={1.5} key={line} style={styles.benefit}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={line} style={styles.benefit}>
                 · {line}
               </Text>
             ))}
           </>
         ) : null}
         {!hasPurchasesKey() ? (
-          <Text maxFontSizeMultiplier={1.5} style={styles.meta}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.meta}>
             Dev unlock (no RevenueCat appl_ key yet)
           </Text>
         ) : null}
       </View>
 
-      {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
+      {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
       {busy ? <ActivityIndicator color={colors.text} /> : null}
 
       <View style={styles.actions}>

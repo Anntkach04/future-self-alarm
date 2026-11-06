@@ -110,7 +110,7 @@ export function PaywallScreen({ navigation, route }: Props) {
         return;
       }
       if (/cancel/i.test(msg)) {
-        setNote('Purchase cancelled — tap the button below when you are ready.');
+        setNote('Purchase cancelled. Tap the button below when you are ready.');
         return;
       }
       setError(msg);
@@ -147,14 +147,14 @@ export function PaywallScreen({ navigation, route }: Props) {
   return (
     <Screen>
       {gated ? null : <BackButton style={styles.back} />}
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
         {gated
           ? 'Keep waking up\nto future you'
           : trial
             ? `Try future self\nfree for ${trialLabel}`
             : 'Wake up to\nfuture you'}
       </Text>
-      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {trial
           ? `${plan?.trialDays === 7 ? 'One week' : `${plan?.trialDays} days`} free, then monthly`
           : 'Monthly'}{' '}
@@ -174,27 +174,27 @@ export function PaywallScreen({ navigation, route }: Props) {
           busy && styles.planCardBusy,
         ]}
       >
-        <Text maxFontSizeMultiplier={1.5} style={styles.planBadge}>Most people start here</Text>
-        <Text maxFontSizeMultiplier={1.2} style={styles.planName}>Monthly</Text>
-        <Text maxFontSizeMultiplier={1.5} style={styles.planPrice}>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planBadge}>Most people start here</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.planName}>Monthly</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
           {plan?.headline ?? 'Monthly'}
         </Text>
         <View style={styles.benefits}>
           {BENEFITS.map((line) => (
-            <Text maxFontSizeMultiplier={1.5} key={line} style={styles.benefit}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={line} style={styles.benefit}>
               · {line}
             </Text>
           ))}
         </View>
         {plan?.disclosure ? (
-          <Text maxFontSizeMultiplier={1.5} style={styles.disclosure}>{plan.disclosure}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.disclosure}>{plan.disclosure}</Text>
         ) : null}
       </Pressable>
 
       <LegalLinks style={styles.legal} />
 
-      {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
-      {note ? <Text maxFontSizeMultiplier={1.5} style={styles.note}>{note}</Text> : null}
+      {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
+      {note ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.note}>{note}</Text> : null}
       {busy ? (
         <ActivityIndicator color={colors.text} style={{ marginTop: 12 }} />
       ) : null}
@@ -213,7 +213,7 @@ export function PaywallScreen({ navigation, route }: Props) {
           disabled={busy}
           style={styles.restoreLink}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.restoreText}>Already subscribed? Restore</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>Already subscribed? Restore</Text>
         </Pressable>
         {gated ? (
           <Pressable
@@ -223,7 +223,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             disabled={busy}
             style={styles.restoreLink}
           >
-            <Text maxFontSizeMultiplier={1.5} style={styles.restoreText}>Manage account</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>Manage account</Text>
           </Pressable>
         ) : null}
       </View>

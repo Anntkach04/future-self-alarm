@@ -30,16 +30,16 @@ export function KaraokeScript({
   style,
 }: Props) {
   if (!words?.length) {
-    return <Text maxFontSizeMultiplier={1.5} style={[styles.body, style]}>{text}</Text>;
+    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.body, style]}>{text}</Text>;
   }
 
   return (
-    <Text maxFontSizeMultiplier={1.5} style={[styles.body, style]}>
+    <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.body, style]}>
       {words.map((w, i) => {
         const spoken = active && currentTime >= w.start - 0.02;
         return (
-          <Text maxFontSizeMultiplier={1.5} key={`${i}-${w.start}`}>
-            <Text maxFontSizeMultiplier={1.5} style={{ color: spoken ? SPOKEN : colors.text }}>{w.text}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={`${i}-${w.start}`}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={{ color: spoken ? SPOKEN : colors.text }}>{w.text}</Text>
             {i < words.length - 1 ? ' ' : ''}
           </Text>
         );

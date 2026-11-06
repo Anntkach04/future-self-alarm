@@ -76,17 +76,17 @@ export function HomeScreen({ navigation }: Props) {
           <Image source={MENU} style={styles.menuIcon} resizeMode="contain" />
         </Pressable>
 
-        <Text maxFontSizeMultiplier={1.2} style={styles.hello}>{title}</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.hello}>{title}</Text>
 
         {isPaused ? (
-          <Text maxFontSizeMultiplier={1.5} style={styles.pausedGlobal}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedGlobal}>
             Alarms paused{pauseUntil ? ` until ${pauseUntil}` : ''}. Resume in
             Menu → Notifications when you’re back.
           </Text>
         ) : null}
 
-        <Text maxFontSizeMultiplier={1.2} style={styles.feeling}>How are you feeling today?</Text>
-        <Text maxFontSizeMultiplier={1.5} style={styles.moodHint}>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.feeling}>How are you feeling today?</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.moodHint}>
           This shapes tomorrow’s wake only - not every morning forever.
         </Text>
         <View style={styles.moodRow}>
@@ -102,7 +102,7 @@ export function HomeScreen({ navigation }: Props) {
                   selected && styles.moodSelected,
                 ]}
               >
-                <Text maxFontSizeMultiplier={1.2} style={styles.moodLabel}>{uiLabel(mood.label)}</Text>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.moodLabel}>{uiLabel(mood.label)}</Text>
               </Pressable>
             );
           })}
@@ -118,7 +118,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <View style={styles.block}>
           {allPaused ? (
-            <Text maxFontSizeMultiplier={1.5} style={styles.pausedBanner}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedBanner}>
               All alarms are off. Turn one on if you want Future You to wake
               you tomorrow.
             </Text>
@@ -139,7 +139,7 @@ export function HomeScreen({ navigation }: Props) {
                       })
                     }
                   >
-                    <Text maxFontSizeMultiplier={1.2}
+                    <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
                       style={[
                         styles.alarmTime,
                         !alarm.enabled && styles.alarmDim,
@@ -147,7 +147,7 @@ export function HomeScreen({ navigation }: Props) {
                     >
                       {formatAlarmTime(alarm)}
                     </Text>
-                    <Text maxFontSizeMultiplier={1.2}
+                    <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
                       style={[
                         styles.alarmDays,
                         !alarm.enabled && styles.alarmDim,
@@ -156,7 +156,7 @@ export function HomeScreen({ navigation }: Props) {
                       {formatAlarmDays(alarm.days)}
                     </Text>
                     {!alarm.audioUri ? (
-                      <Text maxFontSizeMultiplier={1.5} style={styles.alarmPreparing}>
+                      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.alarmPreparing}>
                         Preparing your voice…
                       </Text>
                     ) : null}
@@ -171,7 +171,7 @@ export function HomeScreen({ navigation }: Props) {
             ))
           ) : (
             <View style={styles.alarmRow}>
-              <Text maxFontSizeMultiplier={1.5} style={styles.emptyAlarms}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.emptyAlarms}>
                 No wake set yet. Add an alarm so Future You can call you in the
                 morning.
               </Text>

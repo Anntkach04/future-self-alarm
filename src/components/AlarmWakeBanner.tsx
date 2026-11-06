@@ -89,9 +89,9 @@ export function AlarmWakeBanner() {
         >
           future you{'\n'}is here
         </Text>
-        <Text style={styles.body} maxFontSizeMultiplier={1.4}>
+        <Text style={styles.body} maxFontSizeMultiplier={1.4} lineBreakStrategyIOS="push-out">
           Your voice is playing. Tap I’m up when you’re awake, or
-          snooze for 10 minutes — your regular schedule stays on.
+          snooze for 10 minutes. Your regular schedule stays on.
         </Text>
 
         <View style={styles.footer}>

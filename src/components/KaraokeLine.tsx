@@ -23,7 +23,7 @@ export function KaraokeLine({ text, spokenCount }: Props) {
   return (
     <View style={styles.wrap}>
       {words.map((word, i) => (
-        <Text maxFontSizeMultiplier={1.2}
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
           key={`${text}-${i}`}
           style={[styles.word, i < highlighted ? styles.spoken : styles.unspoken]}
         >

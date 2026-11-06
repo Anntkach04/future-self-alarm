@@ -86,7 +86,7 @@ export function SoftStatusBanners() {
     >
       {showReauth ? (
         <View style={styles.banner}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.text}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
             {sessionReauthReason ||
               'Reconnect Apple to keep cloud backup working. Your alarms stay on this phone.'}
           </Text>
@@ -98,7 +98,7 @@ export function SoftStatusBanners() {
             {busy ? (
               <ActivityIndicator color={colors.text} />
             ) : (
-              <Text maxFontSizeMultiplier={1.5} style={styles.btnText}>Reconnect</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnText}>Reconnect</Text>
             )}
           </Pressable>
         </View>
@@ -106,21 +106,21 @@ export function SoftStatusBanners() {
 
       {showUpdate ? (
         <View style={[styles.banner, styles.updateBanner]}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.text}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
             A newer Future Self is available ({version?.minAppVersion}). Update
-            when you can — your data stays on this phone.
+            when you can. Your data stays on this phone.
           </Text>
           <View style={styles.row}>
             <Pressable onPress={() => setDismissedUpdate(true)} style={styles.btnGhost}>
-              <Text maxFontSizeMultiplier={1.5} style={styles.btnGhostText}>Later</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnGhostText}>Later</Text>
             </Pressable>
             {version?.storeUrl ? (
               <Pressable onPress={openStore} style={styles.btn}>
-                <Text maxFontSizeMultiplier={1.5} style={styles.btnText}>Update</Text>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnText}>Update</Text>
               </Pressable>
             ) : (
               <Pressable onPress={() => setDismissedUpdate(true)} style={styles.btn}>
-                <Text maxFontSizeMultiplier={1.5} style={styles.btnText}>OK</Text>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnText}>OK</Text>
               </Pressable>
             )}
           </View>

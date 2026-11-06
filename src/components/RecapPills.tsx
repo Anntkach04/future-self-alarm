@@ -13,7 +13,7 @@ type Props = {
 
 export function RecapPills({ items, colors: itemColors, onPress }: Props) {
   if (!items.length) {
-    return <Text maxFontSizeMultiplier={1.5} style={styles.empty}>-</Text>;
+    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>-</Text>;
   }
 
   const content = (
@@ -29,7 +29,7 @@ export function RecapPills({ items, colors: itemColors, onPress }: Props) {
             },
           ]}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.pillText}>{uiLabel(item)}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pillText}>{uiLabel(item)}</Text>
         </View>
       ))}
     </View>

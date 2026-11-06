@@ -212,8 +212,8 @@ export function VoicePreviewScreen({ navigation }: Props) {
     <Screen>
       <View style={styles.stage}>
         <View style={styles.centerBlock}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.heading}>Voice is ready</Text>
-          <Text maxFontSizeMultiplier={1.2} style={styles.subheading}>this is you from the future</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.heading}>Voice is ready</Text>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.subheading}>this is you from the future</Text>
           <View style={styles.scriptWrap}>
             <KaraokeScript
               text={line}
@@ -223,7 +223,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
             />
           </View>
 
-          {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
+          {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
 
           <View style={styles.playRow}>
             {playing || busy ? (
@@ -248,7 +248,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
           onPress={() => navigation.replace('VoiceRecord')}
           style={styles.linkBtn}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.linkText}>re-record</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.linkText}>re-record</Text>
         </Pressable>
         <RoundArrowButton onPress={continueNext} color={colors.fab} />
       </View>

@@ -23,12 +23,12 @@ export function WakeUpTimeScreen({ navigation }: Props) {
             <BackButton style={styles.back} />
           </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
-            <Text maxFontSizeMultiplier={1.2} style={styles.question}>
-              {"What time should\nFuture You wake\nyou up?"}
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.question}>
+              {"What time should\nFuture You wake you up?"}
             </Text>
           </BubbleEnter>
           <BubbleEnter delay={50} fromY={12}>
-            <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.subtitle}>
               Choose when you’d like to hear your morning message.
             </Text>
           </BubbleEnter>
@@ -49,7 +49,7 @@ export function WakeUpTimeScreen({ navigation }: Props) {
           <BubbleEnter delay={90} fromY={8}>
             <AlarmDayPicker days={answers.wakeDays} onChange={setWakeDays} />
           </BubbleEnter>
-          <Text maxFontSizeMultiplier={1.5} style={styles.helper}>You can change this anytime.</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.helper}>You can change this anytime.</Text>
           <View style={styles.nextRow}>
             <RoundArrowButton
               onPress={() => navigation.navigate('VoiceRecord')}

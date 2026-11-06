@@ -32,7 +32,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text maxFontSizeMultiplier={1.2} style={styles.section}>{uiLabel('Repeat')}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.section}>{uiLabel('Repeat')}</Text>
       <View style={styles.presets}>
         {[
           { label: 'weekdays', value: WEEKDAYS },
@@ -46,7 +46,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
               onPress={() => onChange([...item.value])}
               style={[styles.preset, active && styles.presetOn]}
             >
-              <Text maxFontSizeMultiplier={1.5} style={[styles.presetText, active && styles.presetTextOn]}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.presetText, active && styles.presetTextOn]}>
                 {item.label}
               </Text>
             </Pressable>
@@ -62,7 +62,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
               onPress={() => toggleDay(index)}
               style={[styles.day, on && styles.dayOn]}
             >
-              <Text maxFontSizeMultiplier={1.5} style={[styles.dayText, on && styles.dayTextOn]}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.dayText, on && styles.dayTextOn]}>
                 {label.toLowerCase()}
               </Text>
             </Pressable>

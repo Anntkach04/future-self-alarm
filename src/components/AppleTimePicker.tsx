@@ -346,7 +346,7 @@ export function AppleTimePicker({
               hitSlop={12}
               style={styles.accessoryBtn}
             >
-              <Text maxFontSizeMultiplier={1.5} style={styles.accessoryText}>Done</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.accessoryText}>Done</Text>
             </Pressable>
           </View>
         </InputAccessoryView>
@@ -384,7 +384,7 @@ export function AppleTimePicker({
             onPress={() => commitEdit(draft || formatTime(hour, minute))}
             style={styles.doneBtn}
           >
-            <Text maxFontSizeMultiplier={1.5} style={styles.doneText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.doneText}>Done</Text>
           </Pressable>
         </View>
       ) : (
@@ -404,7 +404,7 @@ export function AppleTimePicker({
             onTap={startEdit}
           />
           <Pressable onPress={startEdit} accessibilityRole="button">
-            <Text maxFontSizeMultiplier={1.2} style={styles.colon}>:</Text>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.colon}>:</Text>
           </Pressable>
           <WheelColumn
             values={minutes}

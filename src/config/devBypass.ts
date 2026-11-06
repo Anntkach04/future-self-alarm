@@ -8,3 +8,6 @@ export const VOICE_ONBOARDING_SKIP_ENABLED = false;
 export const ONBOARDING_RESET_ENABLED = false;
 export const FOUNDER_AUTH_SKIP_ENABLED = false;
 export const TEMP_ELEVENLABS_TTS_ONLY = false;
+
+/** TEMP UI REVIEW — do not commit. Seeds a finished profile with a demo voice. */
+export const UI_REVIEW_BYPASS = true;

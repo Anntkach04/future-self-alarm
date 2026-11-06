@@ -11,6 +11,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LogoSpinner } from '../components/LogoSpinner';
 import { BUILD_MARK } from '../config/build';
 import { useOnboarding } from '../context/OnboardingContext';
+import { UI_REVIEW_BYPASS } from '../config/devBypass';
 import { useSplashChrome } from '../layout/SplashChromeContext';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, noFakeBold } from '../theme';
@@ -28,9 +29,20 @@ const RETRACT_MS = 1000;
  */
 export function WelcomeScreen({ navigation }: Props) {
   const { setSplashActive } = useSplashChrome();
-  const { onboardingComplete } = useOnboarding();
-  const onboardingCompleteRef = useRef(onboardingComplete);
-  onboardingCompleteRef.current = onboardingComplete;
+  const { onboardingComplete, hydrateFromCloud } = useOnboarding();
+  useEffect(() => {
+    if (UI_REVIEW_BYPASS && !onboardingComplete) {
+      hydrateFromCloud({
+        answers: { name: 'Anna', morningHabits: ['journaling', 'drink water first'] },
+        voiceId: '21m00Tcm4TlvDq8ikWAM',
+        isDemoVoice: true,
+        onboardingComplete: true,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onboardingCompleteRef = useRef(onboardingComplete || UI_REVIEW_BYPASS);
+  onboardingCompleteRef.current = onboardingComplete || UI_REVIEW_BYPASS;
   const [fullH, setFullH] = useState(0);
   const [fullW, setFullW] = useState(0);
   const blueHeight = useRef(new Animated.Value(0)).current;
@@ -170,11 +182,11 @@ export function WelcomeScreen({ navigation }: Props) {
             ]}
           >
             <LogoSpinner />
-            <Text maxFontSizeMultiplier={1.2} style={[styles.title, { opacity: 0.7 }]}>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.title, { opacity: 0.7 }]}>
               Welcome to the{'\n'}future self alarm
             </Text>
             {__DEV__ ? (
-              <Text maxFontSizeMultiplier={1.5} style={styles.buildMark}>{BUILD_MARK}</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buildMark}>{BUILD_MARK}</Text>
             ) : null}
           </Animated.View>
         </Animated.View>

@@ -557,7 +557,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
           onPress={skipForDev}
           style={styles.skipBtn}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.skipText}>skip → test alarm</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.skipText}>skip → test alarm</Text>
         </Pressable>
       ) : null}
       <SafeAreaView style={styles.safe}>
@@ -571,8 +571,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
           {/* Title + subtitle in ONE enter so left edges stay aligned (scale was shifting subtitle). */}
           <BubbleEnter delay={0} fromY={16}>
             <View>
-              <Text maxFontSizeMultiplier={1.2} style={styles.title}>{`read this\nout loud`}</Text>
-              <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>Find a quiet room.</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{`read this\nout loud`}</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.subtitle}>Find a quiet room.</Text>
               <View
                 style={styles.progressTrack}
                 accessibilityRole="progressbar"
@@ -595,7 +595,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
                   ]}
                 />
               </View>
-              <Text maxFontSizeMultiplier={1.5} style={styles.progressLabel}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.progressLabel}>
                 {Math.min(lineIndex + 1, lines.length)} of {lines.length}
               </Text>
             </View>
@@ -619,15 +619,15 @@ export function VoiceRecordScreen({ navigation }: Props) {
           </View>
 
           {consentDeclined && !dictaphone.error ? (
-            <Text maxFontSizeMultiplier={1.5} style={styles.error}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>
               To clone your voice, tap the mic and agree to send your recording to ElevenLabs.
             </Text>
           ) : null}
           {dictaphone.error ? (
-            <Text maxFontSizeMultiplier={1.5} style={styles.error}>{dictaphone.error}</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{dictaphone.error}</Text>
           ) : null}
 
-          {coach ? <Text maxFontSizeMultiplier={1.5} style={styles.coach}>{coach}</Text> : null}
+          {coach ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.coach}>{coach}</Text> : null}
 
           <BubbleEnter delay={100} fromY={16}>
             <View style={styles.controls}>
@@ -640,7 +640,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 recording={recording}
                 onPress={onMicPress}
               />
-              <Text maxFontSizeMultiplier={1.5} style={styles.hint}>{hint}</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.hint}>{hint}</Text>
               {recording ? (
                 <TextArrowButton
                   label={
@@ -691,7 +691,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
           >
             <View style={styles.completeCopy} pointerEvents="none">
               {cloning && !cloneReady ? <LogoSpinner /> : null}
-              <Text maxFontSizeMultiplier={1.2} style={styles.completeTitle}>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.completeTitle}>
                 {cloneError
                   ? 'Almost'
                   : cloneReady
@@ -699,13 +699,13 @@ export function VoiceRecordScreen({ navigation }: Props) {
                     : 'Cloning your voice'}
               </Text>
               {cloneError ? (
-                <Text maxFontSizeMultiplier={1.5} style={styles.completeError}>{cloneError}</Text>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.completeError}>{cloneError}</Text>
               ) : cloneReady ? (
-                <Text maxFontSizeMultiplier={1.5} style={styles.cloneEta}>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
                   Your future self has your voice now.
                 </Text>
               ) : (
-                <Text maxFontSizeMultiplier={1.5} style={styles.cloneEta}>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
                   This usually takes about 1–2 minutes
                 </Text>
               )}
@@ -717,7 +717,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
                     onPress={rerecordFromComplete}
                     style={styles.goldLinkBtn}
                   >
-                    <Text maxFontSizeMultiplier={1.5} style={styles.goldLinkText}>re-record</Text>
+                    <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.goldLinkText}>re-record</Text>
                   </Pressable>
                   <RoundArrowButton
                     onPress={() => {

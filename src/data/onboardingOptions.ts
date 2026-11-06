@@ -90,20 +90,20 @@ export const ADD_CHIP_COLOR = '#FFD84D';
 export const INTRO_SLIDES = [
   {
     label: '',
-    title: 'Wake up\nto your\nfuture self',
-    body: 'No random ringtone.\nYour own voice.\nEvery morning.',
+    title: 'Wake up to your\nfuture self',
+    body: 'No random ringtone.\nJust your own voice.',
     card: 'sky' as const,
   },
   {
     label: '',
     title: 'Read for\none minute',
-    body: 'Read a short script aloud.\nWe turn it into a voice\nthat sounds like you.',
+    body: 'Read a short script aloud.\nWe turn it into your voice.',
     card: 'coral' as const,
   },
   {
     label: '',
-    title: 'Hear it\ntomorrow\nmorning',
-    body: 'Your name, your habits,\nin your own voice —\nright when you wake.',
+    title: 'Hear yourself\ntomorrow morning',
+    body: 'Your name and habits,\nin your own voice.',
     card: 'gold' as const,
   },
 ];

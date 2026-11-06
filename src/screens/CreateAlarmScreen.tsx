@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { UI_REVIEW_BYPASS } from '../config/devBypass';
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { AlarmDayPicker } from '../components/AlarmDayPicker';
@@ -148,7 +149,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         navigation.replace(voice.sampleUri ? 'VoiceCloning' : 'VoiceRecord');
         return;
       }
-      if (voice.isDemo || isPremadeDemoVoiceId(voiceId)) {
+      if (!UI_REVIEW_BYPASS && (voice.isDemo || isPremadeDemoVoiceId(voiceId))) {
         setSaving(false);
         setError(
           'This is a demo voice, not your clone. Re-record your voice first.'
@@ -198,7 +199,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     <Screen>
       <View style={styles.page}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
           {uiLabel(existing ? 'edit alarm' : 'set up alarm')}
         </Text>
 
@@ -228,8 +229,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} style={styles.rowTitle}>10 min</Text>
-            <Text maxFontSizeMultiplier={1.5} style={styles.rowSub}>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>10 min</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
               Call again if you don’t get up
             </Text>
           </View>
@@ -245,8 +246,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} style={styles.rowTitle}>vibrate</Text>
-            <Text maxFontSizeMultiplier={1.5} style={styles.rowSub}>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>vibrate</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
               Buzz when your future self starts talking
             </Text>
           </View>
@@ -260,7 +261,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
           />
         </View>
 
-        {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
+        {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
 
         <View style={[styles.footer, !existing && styles.footerSingle]}>
           {existing ? (

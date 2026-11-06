@@ -83,7 +83,7 @@ export function NotificationPermissionNudge({ placement = 'bottom' }: Props) {
       ]}
     >
       <View style={styles.sheet}>
-        <Text maxFontSizeMultiplier={1.5} style={styles.text}>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
           Allow alerts for alarms, or your morning voice will not ring when the
           phone is locked.
         </Text>
@@ -93,7 +93,7 @@ export function NotificationPermissionNudge({ placement = 'bottom' }: Props) {
           style={styles.btn}
           disabled={busy}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.btnText}>{busy ? '…' : 'Allow alerts'}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnText}>{busy ? '…' : 'Allow alerts'}</Text>
         </Pressable>
       </View>
     </View>

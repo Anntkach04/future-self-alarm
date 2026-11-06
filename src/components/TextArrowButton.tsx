@@ -41,7 +41,7 @@ export function TextArrowButton({
     >
       {({ pressed, hovered }: PressState) => (
         <>
-          <Text maxFontSizeMultiplier={1.2} style={[styles.label, { color: textColor }]}>{uiLabel(label)}</Text>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.label, { color: textColor }]}>{uiLabel(label)}</Text>
           {hideArrow ? null : (
             <ForwardArrow lifted={Boolean(pressed || hovered)} color={textColor} />
           )}

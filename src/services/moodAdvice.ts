@@ -3,7 +3,7 @@ import { authHeaders } from './apiAuth';
 import { getApiUrl } from './elevenlabs';
 
 const FALLBACK =
-  "That’s not the real you — you’re strong, capable, and already winning. Rest up; tomorrow you’re going to crush it.";
+  "That’s not the real you. You’re strong, capable, and already winning. Rest up; tomorrow you’re going to crush it.";
 
 export type MoodAdviceResult = {
   text: string;

@@ -204,7 +204,7 @@ export function IntroCarouselScreen({ navigation }: Props) {
         />
         {/* Fixed-height heading band — 2- vs 3-line titles must not move cards. */}
         <View style={styles.headingBand}>
-          <Text maxFontSizeMultiplier={1.2} style={styles.heading} numberOfLines={3}>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.heading} numberOfLines={3}>
             {heading}
           </Text>
         </View>
@@ -236,7 +236,7 @@ export function IntroCarouselScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('SignIn', { mode: 'restore' })}
             style={({ pressed }) => [styles.haveAccount, pressed && { opacity: 0.5 }]}
           >
-            <Text maxFontSizeMultiplier={1.3} style={styles.haveAccountText}>I already have an account</Text>
+            <Text maxFontSizeMultiplier={1.3} lineBreakStrategyIOS="push-out" style={styles.haveAccountText}>I already have an account</Text>
           </Pressable>
           <RoundArrowButton onPress={goNextCard} color={colors.fab} />
         </View>
@@ -270,11 +270,11 @@ export function IntroCarouselScreen({ navigation }: Props) {
             }}
           >
             <LogoSpinner />
-            <Text maxFontSizeMultiplier={1.2} style={styles.welcomeTitle}>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.welcomeTitle}>
               Welcome to the{'\n'}future self alarm
             </Text>
             {__DEV__ ? (
-              <Text maxFontSizeMultiplier={1.5} style={styles.buildMark}>{BUILD_MARK}</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buildMark}>{BUILD_MARK}</Text>
             ) : null}
           </Animated.View>
         </Animated.View>
@@ -293,11 +293,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.inset,
     overflow: 'visible',
   },
-  /** Always reserves 3 lines so cards stay put across intro steps. */
+  /** Reserves 2 lines (all intro titles are 2 lines) so cards stay put. */
   headingBand: {
     marginTop: 28,
     marginBottom: 8,
-    minHeight: 44 * 3,
+    minHeight: 44 * 2,
     justifyContent: 'flex-start',
     width: '100%',
   },

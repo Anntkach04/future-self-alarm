@@ -91,7 +91,7 @@ export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
       ]}
     >
       <View style={styles.sheet}>
-        <Text maxFontSizeMultiplier={1.5} style={styles.text}>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
           Allow alarms so Future You can wake you like a real alarm.
         </Text>
         <Pressable
@@ -100,7 +100,7 @@ export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
           style={styles.btn}
           disabled={busy}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.btnText}>{busy ? '…' : 'Allow alarms'}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnText}>{busy ? '…' : 'Allow alarms'}</Text>
         </Pressable>
       </View>
     </View>

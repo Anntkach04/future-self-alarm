@@ -36,16 +36,16 @@ export function NotificationSettingsScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>notifications</Text>
-      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>notifications</Text>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {notificationsReady
           ? 'Alerts are on.'
           : 'Alerts are off. Allow them in Settings so mornings can ring.'}
       </Text>
 
       <View style={styles.block}>
-        <Text maxFontSizeMultiplier={1.2} style={styles.blockTitle}>Pause all alarms</Text>
-        <Text maxFontSizeMultiplier={1.5} style={styles.blockBody}>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.blockTitle}>Pause all alarms</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.blockBody}>
           {isPaused && pauseUntil
             ? `Paused until ${pauseUntil}.`
             : 'Turn everything off for a few days. Vacation mode.'}

@@ -10,14 +10,17 @@ function clampMoodAdvice(text) {
   const cleaned = String(text)
     .trim()
     .replace(/^["']|["']$/g, '')
-    .replace(/[—–―‑]/g, '-')
-    .replace(/\s*-\s*/g, ' - ')
+    // No dashes in the UI: a dash between words becomes a sentence break.
+    // Hyphens inside words ("self-care") stay.
+    .replace(/\s*[—–―]\s*/g, ' - ')
+    .replace(/\s+-\s+/g, '. ')
+    .replace(/\.\s+([a-z])/g, (_, c) => `. ${c.toUpperCase()}`)
     .replace(/\s+/g, ' ');
   if (!cleaned) return cleaned;
 
   const sentences =
     cleaned.match(/[^.!?]+[.!?]+/g)?.map((part) => part.trim()) ?? [cleaned];
-  let short = sentences.slice(0, 2).join(' ').trim();
+  let short = sentences.slice(0, 3).join(' ').trim();
   const words = short.split(/\s+/).filter(Boolean);
   if (words.length > MOOD_MAX_WORDS) {
     short = `${words.slice(0, MOOD_MAX_WORDS).join(' ').replace(/[.,!?]+$/, '')}.`;
@@ -91,7 +94,7 @@ async function generateMoodAdvice({ mood, note, name }) {
   if (!apiKey) {
     return {
       advice:
-        "That's not the real you - you're strong, capable, and already winning. Rest up; tomorrow you're going to crush it.",
+        "That’s not the real you. You’re strong, capable, and already winning. Rest up; tomorrow you’re going to crush it.",
     };
   }
 
@@ -117,7 +120,7 @@ async function generateMoodAdvice({ mood, note, name }) {
             'NEVER repeat or echo their negative words (no "bad person", "heavy", "mistakes", "imperfect").',
             'NEVER therapize: no "I know it\'s hard", "give yourself grace", "being human", "take a deep breath", "act of kindness".',
             'NEVER analyze feelings. Just hype them up like a best friend before bed.',
-            'Use only the short hyphen "-" (never em or en dashes). Example: "That\'s not you - you\'re powerful and you\'ve got this. Sleep, reset, tomorrow you\'re going to kill it."',
+            'Never use dashes of any kind; use periods and commas. Example: "That\'s not you. You\'re powerful and you\'ve got this. Sleep, reset, tomorrow you\'re going to kill it."',
             'Bad: "I know it feels overwhelming and being human means being imperfect..."',
             'No bullets, quotes, emoji, or name at the start.',
           ].join(' '),

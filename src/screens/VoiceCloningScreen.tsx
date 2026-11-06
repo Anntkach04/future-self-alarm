@@ -48,7 +48,7 @@ export function VoiceCloningScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
         <View style={styles.page}>
           <LoadingLabel text="Cloning your voice" style={styles.quiet} />
-          <Text maxFontSizeMultiplier={1.5} style={styles.eta}>This usually takes about 1-2 minutes</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.eta}>This usually takes about 1-2 minutes</Text>
         </View>
       </SafeAreaView>
     );
@@ -59,11 +59,11 @@ export function VoiceCloningScreen({ navigation }: Props) {
       <View style={styles.page}>
         <BackButton />
         <BubbleEnter delay={40} fromY={14} style={styles.content}>
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>couldn’t clone yet</Text>
-        <Text maxFontSizeMultiplier={1.5} style={styles.error} numberOfLines={8}>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>couldn’t clone yet</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error} numberOfLines={8}>
           {error}
         </Text>
-        <Text maxFontSizeMultiplier={1.5} style={styles.hint}>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.hint}>
           Check Wi-Fi, that the voice server is online, then try again or
           re-record in a quiet room.
         </Text>
@@ -73,7 +73,7 @@ export function VoiceCloningScreen({ navigation }: Props) {
             onPress={() => navigation.replace('VoiceRecord')}
             style={styles.linkBtn}
           >
-            <Text maxFontSizeMultiplier={1.5} style={styles.linkText}>re-record</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.linkText}>re-record</Text>
           </Pressable>
           <RoundArrowButton
             onPress={() => {

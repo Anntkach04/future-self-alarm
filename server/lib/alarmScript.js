@@ -38,8 +38,8 @@ function buildAlarmScript(name, mood, habits) {
   const moodBit = String(moodLine || '').trim();
   const moodSentence = moodBit ? ` ${moodBit}` : '';
   const habitSentence = habit
-    ? ` Remember your morning plan — ${habit.toLowerCase()}.`
-    : ' Pick one tiny thing for the day — just one.';
+    ? ` Remember your morning plan: ${habit.toLowerCase()}.`
+    : ' Pick one tiny thing for the day. Just one.';
 
   return (
     `Hey ${who}. It's me.${moodSentence} ` +

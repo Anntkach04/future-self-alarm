@@ -25,7 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 const COPY = {
   save: {
     title: 'Keep your\nfuture voice',
-    body: 'Sign in with Apple so your voice and alarms are saved — even if you change phones.',
+    body: 'Sign in with Apple so your voice and alarms are saved, even if you change phones.',
   },
   restore: {
     title: 'Welcome\nback',
@@ -233,20 +233,20 @@ export function SignInScreen({ navigation, route }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>{copy.title}</Text>
-      <Text maxFontSizeMultiplier={1.5} style={styles.body}>{copy.body}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{copy.title}</Text>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>{copy.body}</Text>
       {mode === 'save' ? (
         <View style={styles.savedList}>
           {SAVED_ITEMS.map((item) => (
             <View key={item} style={styles.savedRow}>
               <View style={styles.savedDot} />
-              <Text maxFontSizeMultiplier={1.5} style={styles.savedText}>{item}</Text>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.savedText}>{item}</Text>
             </View>
           ))}
         </View>
       ) : null}
 
-      {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
+      {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
       <LegalLinks style={styles.legal} />
 
       <View style={styles.actions}>
@@ -263,7 +263,7 @@ export function SignInScreen({ navigation, route }: Props) {
                 fill="#fff"
               />
             </Svg>
-            <Text maxFontSizeMultiplier={1.5} style={styles.appleBtnText}>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.appleBtnText}>
               {busy ? 'Signing in…' : 'Sign in with Apple'}
             </Text>
           </View>

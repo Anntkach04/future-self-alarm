@@ -31,8 +31,8 @@ export function AlarmPermissionScreen({ navigation }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>Allow access to{'\n'}alarms</Text>
-      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Allow access to{'\n'}alarms</Text>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         Continue so Future Self can schedule a real wake alarm with your voice.
       </Text>
 

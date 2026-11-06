@@ -18,16 +18,16 @@ export function LegalLinks({ style }: Props) {
           accessibilityRole="link"
           onPress={() => void Linking.openURL(privacy)}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.link}>Privacy Policy</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.link}>Privacy Policy</Text>
         </Pressable>
       ) : null}
-      {privacy && terms ? <Text maxFontSizeMultiplier={1.5} style={styles.dot}>·</Text> : null}
+      {privacy && terms ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.dot}>·</Text> : null}
       {terms ? (
         <Pressable
           accessibilityRole="link"
           onPress={() => void Linking.openURL(terms)}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.link}>Terms of Use</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.link}>Terms of Use</Text>
         </Pressable>
       ) : null}
     </View>

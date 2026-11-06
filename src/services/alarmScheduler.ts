@@ -699,7 +699,7 @@ export async function scheduleTestAlarmInSeconds(params: {
     identifier: `fs_test_${params.alarmId}`,
     date: fireAt,
     alarmId: params.alarmId,
-    body: 'Test wake — your morning voice.',
+    body: 'Test wake: your morning voice.',
     sound: notificationSoundFor(params.alarmId, hasSystemSound),
     audioUri: params.audioUri,
     snoozeEnabled: false,

@@ -26,8 +26,8 @@ export function NotificationPermissionScreen({ navigation }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>morning alerts</Text>
-      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>morning alerts</Text>
+      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         Continue to allow Future Self to wake you with your voice.
       </Text>
 

@@ -33,9 +33,9 @@ export function PlaceholderSettingsScreen({ route }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} style={styles.title}>{copy.title}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{copy.title}</Text>
       <View style={styles.block}>
-        <Text maxFontSizeMultiplier={1.2} style={styles.body}>{copy.body}</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.body}>{copy.body}</Text>
       </View>
     </Screen>
   );

@@ -71,13 +71,13 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
           <View style={styles.sheet}>
             <View style={styles.handle} />
             {mood ? (
-              <Text maxFontSizeMultiplier={1.2} style={styles.moodName}>{mood.label}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.moodName}>{mood.label}</Text>
             ) : null}
 
             {phase === 'compose' ? (
               <>
-                <Text maxFontSizeMultiplier={1.2} style={styles.question}>Why do you feel that way?</Text>
-                <Text maxFontSizeMultiplier={1.5} style={styles.moodPurpose}>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.question}>Why do you feel that way?</Text>
+                <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.moodPurpose}>
                   Future You will use this for tomorrow’s alarm only - one wake,
                   then it resets.
                 </Text>
@@ -111,7 +111,7 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
 
             {phase === 'advice' ? (
               <>
-                <Text maxFontSizeMultiplier={1.2} style={styles.advice}>{advice}</Text>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.advice}>{advice}</Text>
                 <View style={styles.actions}>
                   <TextArrowButton
                     label="thank you"

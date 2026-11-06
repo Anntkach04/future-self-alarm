@@ -11,7 +11,7 @@ export function NameScreen({ navigation }: Props) {
 
   return (
     <TextQuestionScreen
-      question={"What should\nfuture you\ncall you?"}
+      question={"What should future\nyou call you?"}
       subtitle="This is how future you will greet you in the morning."
       value={answers.name}
       onChangeText={setName}

@@ -23,16 +23,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     return (
       <View style={styles.root}>
-        <Text maxFontSizeMultiplier={1.5} style={styles.title}>Something went wrong</Text>
+        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.title}>Something went wrong</Text>
         <ScrollView style={styles.scroll}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.body}>{this.state.error.message}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>{this.state.error.message}</Text>
         </ScrollView>
         <Pressable
           accessibilityRole="button"
           onPress={this.retry}
           style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.buttonText}>Try again</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buttonText}>Try again</Text>
         </Pressable>
       </View>
     );

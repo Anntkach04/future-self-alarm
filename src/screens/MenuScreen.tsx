@@ -63,7 +63,7 @@ export function MenuScreen({ navigation }: Props) {
     <Screen>
       <View style={styles.page}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>menu</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>menu</Text>
         <View style={styles.list}>
           {ROWS.map((row) => (
             <Pressable
@@ -71,7 +71,7 @@ export function MenuScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(row.route)}
               style={styles.row}
             >
-              <Text maxFontSizeMultiplier={1.2} style={styles.rowText}>{row.title}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowText}>{row.title}</Text>
             </Pressable>
           ))}
         </View>
@@ -81,7 +81,7 @@ export function MenuScreen({ navigation }: Props) {
             onPress={confirmReset}
             style={styles.resetBtn}
           >
-            <Text maxFontSizeMultiplier={1.5} style={styles.resetText}>reset (dev)</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.resetText}>reset (dev)</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -92,11 +92,11 @@ export function MenuScreen({ navigation }: Props) {
           }}
           style={styles.supportBtn}
         >
-          <Text maxFontSizeMultiplier={1.5} style={styles.supportText}>Contact Us</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.supportText}>Contact Us</Text>
         </Pressable>
         <LegalLinks style={styles.legal} />
         <View style={styles.thanks}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.thanksKicker}>With thanks</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.thanksKicker}>With thanks</Text>
           <Image
             source={ELEVENLABS_LOGO}
             style={styles.thanksLogo}

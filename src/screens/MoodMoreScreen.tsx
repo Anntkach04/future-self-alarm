@@ -24,7 +24,7 @@ export function MoodMoreScreen({}: Props) {
         contentContainerStyle={styles.scroll}
       >
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>How are you feeling today?</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>How are you feeling today?</Text>
         <View style={styles.grid}>
           {MORE_MOODS.map((mood) => {
             const selected = today?.moodId === mood.id;
@@ -38,7 +38,7 @@ export function MoodMoreScreen({}: Props) {
                   selected && styles.moodSelected,
                 ]}
               >
-                <Text maxFontSizeMultiplier={1.2} style={styles.label}>{mood.label}</Text>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.label}>{mood.label}</Text>
               </Pressable>
             );
           })}

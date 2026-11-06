@@ -44,7 +44,7 @@ type SectionProps = {
 function Section({ title, items, itemColors, onPress }: SectionProps) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
-      <Text maxFontSizeMultiplier={1.2} style={styles.recapTitle}>{uiLabel(title)}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{uiLabel(title)}</Text>
       <RecapPills items={items} colors={itemColors} />
     </Pressable>
   );
@@ -135,7 +135,7 @@ export function EditProfileScreen({ navigation }: Props) {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>{uiLabel('account')}</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{uiLabel('account')}</Text>
         <View style={styles.block}>
           <Section
             title="name"
@@ -166,7 +166,7 @@ export function EditProfileScreen({ navigation }: Props) {
             itemColors={answers.voiceStyle ? voiceColors : undefined}
             onPress={() => openField('voiceStyle')}
           />
-          <Text maxFontSizeMultiplier={1.5} style={styles.voiceHint}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.voiceHint}>
             Re-record anytime. Your next alarm will use the new clone.
           </Text>
           <View style={styles.editRow}>
@@ -179,8 +179,8 @@ export function EditProfileScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.danger}>
-          <Text maxFontSizeMultiplier={1.2} style={styles.dangerTitle}>Delete account</Text>
-          <Text maxFontSizeMultiplier={1.5} style={styles.dangerBody}>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.dangerTitle}>Delete account</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.dangerBody}>
             Permanently erase your account data on our servers. Required by App
             Store rules when you create an account.
           </Text>

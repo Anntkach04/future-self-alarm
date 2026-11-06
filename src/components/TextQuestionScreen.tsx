@@ -51,8 +51,8 @@ export function TextQuestionScreen({
           </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
             <View style={styles.header}>
-              <Text maxFontSizeMultiplier={1.2} style={styles.question}>{question}</Text>
-              {subtitle ? <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>{subtitle}</Text> : null}
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.question}>{question}</Text>
+              {subtitle ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.subtitle}>{subtitle}</Text> : null}
             </View>
           </BubbleEnter>
           <BubbleEnter delay={40} fromY={10}>

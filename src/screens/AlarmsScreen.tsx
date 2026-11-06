@@ -28,12 +28,12 @@ export function AlarmsScreen({ navigation }: Props) {
     <Screen>
       <BackButton style={styles.back} />
       <View style={styles.header}>
-        <Text maxFontSizeMultiplier={1.2} style={styles.title}>alarms</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>alarms</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
         {alarms.length === 0 ? (
-          <Text maxFontSizeMultiplier={1.5} style={styles.empty}>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>
             No wakes yet. Tap + to set the first morning with your voice.
           </Text>
         ) : (
@@ -50,12 +50,12 @@ export function AlarmsScreen({ navigation }: Props) {
                     navigation.navigate('CreateAlarm', { alarmId: alarm.id })
                   }
                 >
-                  <Text maxFontSizeMultiplier={1.2}
+                  <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out"
                     style={[styles.time, !alarm.enabled && styles.dim]}
                   >
                     {formatAlarmTime(alarm)}
                   </Text>
-                  <Text maxFontSizeMultiplier={1.5}
+                  <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
                     style={[styles.meta, !alarm.enabled && styles.dim]}
                   >
                     {alarm.label} · {formatAlarmDays(alarm.days)}

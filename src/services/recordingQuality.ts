@@ -34,7 +34,7 @@ export function assessRecordingQuality(
       ok: false,
       issue: 'too_short',
       message:
-        'This take is too short for a solid clone. Re-record in a quiet room — about two minutes of natural speech works best.',
+        'This take is too short for a solid clone. Re-record in a quiet room. About two minutes of natural speech works best.',
     };
   }
 
@@ -54,7 +54,7 @@ export function assessRecordingQuality(
       ok: false,
       issue: 'too_much_silence',
       message:
-        'A lot of this take is silence. Re-record and keep reading the lines — your future self needs clear speech to sound like you.',
+        'A lot of this take is silence. Re-record and keep reading the lines. Your future self needs clear speech to sound like you.',
     };
   }
 

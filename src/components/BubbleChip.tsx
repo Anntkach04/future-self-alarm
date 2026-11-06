@@ -123,7 +123,7 @@ export function BubbleChip({
         ]}
       >
         {plus ? (
-          <Text maxFontSizeMultiplier={1.5}
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
             style={[
               styles.plus,
               { color: selected ? colors.bg : textColor },
@@ -132,7 +132,7 @@ export function BubbleChip({
             +
           </Text>
         ) : (
-          <Text maxFontSizeMultiplier={1.5}
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
             numberOfLines={1}
             style={[
               styles.label,
@@ -143,7 +143,7 @@ export function BubbleChip({
           </Text>
         )}
         {caption ? (
-          <Text maxFontSizeMultiplier={1.5}
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
             style={[
               styles.caption,
               { color: selected ? colors.bg : textColor },
