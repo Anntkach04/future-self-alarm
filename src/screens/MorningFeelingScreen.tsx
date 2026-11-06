@@ -1,10 +1,11 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChipQuestionScreen } from '../components/ChipQuestionScreen';
 import { useOnboarding } from '../context/OnboardingContext';
 import { MORNING_FEELING_OPTIONS } from '../data/onboardingOptions';
 import { RootStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'MorningFeeling'>;
+// Retained for reuse; this screen is not registered in the current onboarding flow.
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList> };
 
 export function MorningFeelingScreen({ navigation }: Props) {
   const { answers, toggleMorningFeeling, addMorningFeeling } = useOnboarding();

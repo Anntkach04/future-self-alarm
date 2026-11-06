@@ -22,9 +22,16 @@ export type AppSettings = {
   appleUserId: string | null;
   appleEmail: string | null;
   notificationsReady: boolean;
+  /** AlarmKit authorized (real system wake UI). */
+  alarmKitReady: boolean;
   /** Soft flag: JWT dead but local Home/alarms stay. */
   sessionNeedsReauth: boolean;
   sessionReauthReason: string | null;
+  /**
+   * Temporary TestFlight / QA unlock past paywall without an active
+   * Store subscription. Remove once sandbox purchases work end-to-end.
+   */
+  softAccessUnlocked: boolean;
 };
 
 type AppSettingsContextValue = AppSettings & {
@@ -35,7 +42,11 @@ type AppSettingsContextValue = AppSettings & {
   setAppleAccount: (userId: string, email?: string | null) => void;
   clearAppleAccount: () => void;
   setNotificationsReady: (ready: boolean) => void;
+  setAlarmKitReady: (ready: boolean) => void;
   setSessionReauth: (needs: boolean, reason?: string | null) => void;
+  setSoftAccessUnlocked: (unlocked: boolean) => void;
+  /** Wipe settings in memory (after account delete). */
+  resetAppSettings: () => void;
   isPaused: boolean;
 };
 
@@ -48,8 +59,10 @@ const defaults: AppSettings = {
   appleUserId: null,
   appleEmail: null,
   notificationsReady: false,
+  alarmKitReady: false,
   sessionNeedsReauth: false,
   sessionReauthReason: null,
+  softAccessUnlocked: false,
 };
 
 function todayKey() {
@@ -147,12 +160,17 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         })),
       setNotificationsReady: (notificationsReady) =>
         setSettings((prev) => ({ ...prev, notificationsReady })),
+      setAlarmKitReady: (alarmKitReady) =>
+        setSettings((prev) => ({ ...prev, alarmKitReady })),
       setSessionReauth: (needs, reason = null) =>
         setSettings((prev) => ({
           ...prev,
           sessionNeedsReauth: needs,
           sessionReauthReason: needs ? reason : null,
         })),
+      setSoftAccessUnlocked: (softAccessUnlocked) =>
+        setSettings((prev) => ({ ...prev, softAccessUnlocked })),
+      resetAppSettings: () => setSettings({ ...defaults }),
     }),
     [settings, ready, isPaused]
   );

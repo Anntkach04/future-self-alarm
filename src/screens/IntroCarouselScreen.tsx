@@ -5,6 +5,7 @@ import {
   Easing,
   LayoutChangeEvent,
   StyleSheet,
+  Pressable,
   Text,
   View,
 } from 'react-native';
@@ -17,6 +18,7 @@ import {
   CARD_COLORS,
   StackedIntroCards,
 } from '../components/StackedIntroCards';
+import { BUILD_MARK } from '../config/build';
 import { INTRO_SLIDES } from '../data/onboardingOptions';
 import { RootStackParamList } from '../navigation/types';
 import { useSplashChrome } from '../layout/SplashChromeContext';
@@ -56,6 +58,8 @@ export function IntroCarouselScreen({ navigation }: Props) {
   const frameRef = useRef(frame);
   const slideY = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
+  const enterY = useRef(new Animated.Value(16)).current;
+  const enterScale = useRef(new Animated.Value(0.92)).current;
 
   indexRef.current = index;
   splashDoneRef.current = splashDone;
@@ -101,6 +105,33 @@ export function IntroCarouselScreen({ navigation }: Props) {
     }
 
     setSplashActive(true);
+    enterY.setValue(16);
+    enterScale.setValue(0.92);
+    const enter = Animated.parallel([
+      Animated.spring(enterY, {
+        toValue: 0,
+        friction: 7,
+        tension: 90,
+        useNativeDriver: true,
+      }),
+      Animated.spring(enterScale, {
+        toValue: 1,
+        friction: 5.2,
+        tension: 128,
+        useNativeDriver: true,
+      }),
+    ]);
+    enter.start(({ finished }) => {
+      if (finished) {
+        enterY.setValue(0);
+        enterScale.setValue(1);
+      }
+    });
+    const enterFailsafe = setTimeout(() => {
+      enterY.setValue(0);
+      enterScale.setValue(1);
+    }, 520);
+
     armIntroSplash();
     const unsub = subscribeIntroSplash(startRetract);
     const poll = setInterval(() => {
@@ -112,6 +143,8 @@ export function IntroCarouselScreen({ navigation }: Props) {
       unsub();
       clearInterval(poll);
       clearTimeout(hard);
+      clearTimeout(enterFailsafe);
+      enter.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSplashActive]);
@@ -120,6 +153,7 @@ export function IntroCarouselScreen({ navigation }: Props) {
     if (!splashDoneRef.current) return;
     const i = indexRef.current;
     if (i >= LAST) {
+      // Value first: questions + voice before any account (guest session).
       navigation.navigate('Name');
       return;
     }
@@ -168,9 +202,12 @@ export function IntroCarouselScreen({ navigation }: Props) {
           colors={INTRO_SLIDES.map((slide) => CARD_COLORS[slide.card])}
           onPress={onBarPress}
         />
-        <Text style={styles.heading} numberOfLines={3}>
-          {heading}
-        </Text>
+        {/* Fixed-height heading band — 2- vs 3-line titles must not move cards. */}
+        <View style={styles.headingBand}>
+          <Text maxFontSizeMultiplier={1.2} style={styles.heading} numberOfLines={3}>
+            {heading}
+          </Text>
+        </View>
 
         <View
           style={styles.stageWrap}
@@ -193,6 +230,14 @@ export function IntroCarouselScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.nextWrap}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={() => navigation.navigate('SignIn', { mode: 'restore' })}
+            style={({ pressed }) => [styles.haveAccount, pressed && { opacity: 0.5 }]}
+          >
+            <Text maxFontSizeMultiplier={1.3} style={styles.haveAccountText}>I already have an account</Text>
+          </Pressable>
           <RoundArrowButton onPress={goNextCard} color={colors.fab} />
         </View>
       </View>
@@ -216,12 +261,21 @@ export function IntroCarouselScreen({ navigation }: Props) {
             transform: [{ translateY: slideY }],
           }}
         >
-          <Animated.View style={{ alignItems: 'center', gap: 20, opacity: textOpacity }}>
+          <Animated.View
+            style={{
+              alignItems: 'center',
+              gap: 20,
+              opacity: textOpacity,
+              transform: [{ translateY: enterY }, { scale: enterScale }],
+            }}
+          >
             <LogoSpinner />
-            <Text style={styles.welcomeTitle}>
+            <Text maxFontSizeMultiplier={1.2} style={styles.welcomeTitle}>
               Welcome to the{'\n'}future self alarm
             </Text>
-            <Text style={styles.buildMark}>b26</Text>
+            {__DEV__ ? (
+              <Text maxFontSizeMultiplier={1.5} style={styles.buildMark}>{BUILD_MARK}</Text>
+            ) : null}
           </Animated.View>
         </Animated.View>
       ) : null}
@@ -239,6 +293,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.inset,
     overflow: 'visible',
   },
+  /** Always reserves 3 lines so cards stay put across intro steps. */
+  headingBand: {
+    marginTop: 28,
+    marginBottom: 8,
+    minHeight: 44 * 3,
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
   heading: {
     fontFamily: fonts.headingRegular,
     fontSize: 36,
@@ -246,26 +308,41 @@ const styles = StyleSheet.create({
     letterSpacing: 0.374,
     color: '#1A1A1A',
     textAlign: 'left',
-    marginTop: 12,
-    marginBottom: 12,
-    minHeight: 44,
     ...noFakeBold,
     ...headingClipFix,
   },
   stageWrap: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-    width: '100%',
+    alignItems: 'center',
+    // Bleed past text inset so cards can sit closer to the screen edge.
+    marginHorizontal: -spacing.inset,
+    width: undefined,
+    alignSelf: 'stretch',
     position: 'relative',
     zIndex: 1,
     overflow: 'visible',
     minHeight: 180,
+    paddingHorizontal: 8,
   },
   nextWrap: {
     width: '100%',
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     zIndex: 5,
+  },
+  haveAccount: {
+    paddingVertical: 8,
+    flexShrink: 1,
+    marginRight: 16,
+  },
+  haveAccountText: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    color: '#1A1A1A',
+    opacity: 0.6,
+    textDecorationLine: 'underline',
   },
   welcomeTitle: {
     textAlign: 'center',

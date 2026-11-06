@@ -176,23 +176,23 @@ export function wordsMatch(heard: string, expected: string) {
 
 /**
  * How much of the expected line appears in `heard`.
- * Continuous STT keeps earlier lines — search best alignment in the stream.
+ * Only the recent window is used so prior karaoke lines can't poison matching.
  */
 export function matchedPrefixCount(expectedLine: string, heard: string) {
   const expected = tokenize(expectedLine);
-  const got = tokenize(heard);
-  if (!expected.length || !got.length) return 0;
+  const allGot = tokenize(heard);
+  if (!expected.length || !allGot.length) return 0;
+
+  const window = Math.max(expected.length + 12, 24);
+  const got = allGot.slice(-window);
 
   let best = 0;
-  // Prefer recent speech (end of stream) so leftover previous-line tokens
-  // don't dominate — still scan a few starts for recovery.
   const starts: number[] = [];
   for (let start = 0; start < got.length; start += 1) {
     if (wordsMatch(got[start]!, expected[0]!)) starts.push(start);
   }
-  // Cap work on very long transcripts
-  const limited =
-    starts.length > 12 ? starts.slice(starts.length - 12) : starts;
+  // Newest candidate starts first.
+  const limited = (starts.length > 14 ? starts.slice(-14) : starts).reverse();
 
   for (const start of limited) {
     let i = 0;
@@ -204,15 +204,13 @@ export function matchedPrefixCount(expectedLine: string, heard: string) {
         miss = 0;
         continue;
       }
-      // Allow skipping one stubborn word if the next matches
       if (i + 1 < expected.length && wordsMatch(word, expected[i + 1]!)) {
         i += 2;
         miss = 0;
         continue;
       }
-      // Skip one garbage STT word without advancing expected
       miss += 1;
-      if (miss >= 4) break;
+      if (miss >= 5) break;
     }
     if (i > best) best = i;
     if (best >= expected.length) break;
@@ -226,16 +224,15 @@ export function lineWordCount(line: string) {
 }
 
 /**
- * Need most of the line — long lines allow a few misses so STT slips
- * don't freeze the karaoke. Short lines stay strict.
+ * Near-complete only — do NOT fire after the first word.
+ * User must finish (or nearly finish) the line before auto-advance.
  */
 export function isLineHeardEnough(spokenCount: number, wordCount: number) {
   if (wordCount <= 0 || spokenCount <= 0) return false;
   if (spokenCount >= wordCount) return true;
   if (wordCount <= 3) return spokenCount >= wordCount;
-  if (wordCount <= 6) return spokenCount >= wordCount - 1;
-  if (wordCount <= 12) return spokenCount >= Math.ceil(wordCount * 0.72);
-  return spokenCount >= Math.ceil(wordCount * 0.68);
+  // Allow missing the last word (STT often drops the tail).
+  return spokenCount >= wordCount - 1;
 }
 
 /** True when karaoke has lit every visible word (same signal the user sees). */

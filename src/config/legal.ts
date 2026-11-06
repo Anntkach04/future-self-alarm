@@ -22,6 +22,14 @@ export function termsOfUseUrl() {
   );
 }
 
+/** In-app / web Contact Us form (preferred over raw mailto). */
+export function contactUsUrl() {
+  return (
+    process.env.EXPO_PUBLIC_CONTACT_URL?.trim() ||
+    (apiOrigin() ? `${apiOrigin()}/contact` : '')
+  );
+}
+
 /**
  * Support inbox. Prefer a +tag address so mail sorts cleanly, e.g.
  * `sister@gmail.com` → set `sister+futureself@gmail.com` (Gmail still delivers to sister@).

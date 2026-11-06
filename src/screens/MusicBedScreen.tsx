@@ -35,7 +35,7 @@ export function MusicBedScreen({ navigation }: Props) {
       allowAdd={false}
       onSubmit={() => {
         void stopMusicBedPreview();
-        navigation.navigate('WakeUpTime');
+        navigation.navigate('VoiceRecord');
       }}
     />
   );

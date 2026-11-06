@@ -124,6 +124,7 @@ export async function reconnectAppleSession(): Promise<{
   const result = await signInWithAppleOnServer({
     identityToken: cred.identityToken,
     email: cred.email ?? null,
+    authorizationCode: cred.authorizationCode ?? null,
   });
   return {
     ok: true,

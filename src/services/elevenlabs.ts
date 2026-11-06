@@ -159,9 +159,16 @@ export type CloneVoiceResult = {
   requiresVerification?: boolean;
 };
 
+export type TtsWordTiming = {
+  text: string;
+  start: number;
+  end: number;
+};
+
 export type TtsResult = {
   mimeType: string;
   base64: string;
+  words?: TtsWordTiming[] | null;
 };
 
 export type VoiceApiHealth = {
@@ -276,8 +283,74 @@ export async function cloneVoiceFromUri(params: {
     return data;
   }
 
-  // Native: send base64 JSON — FormData file parts break on newer RN ("Unsupported FormDataPart").
+  // Native: multipart file upload (avoids huge base64 JSON → "request too large").
   const FileSystem = await import('expo-file-system/legacy');
+  if (!resolveInFlight) {
+    resolveInFlight = resolveApiUrl().finally(() => {
+      resolveInFlight = null;
+    });
+  }
+  const base = await resolveInFlight;
+  const headers = await authHeaders();
+
+  try {
+    const uploaded = await FileSystem.uploadAsync(
+      `${base}/api/voices/clone`,
+      params.uri,
+      {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: 'file',
+        mimeType,
+        parameters: { name },
+        headers,
+      }
+    );
+    if (uploaded.status >= 200 && uploaded.status < 300) {
+      const data = JSON.parse(uploaded.body || '{}') as CloneVoiceResult;
+      if (!data.voiceId) {
+        throw new Error('Clone succeeded but no voiceId returned');
+      }
+      return data;
+    }
+    let message = 'Voice clone failed';
+    try {
+      const err = JSON.parse(uploaded.body || '{}') as { error?: string };
+      if (err.error) message = err.error;
+    } catch {
+      if (uploaded.body) message = uploaded.body.slice(0, 160);
+    }
+    if (/too large|entity too large|413/i.test(message)) {
+      throw new Error(
+        'Recording is too long for clone. Tap re-record and keep it around one to two minutes.'
+      );
+    }
+    throw new Error(message);
+  } catch (error) {
+    // Hard failures (size / clone API) — don't retry as giant base64.
+    if (
+      error instanceof Error &&
+      /too long for clone|no voiceId|Voice clone failed/i.test(error.message)
+    ) {
+      throw error;
+    }
+    console.warn('multipart clone failed, trying JSON', error);
+  }
+
+  // Prefer multipart above; JSON fallback only for smaller takes.
+  const info = await FileSystem.getInfoAsync(params.uri);
+  const maxBytes = 18 * 1024 * 1024;
+  if (
+    info.exists &&
+    'size' in info &&
+    typeof info.size === 'number' &&
+    info.size > maxBytes
+  ) {
+    throw new Error(
+      'Could not upload this recording. Tap re-record and try a shorter take.'
+    );
+  }
+
   const base64 = await FileSystem.readAsStringAsync(params.uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -293,7 +366,13 @@ export async function cloneVoiceFromUri(params: {
   );
 
   if (!response.ok) {
-    throw new Error(await readError(response));
+    const msg = await readError(response);
+    if (/too large|entity too large|413/i.test(msg)) {
+      throw new Error(
+        'Recording is too long for clone. Tap re-record and keep it around one to two minutes.'
+      );
+    }
+    throw new Error(msg);
   }
 
   const data = (await response.json()) as CloneVoiceResult;
@@ -306,6 +385,8 @@ export async function cloneVoiceFromUri(params: {
 export async function synthesizeSpeech(params: {
   voiceId: string;
   text: string;
+  /** When true, returns word timings and skips bed mix (karaoke preview). */
+  withTimestamps?: boolean;
 }): Promise<TtsResult> {
   const response = await apiFetch('/api/tts', {
     method: 'POST',
@@ -313,6 +394,7 @@ export async function synthesizeSpeech(params: {
     body: JSON.stringify({
       voiceId: params.voiceId,
       text: params.text,
+      withTimestamps: Boolean(params.withTimestamps),
     }),
   }, 120000);
 
@@ -329,7 +411,7 @@ export async function generateMorningAlarm(params: {
     name: string;
     morningFeelings: string[];
     futureSelf: string[];
-    alreadyProud: string[];
+    morningHabits: string[];
     hardMornings: string[];
     voiceStyle: string | null;
     messageLength: string | null;

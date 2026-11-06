@@ -14,9 +14,11 @@ import { RecapPills } from '../components/RecapPills';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAlarms } from '../context/AlarmsContext';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import {
-  ALREADY_YOU_OPTIONS,
+  MORNING_HABIT_OPTIONS,
   FUTURE_SELF_OPTIONS,
   HARD_MORNING_OPTIONS,
   VOICE_STYLE_OPTIONS,
@@ -24,6 +26,7 @@ import {
 import { ProfileFieldKey, RootStackParamList } from '../navigation/types';
 import { deleteAccountOnServer } from '../services/apiAuth';
 import { clearPersistedAppData } from '../services/resetApp';
+import { logOutPurchases } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
 import { accents, colors, fonts, noFakeBold } from '../theme';
 import { colorsForRecapSections } from '../utils/optionColors';
@@ -41,7 +44,7 @@ type SectionProps = {
 function Section({ title, items, itemColors, onPress }: SectionProps) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button">
-      <Text style={styles.recapTitle}>{uiLabel(title)}</Text>
+      <Text maxFontSizeMultiplier={1.2} style={styles.recapTitle}>{uiLabel(title)}</Text>
       <RecapPills items={items} colors={itemColors} />
     </Pressable>
   );
@@ -50,10 +53,21 @@ function Section({ title, items, itemColors, onPress }: SectionProps) {
 export function EditProfileScreen({ navigation }: Props) {
   const { answers, resetOnboarding } = useOnboarding();
   const { clearAllAlarms } = useAlarms();
+  const { resetAppSettings } = useAppSettings();
+  const { clearMoodHistory } = useMoodCheckIn();
   const [deleting, setDeleting] = useState(false);
 
   const openField = (field: ProfileFieldKey) =>
     navigation.navigate('ProfileFieldEdit', { field });
+
+  const wipeLocalAccount = async () => {
+    await clearAllAlarms();
+    await logOutPurchases();
+    clearMoodHistory();
+    resetAppSettings();
+    await clearPersistedAppData();
+    await resetOnboarding();
+  };
 
   const confirmDeleteAccount = () => {
     Alert.alert(
@@ -68,10 +82,9 @@ export function EditProfileScreen({ navigation }: Props) {
             void (async () => {
               setDeleting(true);
               try {
+                // Preserve local data and the session until server deletion succeeds.
                 await deleteAccountOnServer();
-                await clearAllAlarms();
-                await clearPersistedAppData();
-                await resetOnboarding();
+                await wipeLocalAccount();
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Intro' }],
@@ -96,14 +109,14 @@ export function EditProfileScreen({ navigation }: Props) {
 
   const [
     goalsColors,
-    proudColors,
+    habitColors,
     hardMorningColors,
     voiceColors,
   ] = useMemo(
     () =>
       colorsForRecapSections([
         { items: answers.futureSelf, options: FUTURE_SELF_OPTIONS },
-        { items: answers.alreadyProud, options: ALREADY_YOU_OPTIONS },
+        { items: answers.morningHabits, options: MORNING_HABIT_OPTIONS },
         { items: answers.hardMornings, options: HARD_MORNING_OPTIONS },
         {
           items: answers.voiceStyle ? [answers.voiceStyle] : [],
@@ -112,7 +125,7 @@ export function EditProfileScreen({ navigation }: Props) {
       ]),
     [
       answers.futureSelf,
-      answers.alreadyProud,
+      answers.morningHabits,
       answers.hardMornings,
       answers.voiceStyle,
     ]
@@ -122,7 +135,7 @@ export function EditProfileScreen({ navigation }: Props) {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <BackButton style={styles.back} />
-        <Text style={styles.title}>{uiLabel('account')}</Text>
+        <Text maxFontSizeMultiplier={1.2} style={styles.title}>{uiLabel('account')}</Text>
         <View style={styles.block}>
           <Section
             title="name"
@@ -136,10 +149,10 @@ export function EditProfileScreen({ navigation }: Props) {
             onPress={() => openField('futureSelf')}
           />
           <Section
-            title="already proud"
-            items={answers.alreadyProud}
-            itemColors={proudColors}
-            onPress={() => openField('alreadyProud')}
+            title="morning habits"
+            items={answers.morningHabits}
+            itemColors={habitColors}
+            onPress={() => openField('morningHabits')}
           />
           <Section
             title="hard mornings"
@@ -153,7 +166,7 @@ export function EditProfileScreen({ navigation }: Props) {
             itemColors={answers.voiceStyle ? voiceColors : undefined}
             onPress={() => openField('voiceStyle')}
           />
-          <Text style={styles.voiceHint}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.voiceHint}>
             Re-record anytime. Your next alarm will use the new clone.
           </Text>
           <View style={styles.editRow}>
@@ -166,8 +179,8 @@ export function EditProfileScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.danger}>
-          <Text style={styles.dangerTitle}>Delete account</Text>
-          <Text style={styles.dangerBody}>
+          <Text maxFontSizeMultiplier={1.2} style={styles.dangerTitle}>Delete account</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.dangerBody}>
             Permanently erase your account data on our servers. Required by App
             Store rules when you create an account.
           </Text>

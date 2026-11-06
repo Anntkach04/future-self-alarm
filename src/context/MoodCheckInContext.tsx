@@ -24,6 +24,7 @@ type MoodCheckInContextValue = {
   ready: boolean;
   saveCheckIn: (entry: Omit<MoodCheckIn, 'date'>) => void;
   hydrateMood: (entry: MoodCheckIn | null) => void;
+  clearMoodHistory: () => void;
 };
 
 function todayKey() {
@@ -80,6 +81,10 @@ export function MoodCheckInProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  const clearMoodHistory = useCallback(() => {
+    setHistory([]);
+  }, []);
+
   const value = useMemo<MoodCheckInContextValue>(() => {
     const key = todayKey();
     return {
@@ -94,8 +99,9 @@ export function MoodCheckInProvider({ children }: { children: React.ReactNode })
         });
       },
       hydrateMood,
+      clearMoodHistory,
     };
-  }, [history, ready, hydrateMood]);
+  }, [history, ready, hydrateMood, clearMoodHistory]);
 
   return (
     <MoodCheckInContext.Provider value={value}>

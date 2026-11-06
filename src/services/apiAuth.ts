@@ -118,6 +118,9 @@ export async function signInWithAppleOnServer(input: {
   // Lazy import avoids a cycle with elevenlabs.apiFetch → authHeaders.
   const { getApiUrl } = await import('./elevenlabs');
   const base = getApiUrl();
+  // Guest session (if any) lets the server move voices cloned before Sign in
+  // onto the Apple account — ownership checks and deletion depend on it.
+  const guestToken = await getSessionToken();
   const response = await fetch(`${base}/api/auth/apple`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -126,6 +129,7 @@ export async function signInWithAppleOnServer(input: {
       email: input.email ?? null,
       fullName: input.fullName ?? null,
       authorizationCode: input.authorizationCode ?? null,
+      guestToken: guestToken || null,
     }),
   });
   const data = (await response.json().catch(() => ({}))) as {
@@ -137,12 +141,13 @@ export async function signInWithAppleOnServer(input: {
   if (!response.ok) {
     throw new Error(data.error || 'Apple sign-in failed on server');
   }
-  if (data.token) {
-    await setSessionToken(data.token);
-  }
-  if (!data.user) {
+  if (!data.user?.id) {
     throw new Error('Server returned no user');
   }
+  if (typeof data.token !== 'string' || !data.token.trim()) {
+    throw new Error('Server returned no session. Please try signing in again.');
+  }
+  await setSessionToken(data.token);
   return {
     token: data.token ?? null,
     user: data.user,
@@ -151,30 +156,52 @@ export async function signInWithAppleOnServer(input: {
 }
 
 /**
- * Anonymous JWT so clone/TTS works before the Sign in with Apple screen.
- * No-op if a session already exists or the server does not enforce auth.
+ * Anonymous JWT so clone/TTS works before / without Apple.
+ * Soft-fail: never blocks onboarding if the API is slow or down.
+ * @returns true when a session token is available
  */
-export async function ensureGuestSession(): Promise<void> {
-  const existing = await getSessionToken();
-  if (existing) return;
+export async function ensureGuestSession(
+  opts: { force?: boolean } = {}
+): Promise<boolean> {
+  try {
+    if (opts.force) {
+      await setSessionToken(null);
+    } else {
+      const existing = await getSessionToken();
+      if (existing) return true;
+    }
 
-  const { getApiUrl } = await import('./elevenlabs');
-  const base = getApiUrl();
-  const response = await fetch(`${base}/api/auth/guest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{}',
-  });
-  const data = (await response.json().catch(() => ({}))) as {
-    error?: string;
-    token?: string | null;
-    authRequired?: boolean;
-  };
-  if (!response.ok) {
-    throw new Error(data.error || 'Could not start guest session');
-  }
-  if (data.token) {
-    await setSessionToken(data.token);
+    const { getApiUrl } = await import('./elevenlabs');
+    const base = getApiUrl();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    let response: Response;
+    try {
+      response = await fetch(`${base}/api/auth/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+    const data = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      token?: string | null;
+    };
+    if (!response.ok) {
+      console.warn('Guest session failed', data.error || response.status);
+      return false;
+    }
+    if (data.token) {
+      await setSessionToken(data.token);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.warn('Guest session error', error);
+    return false;
   }
 }
 
@@ -182,19 +209,48 @@ export async function clearApiSession() {
   await setSessionToken(null);
 }
 
-/** App Store 5.1.1(v) — delete server account + local session. */
+/**
+ * App Store 5.1.1(v) — delete server account + clear local session.
+ * Keep the session on failure so the user can retry or reconnect.
+ * Only a confirmed deletion or a missing account permits the local wipe.
+ */
 export async function deleteAccountOnServer(): Promise<void> {
+  const token = await getSessionToken();
+  if (!token) {
+    throw new Error('Sign in again before deleting your account.');
+  }
+
   const { getApiUrl } = await import('./elevenlabs');
   const base = getApiUrl();
-  const response = await fetch(`${base}/api/me`, {
-    method: 'DELETE',
-    headers: await authHeaders(),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${base}/api/me`, {
+      method: 'DELETE',
+      headers: await authHeaders({ 'Content-Type': 'application/json' }),
+    });
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error('Could not reach the server to delete your account.');
+  }
+
+  if (response.status === 401) {
+    throw new Error('Session expired. Sign in again before deleting your account.');
+  }
+
+  if (response.status === 404) {
+    await clearApiSession();
+    return;
+  }
+
   if (!response.ok) {
     const data = (await response.json().catch(() => ({}))) as {
       error?: string;
     };
-    throw new Error(data.error || `Could not delete account (${response.status})`);
+    throw new Error(
+      data.error || `Could not delete account (${response.status})`
+    );
   }
+
   await clearApiSession();
 }

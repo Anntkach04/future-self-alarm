@@ -36,7 +36,7 @@ function TrashIcon() {
   );
 }
 
-/** Clock-style swipe left → trash in a red circle. */
+/** Clock-style swipe left → trash reveals under the row (row stays clipped). */
 export function SwipeDeleteRow({
   children,
   onDelete,
@@ -51,7 +51,8 @@ export function SwipeDeleteRow({
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
+        Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         x.stopAnimation((v) => {
           startX.current = v;
@@ -77,7 +78,7 @@ export function SwipeDeleteRow({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.actions}>
+      <View style={styles.actions} pointerEvents="box-none">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={deleteLabel}
@@ -116,7 +117,6 @@ export function SwipeDeleteRow({
             }
             onPress?.();
           }}
-          // Let nested Switch / controls receive taps without opening edit.
           onStartShouldSetResponderCapture={() => false}
         >
           {children}
@@ -150,5 +150,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  front: {},
+  front: {
+    width: '100%',
+    paddingVertical: 4,
+  },
 });

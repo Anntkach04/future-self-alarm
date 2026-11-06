@@ -342,7 +342,7 @@ export function StackedIntroCards({
             >
               {isFront ? (
                 <Animated.View style={[styles.copy, { opacity: contentFade }]}>
-                  <Text style={styles.body}>{active.body}</Text>
+                  <Text maxFontSizeMultiplier={1.1} style={styles.body}>{active.body}</Text>
                   <View style={styles.doodle}>
                     <IntroDoodle tone={tone} />
                   </View>

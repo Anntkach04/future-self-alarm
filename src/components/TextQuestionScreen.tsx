@@ -4,13 +4,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from './BackButton';
 import { BubbleEnter } from './BubbleEnter';
 import { InputPill } from './InputPill';
 import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
-
 type Props = {
   question: string;
   subtitle?: string;
@@ -50,13 +50,11 @@ export function TextQuestionScreen({
             <BackButton />
           </BubbleEnter>
           <BubbleEnter delay={0} fromY={16}>
-            <Text style={styles.question}>{question}</Text>
+            <View style={styles.header}>
+              <Text maxFontSizeMultiplier={1.2} style={styles.question}>{question}</Text>
+              {subtitle ? <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>{subtitle}</Text> : null}
+            </View>
           </BubbleEnter>
-          {subtitle ? (
-            <BubbleEnter delay={50} fromY={12}>
-              <Text style={styles.subtitle}>{subtitle}</Text>
-            </BubbleEnter>
-          ) : null}
           <BubbleEnter delay={40} fromY={10}>
             <InputPill
               value={value}
@@ -85,8 +83,13 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.inset,
-    paddingTop: spacing.webTop,
+    paddingTop: spacing.webTop + 12,
     paddingBottom: spacing.inset,
+  },
+  header: {
+    width: '100%',
+    alignItems: 'stretch',
+    marginBottom: 28,
   },
   question: {
     textAlign: 'left',
@@ -95,7 +98,8 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     letterSpacing: 0.2,
-    marginBottom: 20,
+    marginBottom: 12,
+    alignSelf: 'stretch',
     ...noFakeBold,
     ...headingClipFix,
   },
@@ -106,7 +110,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     letterSpacing: 0.37,
-    marginBottom: 32,
+    alignSelf: 'stretch',
     ...(Platform.OS === 'web'
       ? ({ fontWeight: '300', fontSynthesis: 'none' } as object)
       : { fontWeight: '300' as const }),

@@ -12,6 +12,8 @@ type Props = {
   textColor?: string;
   style?: ViewStyle;
   disabled?: boolean;
+  /** Same pill style without the arrow (e.g. karaoke Continue). */
+  hideArrow?: boolean;
 };
 
 export function TextArrowButton({
@@ -21,6 +23,7 @@ export function TextArrowButton({
   textColor = colors.text,
   style,
   disabled = false,
+  hideArrow = false,
 }: Props) {
   return (
     <Pressable
@@ -29,6 +32,7 @@ export function TextArrowButton({
       onPress={onPress}
       style={({ pressed, hovered }: PressState) => [
         styles.btn,
+        hideArrow && styles.btnNoArrow,
         { backgroundColor: color },
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
@@ -37,8 +41,10 @@ export function TextArrowButton({
     >
       {({ pressed, hovered }: PressState) => (
         <>
-          <Text style={[styles.label, { color: textColor }]}>{uiLabel(label)}</Text>
-          <ForwardArrow lifted={Boolean(pressed || hovered)} color={textColor} />
+          <Text maxFontSizeMultiplier={1.2} style={[styles.label, { color: textColor }]}>{uiLabel(label)}</Text>
+          {hideArrow ? null : (
+            <ForwardArrow lifted={Boolean(pressed || hovered)} color={textColor} />
+          )}
         </>
       )}
     </Pressable>
@@ -55,6 +61,9 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     paddingVertical: 8,
     borderRadius: radii.button,
+  },
+  btnNoArrow: {
+    paddingHorizontal: 18,
   },
   pressed: {
     opacity: 0.88,

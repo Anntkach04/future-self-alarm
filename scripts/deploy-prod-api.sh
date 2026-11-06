@@ -22,10 +22,11 @@ fi
 
 cd "$SERVER"
 
-if [ ! -f "$SERVER/.railway/config.json" ] && [ ! -d "$ROOT/.railway" ]; then
-  echo "No Railway project linked yet."
-  echo "Creating a new project + service from this folder…"
-  railway init
+# Never auto-create a new project — link to future-self-api first if needed.
+if ! railway status >/dev/null 2>&1; then
+  echo "No Railway project linked. Run from server/:"
+  echo "  railway link   # pick future-self-api → production → api"
+  exit 1
 fi
 
 echo "Setting secrets from repo .env (if present)…"
@@ -54,7 +55,7 @@ if [ -f "$ROOT/.env" ]; then
     "OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}" \
     "OPENAI_MOOD_MODEL=${OPENAI_MOOD_MODEL:-gpt-4o-mini}" \
     "JWT_SECRET=${JWT_SECRET}" \
-    "APPLE_CLIENT_ID=${APPLE_CLIENT_ID:-com.anonymous.future-self-alarm}"
+    "APPLE_CLIENT_ID=${APPLE_CLIENT_ID:-com.futureself.alarm}"
   if [ -n "${DATABASE_URL}" ]; then
     railway variables set "DATABASE_URL=${DATABASE_URL}"
   fi
@@ -63,7 +64,7 @@ else
 fi
 
 echo "Uploading server/ (includes beds) and deploying…"
-railway up --detach --path-as-root
+railway up . --detach --path-as-root -y -s api
 
 echo ""
 echo "Waiting for public URL…"

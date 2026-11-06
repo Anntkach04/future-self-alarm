@@ -9,7 +9,7 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { IntroCarouselScreen } from '../screens/IntroCarouselScreen';
 import { NameScreen } from '../screens/NameScreen';
 import { FutureSelfScreen } from '../screens/FutureSelfScreen';
-import { AlreadyYouScreen } from '../screens/AlreadyYouScreen';
+import { MorningHabitsScreen } from '../screens/MorningHabitsScreen';
 import { HardMorningsScreen } from '../screens/HardMorningsScreen';
 import { VoiceStyleScreen } from '../screens/VoiceStyleScreen';
 import { WakeUpTimeScreen } from '../screens/WakeUpTimeScreen';
@@ -19,8 +19,10 @@ import { VoiceCloningScreen } from '../screens/VoiceCloningScreen';
 import { VoicePreviewScreen } from '../screens/VoicePreviewScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { NotificationPermissionScreen } from '../screens/NotificationPermissionScreen';
+import { AlarmPermissionScreen } from '../screens/AlarmPermissionScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { CreateAlarmScreen } from '../screens/CreateAlarmScreen';
+import { OnboardingCongratsScreen } from '../screens/OnboardingCongratsScreen';
 import { AlarmsScreen } from '../screens/AlarmsScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MoodMoreScreen } from '../screens/MoodMoreScreen';
@@ -39,7 +41,7 @@ import { colors } from '../theme';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  const { ready: onboardingReady, onboardingComplete } = useOnboarding();
+  const { ready: onboardingReady } = useOnboarding();
   const { ready: alarmsReady } = useAlarms();
   const { ready: settingsReady } = useAppSettings();
 
@@ -47,14 +49,12 @@ export function RootNavigator() {
     return <WaitingView message="Starting…" />;
   }
 
-  const initialRoute = onboardingComplete ? 'Home' : 'Intro';
-
+  // Cold start always hits Welcome → Home or Intro (see WelcomeScreen).
   return (
     <NavigationContainer ref={navigationRef}>
       <EntitlementGateHost />
       <Stack.Navigator
-        key={initialRoute}
-        initialRouteName={initialRoute}
+        initialRouteName="Welcome"
         screenOptions={{
           headerShown: false,
           animation: 'none',
@@ -76,7 +76,7 @@ export function RootNavigator() {
         />
         <Stack.Screen name="Name" component={NameScreen} />
         <Stack.Screen name="FutureSelf" component={FutureSelfScreen} />
-        <Stack.Screen name="AlreadyYou" component={AlreadyYouScreen} />
+        <Stack.Screen name="MorningHabits" component={MorningHabitsScreen} />
         <Stack.Screen name="HardMornings" component={HardMorningsScreen} />
         <Stack.Screen name="VoiceStyle" component={VoiceStyleScreen} />
         <Stack.Screen name="WakeUpTime" component={WakeUpTimeScreen} />
@@ -89,8 +89,26 @@ export function RootNavigator() {
           name="NotificationPermission"
           component={NotificationPermissionScreen}
         />
-        <Stack.Screen name="Paywall" component={PaywallScreen} />
+        <Stack.Screen
+          name="AlarmPermission"
+          component={AlarmPermissionScreen}
+        />
+        <Stack.Screen
+          name="Paywall"
+          component={PaywallScreen}
+          options={({ route }) => ({
+            gestureEnabled: !route.params?.gated,
+          })}
+        />
         <Stack.Screen name="CreateAlarm" component={CreateAlarmScreen} />
+        <Stack.Screen
+          name="OnboardingCongrats"
+          component={OnboardingCongratsScreen}
+          options={{
+            animation: 'none',
+            contentStyle: { backgroundColor: '#FEC554' },
+          }}
+        />
         <Stack.Screen name="Alarms" component={AlarmsScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="MoodMore" component={MoodMoreScreen} />

@@ -1,42 +1,27 @@
 /**
- * Short lines for Instant Voice Clone karaoke.
- * Comfortable to speak; wraps cleanly on phone screens.
+ * Clone sample — ~60–75 sec at a calm pace (short enough to always upload).
+ * Plain, easy to read. Chunks: ~1–2 lines at ~30pt.
  */
 export function buildVoiceScriptLines(name: string) {
   const who = name.trim() || 'friend';
   return [
-    `Hey, it's ${who}.`,
-    `It's morning, and I'm still waking up.`,
-    `Give me a second.`,
-    `I think I'll make breakfast first.`,
-    `Then figure out what needs to get done today.`,
-    `Actually, I should probably check the time.`,
-    `Okay, that's fine.`,
-    `Some mornings I know exactly what I'm doing.`,
-    `Other mornings I just make it up as I go.`,
-    `Yesterday was pretty busy.`,
-    `I had a few things planned.`,
-    `But half of them changed at the last minute.`,
-    `That's usually how it goes.`,
-    `Oh, wait.`,
-    `I just remembered something I wanted to do later.`,
-    `Maybe I'll go for a walk.`,
-    `Get a coffee.`,
-    `Or stop by that little shop near the station.`,
-    `I wonder if it's open on Sundays.`,
-    `Anyway, where was I?`,
-    `Right. I was talking about today.`,
-    `It's funny how I can remember a random conversation`,
-    `from three years ago,`,
-    `but forget why I walked into the kitchen.`,
-    `A yellow bicycle.`,
-    `Fresh orange juice.`,
-    `Seven silver rings.`,
-    `A blue jacket.`,
-    `And a quiet street after the rain.`,
-    `Those are just random words, by the way.`,
-    `Alright, I think that's enough for now.`,
-    `I'll probably remember something else in five minutes.`,
+    `Hello, my name is ${who}.`,
+    `I am recording my voice in a quiet room.`,
+    `I am speaking clearly, at a calm and natural pace.`,
+    `The phone is about twenty centimeters away.`,
+    `In the morning I wake up and drink a glass of water.`,
+    `Then I make coffee and sit for a few minutes.`,
+    `Outside, cars pass by, and people walk to work.`,
+    `I check the weather, then I choose a jacket.`,
+    `My keys are on the table next to my bag.`,
+    `I will answer a few messages before I leave.`,
+    `There is a small store on the corner with fruit.`,
+    `I might buy oranges and a bottle of water.`,
+    `In the afternoon I finish the most important task first.`,
+    `If I feel stuck, I stand up, stretch, and continue.`,
+    `In the evening I cook a simple meal at home.`,
+    `Later I read for a while, then I go to sleep.`,
+    `Thank you for listening. This is ${who}, and I am finished.`,
   ];
 }
 
@@ -46,10 +31,10 @@ export function buildVoiceScript(name: string) {
 
 export const VOICE_TIPS = [
   'Quiet room, phone ~20 cm away',
-  'Talk like you’re half-awake, not like a narrator',
-  'Same accent and pace as a normal morning',
-  'About two minutes makes a much stronger clone',
+  'Speak clearly at a calm, natural pace',
+  'Same accent as you use every day',
+  'About one minute is enough for a strong clone',
 ];
 
-export const MIN_RECORDING_SECONDS = 75;
-export const TARGET_RECORDING_SECONDS = 120;
+export const MIN_RECORDING_SECONDS = 45;
+export const TARGET_RECORDING_SECONDS = 75;

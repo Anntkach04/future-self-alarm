@@ -1,6 +1,6 @@
 export type ProfileFieldKey =
   | 'futureSelf'
-  | 'alreadyProud'
+  | 'morningHabits'
   | 'hardMornings'
   | 'voiceStyle';
 
@@ -9,7 +9,7 @@ export type RootStackParamList = {
   Intro: undefined;
   Name: undefined;
   FutureSelf: undefined;
-  AlreadyYou: undefined;
+  MorningHabits: undefined;
   HardMornings: undefined;
   VoiceStyle: undefined;
   MessageLength: undefined;
@@ -19,10 +19,18 @@ export type RootStackParamList = {
   VoiceReview: undefined;
   VoiceCloning: undefined;
   VoicePreview: undefined;
-  SignIn: undefined;
+  /**
+   * save    — after the voice preview: keep voice + alarms, then permissions/paywall
+   * restore — "I already have an account" from the intro
+   * resume  — clone needed a session; go back to recording afterwards
+   */
+  SignIn: { mode?: 'save' | 'restore' | 'resume' } | undefined;
   NotificationPermission: undefined;
-  Paywall: undefined;
+  AlarmPermission: undefined;
+  /** gated = shown because the subscription ended — no way back to the app. */
+  Paywall: { gated?: boolean } | undefined;
   CreateAlarm: { alarmId?: string } | undefined;
+  OnboardingCongrats: undefined;
   Alarms: undefined;
   Home: undefined;
   MoodMore: undefined;

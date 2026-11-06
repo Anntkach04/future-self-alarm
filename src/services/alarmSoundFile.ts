@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import {
+  clearFutureSelfAlarmSounds,
   librarySoundExists,
   writeLibrarySoundBase64,
 } from '../../modules/ios-library-sounds/src';
@@ -83,6 +84,8 @@ export async function installAlarmSystemSound(params: {
   const fileName = alarmSoundFileName(params.alarmId);
 
   if (Platform.OS === 'ios') {
+    // Always wipe old CAFs first — AsyncStorage clear does not delete Library/Sounds.
+    await clearFutureSelfAlarmSounds();
     const uri = await writeLibrarySoundBase64(fileName, data.base64);
     // Do NOT also write a shared FutureYouWake.caf — it contaminated later
     // alarms with whatever voice was generated last (often a premade demo).

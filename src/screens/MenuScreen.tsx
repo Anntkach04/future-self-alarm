@@ -4,7 +4,7 @@ import { BackButton } from '../components/BackButton';
 import { LegalLinks } from '../components/LegalLinks';
 import { Screen } from '../components/Screen';
 import { ONBOARDING_RESET_ENABLED } from '../config/devBypass';
-import { supportMailtoUrl } from '../config/legal';
+import { contactUsUrl, supportMailtoUrl } from '../config/legal';
 import { useAlarms } from '../context/AlarmsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
@@ -20,13 +20,11 @@ const LOGO_W = Math.round((LOGO_H * 2082) / 270);
 const ROWS: {
   title: string;
   route:
-    | 'Alarms'
     | 'EditProfile'
     | 'Subscription'
     | 'VoiceSettings'
     | 'NotificationSettings';
 }[] = [
-  { title: 'Alarms', route: 'Alarms' },
   { title: 'Account', route: 'EditProfile' },
   { title: 'Subscription', route: 'Subscription' },
   { title: 'Voice', route: 'VoiceSettings' },
@@ -65,7 +63,7 @@ export function MenuScreen({ navigation }: Props) {
     <Screen>
       <View style={styles.page}>
         <BackButton style={styles.back} />
-        <Text style={styles.title}>Menu</Text>
+        <Text maxFontSizeMultiplier={1.2} style={styles.title}>menu</Text>
         <View style={styles.list}>
           {ROWS.map((row) => (
             <Pressable
@@ -73,7 +71,7 @@ export function MenuScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(row.route)}
               style={styles.row}
             >
-              <Text style={styles.rowText}>{row.title}</Text>
+              <Text maxFontSizeMultiplier={1.2} style={styles.rowText}>{row.title}</Text>
             </Pressable>
           ))}
         </View>
@@ -83,19 +81,22 @@ export function MenuScreen({ navigation }: Props) {
             onPress={confirmReset}
             style={styles.resetBtn}
           >
-            <Text style={styles.resetText}>reset (dev)</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.resetText}>reset (dev)</Text>
           </Pressable>
         ) : null}
         <Pressable
           accessibilityRole="link"
-          onPress={() => void Linking.openURL(supportMailtoUrl('Support'))}
+          onPress={() => {
+            const url = contactUsUrl() || supportMailtoUrl('Support');
+            void Linking.openURL(url);
+          }}
           style={styles.supportBtn}
         >
-          <Text style={styles.supportText}>Contact support</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.supportText}>Contact Us</Text>
         </Pressable>
         <LegalLinks style={styles.legal} />
         <View style={styles.thanks}>
-          <Text style={styles.thanksKicker}>With thanks</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.thanksKicker}>With thanks</Text>
           <Image
             source={ELEVENLABS_LOGO}
             style={styles.thanksLogo}

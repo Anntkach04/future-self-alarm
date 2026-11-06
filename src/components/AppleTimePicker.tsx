@@ -201,6 +201,8 @@ function WheelColumn({
         if (v !== lastTickValue.current) {
           lastTickValue.current = v;
           playPickerTick();
+          // Push to parent while scrolling — waiting for settle left saves at 7:00.
+          if (v !== valueRef.current) onChange(v);
         }
       },
     }
@@ -311,6 +313,12 @@ export function AppleTimePicker({
   const wheelH = itemH * visible;
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
   const minutes = useMemo(() => Array.from({ length: 60 }, (_, i) => i), []);
+  // Live refs — wheel onChange must not use stale hour/minute closures
+  // (that bug forced every save back to the default 7:00).
+  const hourRef = useRef(hour);
+  const minuteRef = useRef(minute);
+  hourRef.current = hour;
+  minuteRef.current = minute;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -338,7 +346,7 @@ export function AppleTimePicker({
               hitSlop={12}
               style={styles.accessoryBtn}
             >
-              <Text style={styles.accessoryText}>Done</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.accessoryText}>Done</Text>
             </Pressable>
           </View>
         </InputAccessoryView>
@@ -350,7 +358,7 @@ export function AppleTimePicker({
             style={StyleSheet.absoluteFill}
             onPress={() => commitEdit(draft || formatTime(hour, minute))}
           />
-          <TextInput
+          <TextInput maxFontSizeMultiplier={1.2}
             autoFocus
             value={draft}
             onChangeText={(text) => {
@@ -376,7 +384,7 @@ export function AppleTimePicker({
             onPress={() => commitEdit(draft || formatTime(hour, minute))}
             style={styles.doneBtn}
           >
-            <Text style={styles.doneText}>Done</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.doneText}>Done</Text>
           </Pressable>
         </View>
       ) : (
@@ -389,11 +397,14 @@ export function AppleTimePicker({
             visible={visible}
             scrollEnabled
             accessibilityLabel="Hour"
-            onChange={(h) => onChange(h, minute)}
+            onChange={(h) => {
+              hourRef.current = h;
+              onChange(h, minuteRef.current);
+            }}
             onTap={startEdit}
           />
           <Pressable onPress={startEdit} accessibilityRole="button">
-            <Text style={styles.colon}>:</Text>
+            <Text maxFontSizeMultiplier={1.2} style={styles.colon}>:</Text>
           </Pressable>
           <WheelColumn
             values={minutes}
@@ -403,7 +414,10 @@ export function AppleTimePicker({
             visible={visible}
             scrollEnabled
             accessibilityLabel="Minutes"
-            onChange={(m) => onChange(hour, m)}
+            onChange={(m) => {
+              minuteRef.current = m;
+              onChange(hourRef.current, m);
+            }}
             onTap={startEdit}
           />
         </View>

@@ -37,7 +37,7 @@ export function InputPill({
 
   return (
     <View style={[styles.pill, style]}>
-      <TextInput
+      <TextInput maxFontSizeMultiplier={1.5}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}

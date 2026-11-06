@@ -4,14 +4,14 @@ Do **not** ask for every permission during onboarding. Ask each only when the us
 
 | Permission | When we ask | Why |
 |------------|-------------|-----|
-| **Notifications** | Onboarding screen after Sign in with Apple (`NotificationPermission`) — clear purpose + Settings deep-link if denied. Also again when saving an alarm if still denied. | Morning wake alerts with custom voice CAF |
+| **Notifications** | Short onboarding screen → system permission sheet on Continue. If denied: bottom nudge on Home + Create Alarm (Allow / Settings). | Supporting alerts |
 | **Microphone** | First tap to record on `VoiceRecord` | Clone sample |
 | **Speech Recognition** | Same first record tap (only if STT available). Optional — deny → mic-only clone | Live script follow-along |
-| **AlarmKit** | Only if/when we call `scheduleWithAlarmKit` (not on launch; not on notification screen). Current clone wakes use notifications + CAF, so most users never see this prompt. | System AlarmKit UI when used |
+| **AlarmKit** | Short onboarding screen after notifications → system sheet on Continue. If denied: bottom nudge → Settings. | Real system wake alarm with cloned voice |
 | **Tracking (ATT)** | **Never** — we do not track under Apple’s ATT definition | — |
 
-## Onboarding order (unchanged product flow)
+## Onboarding order
 
-Voice preview → Sign in with Apple → **Notifications** (this screen only) → Paywall → Home.
+Intro → **Sign in with Apple** (Continue skips) → Name… → Voice preview → **Notifications** → **AlarmKit** → Paywall → Home.
 
-No mic / speech / AlarmKit / ATT on that notifications step.
+No mic / speech / ATT on the notifications or AlarmKit steps.

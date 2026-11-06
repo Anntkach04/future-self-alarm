@@ -23,7 +23,7 @@ function LevelRow({
 }) {
   return (
     <View style={styles.sliderBlock}>
-      <Text style={styles.sliderLabel}>
+      <Text maxFontSizeMultiplier={1.5} style={styles.sliderLabel}>
         {label} · {Math.round(value * 100)}%
       </Text>
       <View style={styles.stepRow}>
@@ -35,7 +35,7 @@ function LevelRow({
               onPress={() => onChange(step)}
               style={[styles.chip, selected && styles.chipOn]}
             >
-              <Text style={[styles.chipText, selected && styles.chipTextOn]}>
+              <Text maxFontSizeMultiplier={1.5} style={[styles.chipText, selected && styles.chipTextOn]}>
                 {Math.round(step * 100)}
               </Text>
             </Pressable>
@@ -54,8 +54,8 @@ export function VoiceSettingsScreen({ navigation }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text style={styles.title}>Voice</Text>
-      <Text style={styles.body}>
+      <Text maxFontSizeMultiplier={1.2} style={styles.title}>voice</Text>
+      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
         Re-clone anytime. Mix levels apply the next time a morning voice is
         built (save an alarm, or evening regen after 21:00).
       </Text>

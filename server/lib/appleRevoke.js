@@ -7,7 +7,7 @@ const appleSignin = require('apple-signin-auth');
 const APPLE_CLIENT_ID = (
   process.env.APPLE_CLIENT_ID ||
   process.env.APPLE_BUNDLE_ID ||
-  'com.anonymous.future-self-alarm'
+  'com.futureself.alarm'
 ).trim();
 const APPLE_TEAM_ID = (process.env.APPLE_TEAM_ID || '').trim();
 const APPLE_KEY_ID = (process.env.APPLE_KEY_ID || '').trim();

@@ -2,7 +2,7 @@
 
 Target: iOS **26.1+** (`app.json` → `ios.deploymentTarget`). AlarmKit does not exist on iOS 25 and below; we require 26.1 rather than shipping a limited fallback OS.
 
-Wake path for **cloned** voices: local **time-sensitive notifications** + CAF in `Library/Sounds` (not Clock.app). AlarmKit is warmed for auth only — dynamic Library/Sounds names often resolve to the default system tone, so Kit is **not** used for per-user clones.
+Wake path for **cloned** voices: prefer **AlarmKit** (real system alarm UI + CAF in `Library/Sounds`) when authorized; else local **time-sensitive notifications** + CAF. Never schedule both for the same wake (double sound). Not Clock.app.
 
 ---
 

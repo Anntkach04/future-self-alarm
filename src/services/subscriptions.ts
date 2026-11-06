@@ -28,9 +28,23 @@ const DEV_ACTIVE: SubStatus = {
 };
 
 let configured = false;
+/** Apple user id — RevenueCat app user id, so entitlements follow the account. */
+let knownUserId: string | null = null;
+/** User id RevenueCat is currently logged in as (null = anonymous). */
+let rcUserId: string | null = null;
+
+/** Call on launch (from stored settings) before any RC call. */
+export function setPurchasesUserId(userId: string | null) {
+  knownUserId = userId || null;
+}
 
 function iosApiKey() {
-  return process.env.EXPO_PUBLIC_REVENUECAT_IOS?.trim() || '';
+  const key = process.env.EXPO_PUBLIC_REVENUECAT_IOS?.trim() || '';
+  // RevenueCat kills Release builds that use a test_ key — never configure it.
+  if (key.startsWith('test_') && !(typeof __DEV__ !== 'undefined' && __DEV__)) {
+    return '';
+  }
+  return key;
 }
 
 /** Metro / simulator only — never unlock paid features in Release without RC. */
@@ -42,6 +56,8 @@ export async function configurePurchases(appUserId?: string | null) {
   if (Platform.OS === 'web') return false;
   const key = iosApiKey();
   if (!key) return false;
+  if (appUserId) knownUserId = appUserId;
+  appUserId = appUserId || knownUserId;
   try {
     const Purchases = (await import('react-native-purchases')).default;
     if (!configured) {
@@ -50,8 +66,10 @@ export async function configurePurchases(appUserId?: string | null) {
         appUserID: appUserId || undefined,
       });
       configured = true;
-    } else if (appUserId) {
+      rcUserId = appUserId || null;
+    } else if (appUserId && appUserId !== rcUserId) {
       await Purchases.logIn(appUserId);
+      rcUserId = appUserId;
     }
     return true;
   } catch (error) {
@@ -118,12 +136,72 @@ async function resolveMonthlyPackage() {
         p.product.identifier === MONTHLY_PRODUCT_ID ||
         p.identifier === MONTHLY_PRODUCT_ID
     ) ??
-    packages.find(
-      (p) => p.packageType === 'MONTHLY' || p.identifier.includes('month')
-    ) ??
-    packages[0] ??
+    // Never fall back to an arbitrary package — the paywall copy says monthly.
+    packages.find((p) => p.packageType === 'MONTHLY') ??
     null
   );
+}
+
+export type MonthlyPlanDetails = {
+  /** Localized price string from StoreKit, e.g. "$4.99" */
+  priceString: string | null;
+  /**
+   * Free-trial length THIS Apple ID can still get, else null (no trial
+   * offer, already used, or unknown). Never promise a trial we can't give.
+   */
+  trialDays: number | null;
+  /** Short price line, e.g. "7 days free, then $4.99/mo" or "$4.99/mo". */
+  headline: string;
+  /** Full disclosure line for App Review 3.1.2(c) */
+  disclosure: string;
+  productId: string;
+};
+
+const RENEW_NOTE = 'Auto-renews until canceled in Apple ID Subscriptions.';
+
+function introTrialDays(intro: {
+  price: number;
+  periodUnit: string;
+  periodNumberOfUnits: number;
+  cycles: number;
+} | null | undefined): number | null {
+  if (!intro || intro.price !== 0) return null;
+  const units = Math.max(1, intro.periodNumberOfUnits || 1) * Math.max(1, intro.cycles || 1);
+  switch (String(intro.periodUnit).toUpperCase()) {
+    case 'DAY':
+      return units;
+    case 'WEEK':
+      return units * 7;
+    case 'MONTH':
+      return units * 30;
+    case 'YEAR':
+      return units * 365;
+    default:
+      return null;
+  }
+}
+
+/** Plan copy from real StoreKit data; trial shown only when eligible. */
+export function describePlan(
+  priceString: string | null,
+  trialDays: number | null
+): Pick<MonthlyPlanDetails, 'headline' | 'disclosure'> {
+  const per = priceString ? `${priceString}/mo` : 'monthly';
+  if (trialDays) {
+    const trial = `${trialDays} day${trialDays === 1 ? '' : 's'} free`;
+    return {
+      headline: `${trial}, then ${per}`,
+      disclosure: priceString
+        ? `${trial}, then ${priceString} per month. ${RENEW_NOTE}`
+        : `${trial}, then monthly. ${RENEW_NOTE}`,
+    };
+  }
+  return {
+    headline: priceString ? per : 'Monthly',
+    disclosure: priceString
+      ? `${priceString} per month. ${RENEW_NOTE}`
+      : `Billed monthly. ${RENEW_NOTE}`,
+  };
 }
 
 /**
@@ -131,14 +209,47 @@ async function resolveMonthlyPackage() {
  * Returns null when RC/product not configured yet.
  */
 export async function getMonthlyPriceDisclosure(): Promise<string | null> {
-  if (Platform.OS === 'web' || !iosApiKey()) return null;
+  const plan = await getMonthlyPlanDetails();
+  return plan?.disclosure ?? null;
+}
+
+/** Plan card data for Paywall / Subscription screens. */
+export async function getMonthlyPlanDetails(): Promise<MonthlyPlanDetails | null> {
+  if (Platform.OS === 'web') {
+    return {
+      priceString: null,
+      trialDays: 7,
+      ...describePlan(null, 7),
+      productId: MONTHLY_PRODUCT_ID,
+    };
+  }
+  if (!iosApiKey()) return null;
   try {
+    const Purchases = (await import('react-native-purchases')).default;
     const pkg = await resolveMonthlyPackage();
-    if (!pkg?.product?.priceString) return null;
-    const price = pkg.product.priceString;
-    return `7 days free, then ${price} per month. Auto-renews until canceled in Apple ID → Subscriptions.`;
+    const price = pkg?.product?.priceString ?? null;
+    const id = pkg?.product?.identifier ?? MONTHLY_PRODUCT_ID;
+    let trialDays = introTrialDays(pkg?.product?.introPrice);
+    if (trialDays) {
+      // Apple: one intro offer per subscription group per Apple ID. Only
+      // advertise the trial when StoreKit confirms this user can get it.
+      try {
+        const map = await Purchases.checkTrialOrIntroductoryPriceEligibility([id]);
+        const status = map?.[id]?.status;
+        // 2 = INTRO_ELIGIBILITY_STATUS_ELIGIBLE
+        if (status !== 2) trialDays = null;
+      } catch {
+        trialDays = null;
+      }
+    }
+    return {
+      priceString: price,
+      trialDays,
+      ...describePlan(price, trialDays),
+      productId: id,
+    };
   } catch (error) {
-    console.warn('getMonthlyPriceDisclosure failed', error);
+    console.warn('getMonthlyPlanDetails failed', error);
     return null;
   }
 }
@@ -199,6 +310,19 @@ export async function openManageSubscriptions(): Promise<void> {
     }
   }
   await Linking.openURL(APPLE_SUBSCRIPTIONS_URL);
+}
+
+/** Account deleted / signed out — detach RevenueCat from this user. */
+export async function logOutPurchases() {
+  knownUserId = null;
+  if (Platform.OS === 'web' || !configured || !iosApiKey()) return;
+  try {
+    const Purchases = (await import('react-native-purchases')).default;
+    if (!(await Purchases.isAnonymous())) await Purchases.logOut();
+    rcUserId = null;
+  } catch (error) {
+    console.warn('Purchases logOut failed', error);
+  }
 }
 
 export function hasPurchasesKey() {

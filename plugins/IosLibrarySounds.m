@@ -59,4 +59,28 @@ RCT_EXPORT_METHOD(soundExists:(NSString *)fileName
   resolve(@([NSFileManager.defaultManager fileExistsAtPath:dest.path]));
 }
 
+/** Delete stale fs_alarm_*.caf (old bali/spa mixes) from Library/Sounds. */
+RCT_EXPORT_METHOD(clearFutureSelfAlarmSounds:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSURL *library = [[NSFileManager.defaultManager URLsForDirectory:NSLibraryDirectory
+                                                         inDomains:NSUserDomainMask] firstObject];
+  NSURL *sounds = [library URLByAppendingPathComponent:@"Sounds" isDirectory:YES];
+  NSArray<NSURL *> *files = [NSFileManager.defaultManager
+      contentsOfDirectoryAtURL:sounds
+      includingPropertiesForKeys:nil
+      options:NSDirectoryEnumerationSkipsHiddenFiles
+      error:nil];
+  NSInteger removed = 0;
+  for (NSURL *url in files) {
+    NSString *name = url.lastPathComponent;
+    if ([name hasPrefix:@"fs_alarm_"] && [name.pathExtension.lowercaseString isEqualToString:@"caf"]) {
+      if ([NSFileManager.defaultManager removeItemAtURL:url error:nil]) {
+        removed += 1;
+      }
+    }
+  }
+  resolve(@(removed));
+}
+
 @end

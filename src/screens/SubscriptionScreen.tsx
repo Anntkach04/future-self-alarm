@@ -8,24 +8,34 @@ import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { RootStackParamList } from '../navigation/types';
 import {
+  getMonthlyPlanDetails,
   getSubscriptionStatus,
   hasPurchasesKey,
   openManageSubscriptions,
   restorePurchases,
   startMonthlyWithTrial,
+  type MonthlyPlanDetails,
   type SubStatus,
 } from '../services/subscriptions';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Subscription'>;
 
+const BENEFITS = [
+  'Wake to your own cloned voice',
+  'Personalized morning scripts',
+  'Mood check-in shapes tomorrow',
+];
+
 export function SubscriptionScreen({}: Props) {
   const [status, setStatus] = useState<SubStatus | null>(null);
+  const [plan, setPlan] = useState<MonthlyPlanDetails | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void getSubscriptionStatus().then(setStatus);
+    void getMonthlyPlanDetails().then(setPlan);
   }, []);
 
   const start = async () => {
@@ -58,7 +68,9 @@ export function SubscriptionScreen({}: Props) {
     try {
       await openManageSubscriptions();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not open Apple subscriptions');
+      setError(
+        e instanceof Error ? e.message : 'Could not open Apple subscriptions'
+      );
     } finally {
       setBusy(false);
     }
@@ -67,10 +79,12 @@ export function SubscriptionScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text style={styles.title}>Subscription</Text>
-      <Text style={styles.body}>
-        7 days free, then monthly. Managed by Apple. Cancel anytime in Settings
-        → Apple ID → Subscriptions.
+      <Text maxFontSizeMultiplier={1.2} style={styles.title}>subscription</Text>
+      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
+        {plan?.trialDays
+          ? `${plan.trialDays} days free, then monthly. `
+          : 'Billed monthly. '}
+        Managed by Apple. Cancel anytime in Settings → Apple ID → Subscriptions.
       </Text>
       <LegalLinks style={styles.legal} />
 
@@ -78,7 +92,7 @@ export function SubscriptionScreen({}: Props) {
         {!status ? (
           <LoadingLabel text="Checking" style={styles.status} />
         ) : (
-          <Text style={styles.status}>
+          <Text maxFontSizeMultiplier={1.2} style={styles.status}>
             {status.active
               ? status.inTrial
                 ? 'Trial active'
@@ -87,19 +101,40 @@ export function SubscriptionScreen({}: Props) {
           </Text>
         )}
         {status?.expiresAt ? (
-          <Text style={styles.meta}>Renews / ends {status.expiresAt}</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.meta}>Renews / ends {status.expiresAt}</Text>
+        ) : null}
+        {!status?.active ? (
+          <>
+            <Text maxFontSizeMultiplier={1.2} style={styles.planName}>Monthly</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.planPrice}>
+              {plan?.headline ?? 'Monthly'}
+            </Text>
+            {BENEFITS.map((line) => (
+              <Text maxFontSizeMultiplier={1.5} key={line} style={styles.benefit}>
+                · {line}
+              </Text>
+            ))}
+          </>
         ) : null}
         {!hasPurchasesKey() ? (
-          <Text style={styles.meta}>Dev unlock (no RevenueCat key yet)</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.meta}>
+            Dev unlock (no RevenueCat appl_ key yet)
+          </Text>
         ) : null}
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
       {busy ? <ActivityIndicator color={colors.text} /> : null}
 
       <View style={styles.actions}>
         <TextArrowButton
-          label={status?.active ? 'manage in apple' : 'start free week'}
+          label={
+            status?.active
+              ? 'manage in apple'
+              : plan?.trialDays
+                ? 'start free trial'
+                : 'subscribe'
+          }
           color={accents.gold}
           onPress={() => void (status?.active ? manage() : start())}
           disabled={busy}
@@ -147,6 +182,25 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: colors.text,
     ...noFakeBold,
+  },
+  planName: {
+    marginTop: 8,
+    fontFamily: fonts.headingRegular,
+    fontSize: 22,
+    color: colors.text,
+    ...noFakeBold,
+  },
+  planPrice: {
+    fontFamily: fonts.body,
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.text,
+  },
+  benefit: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.text,
   },
   meta: {
     fontFamily: fonts.bodyLight,

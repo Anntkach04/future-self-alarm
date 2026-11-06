@@ -123,7 +123,7 @@ export function BubbleChip({
         ]}
       >
         {plus ? (
-          <Text
+          <Text maxFontSizeMultiplier={1.5}
             style={[
               styles.plus,
               { color: selected ? colors.bg : textColor },
@@ -132,7 +132,7 @@ export function BubbleChip({
             +
           </Text>
         ) : (
-          <Text
+          <Text maxFontSizeMultiplier={1.5}
             numberOfLines={1}
             style={[
               styles.label,
@@ -143,7 +143,7 @@ export function BubbleChip({
           </Text>
         )}
         {caption ? (
-          <Text
+          <Text maxFontSizeMultiplier={1.5}
             style={[
               styles.caption,
               { color: selected ? colors.bg : textColor },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderRadius: radii.chip,
-    // Same density on every chip screen (goals / proud / tone / …).
+    // Same density on every chip screen (goals / habits / tone / …).
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 0,

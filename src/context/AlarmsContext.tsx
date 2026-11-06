@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { InteractionManager } from 'react-native';
+import { AppState, InteractionManager } from 'react-native';
 import {
   cancelScheduledAlarm,
   consumeAlarmKitLaunch,
@@ -24,9 +24,11 @@ export type Alarm = {
   label: string;
   enabled: boolean;
   days: number[];
-  /** If true, voice re-rings after snoozeMinutes until the person dismisses. */
+  /** Re-wake ~every snoozeMinutes if you don’t tap I’m up (default on, 10 min). */
   snoozeEnabled: boolean;
   snoozeMinutes: number;
+  /** Extra haptic buzz when the alarm fires in-app. */
+  vibrate: boolean;
   audioUri?: string | null;
   scriptText?: string | null;
 };
@@ -39,11 +41,13 @@ export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
     label: typeof raw.label === 'string' ? raw.label : 'Morning Future Self',
     enabled: raw.enabled !== false,
     days: Array.isArray(raw.days) ? raw.days : [],
+    // Default on — call back in ~10 min until I’m up (not the same as OS sound-loop).
     snoozeEnabled: raw.snoozeEnabled !== false,
     snoozeMinutes:
       typeof raw.snoozeMinutes === 'number' && raw.snoozeMinutes > 0
         ? raw.snoozeMinutes
         : 10,
+    vibrate: raw.vibrate !== false,
     audioUri: raw.audioUri ?? null,
     scriptText: raw.scriptText ?? null,
   };
@@ -187,6 +191,10 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
   }, [alarms]);
 
   const clearAllAlarms = useCallback(async () => {
+    const list = alarmsRef.current;
+    await Promise.all(
+      list.map((a) => cancelScheduledAlarm(a.id).catch(() => undefined))
+    );
     await cancelAllAlarmNotifications();
     setAlarms([]);
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
@@ -215,6 +223,37 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
       alarmsRef.current.map((a) => [a.id, a.audioUri ?? null])
     );
     void consumeAlarmKitLaunch(audioByAlarmId).catch(() => {});
+
+    // Warm launch: app was already in memory when Stop / Snooze opened it.
+    // The intent may set its payload just after we become active — read twice.
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let lastTopUp = Date.now();
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      // Notification-path wakes are pre-scheduled only N days ahead — top the
+      // window up whenever the app comes back (at most every 30 min).
+      if (Date.now() - lastTopUp > 30 * 60 * 1000) {
+        lastTopUp = Date.now();
+        const list = alarmsRef.current;
+        void rescheduleAllAlarms(
+          list,
+          Object.fromEntries(list.map((a) => [a.id, a.audioUri ?? null]))
+        ).catch(() => {});
+      }
+      const consume = () => {
+        const byId = Object.fromEntries(
+          alarmsRef.current.map((a) => [a.id, a.audioUri ?? null])
+        );
+        void consumeAlarmKitLaunch(byId).catch(() => {});
+      };
+      consume();
+      if (retry) clearTimeout(retry);
+      retry = setTimeout(consume, 800);
+    });
+    return () => {
+      sub.remove();
+      if (retry) clearTimeout(retry);
+    };
   }, [ready]);
 
   const value = useMemo<AlarmsContextValue>(
@@ -234,10 +273,31 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
             a.id === id ? normalizeAlarm({ ...a, ...patch, id }) : a
           )
         ),
-      toggleAlarm: (id) =>
-        setAlarms((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
-        ),
+      toggleAlarm: (id) => {
+        setAlarms((prev) => {
+          const next = prev.map((a) =>
+            a.id === id ? { ...a, enabled: !a.enabled } : a
+          );
+          const row = next.find((a) => a.id === id);
+          if (row) {
+            void (async () => {
+              try {
+                if (!row.enabled) {
+                  await cancelScheduledAlarm(id);
+                  return;
+                }
+                const { scheduleAlarmNotifications } = await import(
+                  '../services/alarmScheduler'
+                );
+                await scheduleAlarmNotifications(row, row.audioUri ?? null);
+              } catch {
+                // ignore schedule errors on toggle
+              }
+            })();
+          }
+          return next;
+        });
+      },
       removeAlarm: (id) => {
         void cancelScheduledAlarm(id);
         setAlarms((prev) => prev.filter((a) => a.id !== id));

@@ -3,6 +3,7 @@ import { NativeModules, Platform } from 'react-native';
 type IosLibrarySoundsNative = {
   writeBase64Sound(fileName: string, base64: string): Promise<string>;
   soundExists(fileName: string): Promise<boolean>;
+  clearFutureSelfAlarmSounds(): Promise<number>;
 };
 
 const NativeModule =
@@ -26,4 +27,14 @@ export async function writeLibrarySoundBase64(
 export async function librarySoundExists(fileName: string): Promise<boolean> {
   if (!NativeModule?.soundExists) return false;
   return NativeModule.soundExists(fileName);
+}
+
+/** Wipe old per-alarm CAFs so lock-screen stops playing bali/spa mixes. */
+export async function clearFutureSelfAlarmSounds(): Promise<number> {
+  if (!NativeModule?.clearFutureSelfAlarmSounds) return 0;
+  try {
+    return await NativeModule.clearFutureSelfAlarmSounds();
+  } catch {
+    return 0;
+  }
 }

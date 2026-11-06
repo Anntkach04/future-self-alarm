@@ -64,6 +64,8 @@ One-shot native cutover (do together, then rebuild):
 
 When you change AsyncStorage shape: bump `STORAGE_SCHEMA_VERSION` and add a migration step.
 
+If a migration clears alarm `audioUri` / Library Sounds (new mix), keep `AlarmAudioRepairHost` — it rebuilds from `voiceId` on launch so App Store users never re-Save.
+
 ## Backend vs app
 
 | Change | Where | App rebuild? |

@@ -5,12 +5,17 @@ alwaysApply: true
 
 # Later onboarding (do not skip)
 
-After voice preview, screens **before Home**:
+Onboarding order (current):
 
-1. **Sign in with Apple** (no Google).
-2. **Notification permission** — ask clearly, deep-link to Settings if denied. Do **not** also request Mic, Speech, AlarmKit, or ATT on this screen.
-3. **Paywall** — 7-day free trial, then monthly (RevenueCat / App Store).
+1. **Intro** → **Sign in with Apple** (required; no guest Continue).
+   Apple fullName seeds the next step when available.
+2. **Name** survey → Questions → Voice record → Voice preview.
+   (No wake-time screen before recording — time is chosen on Create Alarm after paywall.)
+3. **Allow alarms** — one screen: notifications then AlarmKit on Continue. If denied: bottom nudge on Home / Create Alarm → Settings. Do **not** also request Mic, Speech, or ATT here.
+4. **Paywall** — single primary CTA (7-day free trial → monthly). Restore as a secondary text link (Apple requirement). No skip without a plan.
 
-Just-in-time for everything else (see `docs/PERMISSIONS.md`): Microphone + Speech on first Voice Record tap; AlarmKit only if Kit schedule is used; no ATT.
+(Store-optimal alternative later: move Sign in back to after Voice preview if review prefers value-first.)
 
-Do not pretend a sound picker controls the iPhone Clock app. The alarm is the cloned voice via notifications; a chime-before-voice picker can come later, bundled in the app.
+Just-in-time: Microphone + Speech on first Voice Record tap; no ATT.
+
+Do not put long Clock.app / Focus explainers on Create Alarm — keep that screen clean. Wake is AlarmKit (real system alarm) with notification fallback.

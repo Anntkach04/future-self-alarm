@@ -11,11 +11,11 @@ export function NameScreen({ navigation }: Props) {
 
   return (
     <TextQuestionScreen
-      question={"What should\nFuture You\ncall you?"}
-      subtitle="This is how Future You will greet you in the morning."
+      question={"What should\nfuture you\ncall you?"}
+      subtitle="This is how future you will greet you in the morning."
       value={answers.name}
       onChangeText={setName}
-      onSubmit={() => navigation.navigate('FutureSelf')}
+      onSubmit={() => navigation.navigate('MorningHabits')}
       placeholder="Your name"
       accentColor={colors.fab}
     />

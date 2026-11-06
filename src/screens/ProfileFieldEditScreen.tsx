@@ -2,9 +2,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ChipQuestionScreen } from '../components/ChipQuestionScreen';
 import { useOnboarding } from '../context/OnboardingContext';
 import {
-  ALREADY_YOU_OPTIONS,
   FUTURE_SELF_OPTIONS,
   HARD_MORNING_OPTIONS,
+  MORNING_HABIT_OPTIONS,
   VOICE_STYLE_OPTIONS,
 } from '../data/onboardingOptions';
 import { ProfileFieldKey, RootStackParamList } from '../navigation/types';
@@ -38,13 +38,14 @@ const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
     onAddCustom: (ctx, value) => ctx.addFutureSelf(value),
     addPlaceholder: 'Write a goal in your own words',
   },
-  alreadyProud: {
-    question: "3 things you're\nalready proud of",
-    options: ALREADY_YOU_OPTIONS,
-    getSelected: (a) => a.alreadyProud,
-    onToggle: (ctx, value) => ctx.toggleAlreadyProud(value),
-    onAddCustom: (ctx, value) => ctx.addAlreadyProud(value),
-    addPlaceholder: 'Something you already are',
+  morningHabits: {
+    question: "What do you want\nto do in the morning?",
+    subtitle: 'We’ll remind you of the habits you chose.',
+    options: MORNING_HABIT_OPTIONS,
+    getSelected: (a) => a.morningHabits,
+    onToggle: (ctx, value) => ctx.toggleMorningHabit(value),
+    onAddCustom: (ctx, value) => ctx.addMorningHabit(value),
+    addPlaceholder: 'Your morning habit',
   },
   hardMornings: {
     question: 'What do hard\nmornings need?',

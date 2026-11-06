@@ -4,7 +4,6 @@ import {
   Animated,
   Dimensions,
   Easing,
-  LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -15,27 +14,32 @@ import { BackButton } from '../components/BackButton';
 import { BubbleEnter } from '../components/BubbleEnter';
 import { KaraokeLine } from '../components/KaraokeLine';
 import { LiveWaveform } from '../components/LiveWaveform';
-import { LoadingLabel } from '../components/LoadingLabel';
 import { LogoSpinner } from '../components/LogoSpinner';
 import { MicRecordButton } from '../components/MicRecordButton';
 import { RoundArrowButton } from '../components/RoundArrowButton';
+import { TextArrowButton } from '../components/TextArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
-import {
-  FOUNDER_AUTH_SKIP_ENABLED,
-  VOICE_ONBOARDING_SKIP_ENABLED,
-} from '../config/devBypass';
+import { VOICE_ONBOARDING_SKIP_ENABLED } from '../config/devBypass';
 import { getDefaultPremadeVoiceId } from '../services/defaultVoice';
 import { buildVoiceScriptLines } from '../data/voiceScript';
 import { useSmartDictaphone } from '../hooks/useSmartDictaphone';
 import { RootStackParamList } from '../navigation/types';
 import { cloneOnboardingVoice } from '../services/cloneOnboardingVoice';
-import { isLineFullyLit } from '../services/speechMatch';
-import { playAllSetSound, playLineSuccessSound } from '../services/uiSounds';
+import {
+  displayWords,
+  isLineFullyLit,
+  spokenDisplayCount,
+} from '../services/speechMatch';
+import { playAllSetSound } from '../services/uiSounds';
+import { ensureAiConsent } from '../services/aiConsent';
+import * as Haptics from 'expo-haptics';
 import { accents, colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
 const COMPLETE_COLOR = accents.gold;
+/** Brief hold on "You're all set", then leave. Animation is cosmetic only. */
+const SUCCESS_HOLD_MS = 2800;
 
 export function VoiceRecordScreen({ navigation }: Props) {
   const {
@@ -48,7 +52,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const lines = buildVoiceScriptLines(answers.name);
   const [lineIndex, setLineIndex] = useState(0);
   const [complete, setComplete] = useState(false);
-  const [frameH, setFrameH] = useState(0);
   const [cloneReady, setCloneReady] = useState(false);
   const [cloneError, setCloneError] = useState<string | null>(null);
   const [cloning, setCloning] = useState(false);
@@ -60,26 +63,48 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
 
   const currentLine = lines[lineIndex] ?? '';
+  const advanceLineRef = useRef<() => boolean>(() => false);
+  // Do NOT advance from the STT callback — it fired on the first matches.
+  // Interval below waits until the line is nearly red + a short quiet settle.
   const dictaphone = useSmartDictaphone(currentLine);
 
   const recording = dictaphone.status === 'recording' && !complete;
 
   const lineOpacity = useRef(new Animated.Value(1)).current;
   const lineY = useRef(new Animated.Value(0)).current;
-  const goldHeight = useRef(new Animated.Value(0)).current;
+  /** Full-screen gold fade (native) — avoids empty yellow wait before copy. */
+  const goldPillOpacity = useRef(new Animated.Value(0)).current;
+  const goldPillY = useRef(new Animated.Value(0)).current;
   const completeOpacity = useRef(new Animated.Value(0)).current;
+  /** Same enter motion as BubbleEnter (spring from below + scale). */
+  const completeEnterY = useRef(new Animated.Value(16)).current;
+  const completeEnterScale = useRef(new Animated.Value(0.92)).current;
   const readOpacity = useRef(new Animated.Value(1)).current;
-  /** State (not ref) so advance effect re-runs when the gate opens. */
+  /** State (not ref) so advance gate opens after line change. */
   const [lineReady, setLineReady] = useState(false);
+  const quietSinceRef = useRef(0);
+  const lastSpokenCountRef = useRef(0);
+  const lastSpokenAtRef = useRef(0);
+  /** One-shot: success leave armed — never re-arm until re-record. */
+  const successLeaveArmedRef = useRef(false);
+  const navigationRef = useRef(navigation);
+  navigationRef.current = navigation;
 
-  useEffect(() => {
-    dictaphone.requestPermission();
+  const [consentDeclined, setConsentDeclined] = useState(false);
+
+  /** Voice leaves the phone only after explicit consent (App Review 5.1.2). */
+  const consentToRecord = useCallback(async () => {
+    const ok = await ensureAiConsent();
+    setConsentDeclined(!ok);
+    return ok;
   }, []);
 
-  const onLayout = (e: LayoutChangeEvent) => {
-    const next = e.nativeEvent.layout.height;
-    if (next > 0) setFrameH(next);
-  };
+  useEffect(() => {
+    void (async () => {
+      if (await consentToRecord()) dictaphone.requestPermission();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startClone = useCallback(
     async (sampleUri: string) => {
@@ -103,52 +128,115 @@ export function VoiceRecordScreen({ navigation }: Props) {
   );
 
   const stopRecording = dictaphone.stop;
-  const finishReading = useCallback(async () => {
-    if (finishingRef.current) return;
-    finishingRef.current = true;
 
-    const result = await stopRecording();
-    if (!result.uri) {
-      finishingRef.current = false;
-      return;
-    }
-    sampleUriRef.current = result.uri;
-    setVoiceSample(result.uri, result.durationSec);
-    setComplete(true);
-    void playAllSetSound();
-    void startClone(result.uri);
+  /** Reset complete-transition values so a retry never inherits a stuck gold sheet. */
+  const resetCompleteVisuals = useCallback(() => {
+    goldPillOpacity.stopAnimation();
+    goldPillY.stopAnimation();
+    readOpacity.stopAnimation();
+    completeOpacity.stopAnimation();
+    completeEnterY.stopAnimation();
+    completeEnterScale.stopAnimation();
+    goldPillOpacity.setValue(0);
+    goldPillY.setValue(0);
+    readOpacity.setValue(1);
+    completeOpacity.setValue(0);
+    completeEnterY.setValue(16);
+    completeEnterScale.setValue(0.92);
+  }, [
+    completeEnterScale,
+    completeEnterY,
+    completeOpacity,
+    goldPillOpacity,
+    goldPillY,
+    readOpacity,
+  ]);
 
+  /** BubbleEnter twin: spring from below + scale (opacity stays visible). */
+  const playBubbleSpring = useCallback(() => {
+    completeEnterY.stopAnimation();
+    completeEnterScale.stopAnimation();
+    completeEnterY.setValue(16);
+    completeEnterScale.setValue(0.92);
+    Animated.parallel([
+      Animated.spring(completeEnterY, {
+        toValue: 0,
+        friction: 7,
+        tension: 90,
+        useNativeDriver: true,
+      }),
+      Animated.spring(completeEnterScale, {
+        toValue: 1,
+        friction: 5.2,
+        tension: 128,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        completeEnterY.setValue(0);
+        completeEnterScale.setValue(1);
+      }
+    });
+  }, [completeEnterScale, completeEnterY]);
+
+  const playCompleteEnter = useCallback(() => {
+    goldPillOpacity.stopAnimation();
+    readOpacity.stopAnimation();
+    completeOpacity.stopAnimation();
+    goldPillOpacity.setValue(0);
+    completeOpacity.setValue(1);
     Animated.parallel([
       Animated.timing(readOpacity, {
         toValue: 0,
-        duration: 280,
+        duration: 240,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-      Animated.timing(goldHeight, {
+      Animated.timing(goldPillOpacity, {
         toValue: 1,
-        duration: 1000,
-        easing: Easing.inOut(Easing.cubic),
-        useNativeDriver: false,
+        duration: 360,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
       }),
-      Animated.sequence([
-        Animated.delay(420),
-        Animated.timing(completeOpacity, {
-          toValue: 1,
-          duration: 480,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
     ]).start();
+    playBubbleSpring();
+    // Failsafe — never leave a blank gold sheet if a spring glitches.
+    setTimeout(() => {
+      goldPillOpacity.setValue(1);
+      completeOpacity.setValue(1);
+      completeEnterY.setValue(0);
+      completeEnterScale.setValue(1);
+    }, 520);
   }, [
+    completeEnterScale,
+    completeEnterY,
     completeOpacity,
-    goldHeight,
+    goldPillOpacity,
+    playBubbleSpring,
     readOpacity,
-    setVoiceSample,
-    startClone,
-    stopRecording,
   ]);
+
+  const finishReading = useCallback(async () => {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    advancingRef.current = false;
+
+    const result = await stopRecording();
+    if (result.uri) {
+      sampleUriRef.current = result.uri;
+      setVoiceSample(result.uri, result.durationSec);
+      setComplete(true);
+      playCompleteEnter();
+      // Sound plays later — only when clone finishes → "you're all set".
+      void startClone(result.uri);
+      return;
+    }
+
+    setComplete(true);
+    playCompleteEnter();
+    setCloneError('Your recording didn’t save. Tap re-record to try again.');
+    finishingRef.current = false;
+  }, [playCompleteEnter, setVoiceSample, startClone, stopRecording]);
 
   const finishReadingRef = useRef(finishReading);
   finishReadingRef.current = finishReading;
@@ -157,120 +245,274 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const lineIndexRef = useRef(lineIndex);
   lineIndexRef.current = lineIndex;
 
+  // Live STT signals as refs — interval must NOT restart on every meter tick.
+  const spokenLiveRef = useRef(0);
+  const wordCountLiveRef = useRef(0);
+  const heardEnoughLiveRef = useRef(false);
+  const quietLiveRef = useRef(true);
+  const currentLineLiveRef = useRef(currentLine);
+  const lineReadyLiveRef = useRef(false);
+  spokenLiveRef.current = dictaphone.spokenCount;
+  wordCountLiveRef.current = dictaphone.wordCount;
+  heardEnoughLiveRef.current = dictaphone.lineHeardEnough;
+  quietLiveRef.current = dictaphone.quiet;
+  currentLineLiveRef.current = currentLine;
+
   const advanceLine = useCallback(() => {
-    if (advancingRef.current || finishingRef.current) return;
-    advancingRef.current = true;
-    void playLineSuccessSound();
-
+    if (finishingRef.current) return false;
+    if (advancingRef.current) return false;
     const fromIndex = lineIndexRef.current;
-    let moved = false;
-    const moveOn = () => {
-      if (moved) return;
-      moved = true;
-      if (fromIndex >= linesLenRef.current - 1) {
-        void finishReadingRef.current();
-        return;
-      }
-      setLineIndex(fromIndex + 1);
-      lineY.setValue(16);
-      lineOpacity.setValue(0);
-      Animated.parallel([
-        Animated.timing(lineOpacity, {
-          toValue: 1,
-          duration: 320,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(lineY, {
-          toValue: 0,
-          duration: 320,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        advancingRef.current = false;
-      });
-    };
+    if (doneLineRef.current === fromIndex) return false;
 
+    // Mark in-flight only after we know we will move (rule: doneLine inside start).
+    advancingRef.current = true;
+    doneLineRef.current = fromIndex;
+    void Haptics.selectionAsync().catch(() => {});
+
+    if (fromIndex >= linesLenRef.current - 1) {
+      advancingRef.current = false;
+      void finishReadingRef.current();
+      return true;
+    }
+
+    setLineIndex(fromIndex + 1);
+
+    lineY.setValue(16);
+    lineOpacity.setValue(0);
     Animated.parallel([
       Animated.timing(lineOpacity, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.in(Easing.cubic),
+        toValue: 1,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(lineY, {
-        toValue: -12,
-        duration: 180,
-        easing: Easing.in(Easing.cubic),
+        toValue: 0,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-    ]).start(() => moveOn());
-    setTimeout(moveOn, 280);
+    ]).start(() => {
+      advancingRef.current = false;
+    });
+    // Watchdog — stuck advancingRef must not freeze the whole script.
+    setTimeout(() => {
+      advancingRef.current = false;
+    }, 600);
+    return true;
   }, [lineOpacity, lineY]);
 
-  const advanceLineRef = useRef(advanceLine);
   advanceLineRef.current = advanceLine;
 
-  // Tiny gate so leftover STT from the *previous* line can't auto-skip.
+  // Gate leftover STT from the previous chunk.
   useEffect(() => {
+    advancingRef.current = false;
     setLineReady(false);
-    const wait = lineIndex === 0 ? 80 : 220;
-    const t = setTimeout(() => setLineReady(true), wait);
+    lineReadyLiveRef.current = false;
+    quietSinceRef.current = 0;
+    lastSpokenCountRef.current = 0;
+    lastSpokenAtRef.current = Date.now();
+    const wait = lineIndex === 0 ? 40 : 80;
+    const t = setTimeout(() => {
+      setLineReady(true);
+      lineReadyLiveRef.current = true;
+    }, wait);
     return () => clearTimeout(t);
   }, [lineIndex]);
 
+  useEffect(() => {
+    lineReadyLiveRef.current = lineReady;
+  }, [lineReady]);
+
   /**
-   * Metering re-renders constantly. A setTimeout in an effect that deps on
-   * advanceLine was cleared every ~120ms and never fired. Poll with refs instead.
+   * Auto-advance after the chunk is heard (STT). Interval uses refs only —
+   * deps are recording + complete so metering ticks don't recreate it.
    */
   useEffect(() => {
     if (!recording || complete) return;
     const id = setInterval(() => {
-      if (!lineReady) return;
+      if (!lineReadyLiveRef.current) return;
       if (advancingRef.current || finishingRef.current) return;
       const idx = lineIndexRef.current;
       if (doneLineRef.current === idx) return;
-      const spoken = dictaphone.spokenCount;
-      const enough =
-        dictaphone.lineHeardEnough || isLineFullyLit(currentLine, spoken);
-      if (!enough) return;
-      doneLineRef.current = idx;
+
+      const spoken = spokenLiveRef.current;
+      const words = wordCountLiveRef.current;
+      const line = currentLineLiveRef.current;
+      const displayTotal = displayWords(line).length;
+      const lit = spokenDisplayCount(line, spoken);
+      const now = Date.now();
+
+      if (spoken > lastSpokenCountRef.current) {
+        lastSpokenCountRef.current = spoken;
+        lastSpokenAtRef.current = now;
+      }
+
+      // Full match.
+      if (words > 0 && spoken >= words) {
+        advanceLineRef.current();
+        return;
+      }
+
+      // Almost finished + quiet (STT often drops the last word).
+      const almost =
+        isLineFullyLit(line, spoken) ||
+        (words >= 3 && spoken >= words - 1) ||
+        (displayTotal >= 3 && lit >= displayTotal - 1) ||
+        (words >= 5 && spoken / words >= 0.78);
+      if (!almost) {
+        quietSinceRef.current = 0;
+        return;
+      }
+
+      const quietLongEnough =
+        quietLiveRef.current || now - lastSpokenAtRef.current >= 480;
+      if (!quietLongEnough) return;
+      if (!quietSinceRef.current) quietSinceRef.current = now;
+      if (now - quietSinceRef.current >= 280) {
+        advanceLineRef.current();
+      }
+    }, 90);
+    return () => clearInterval(id);
+  }, [complete, recording]);
+
+  // Quiet-time failsafe: heard something, then stalled → advance.
+  useEffect(() => {
+    if (!recording || complete) return;
+    const id = setInterval(() => {
+      if (!lineReadyLiveRef.current) return;
+      if (advancingRef.current || finishingRef.current) return;
+      const idx = lineIndexRef.current;
+      if (doneLineRef.current === idx) return;
+      const spoken = spokenLiveRef.current;
+      const words = wordCountLiveRef.current;
+      if (words < 2 || spoken < 1) return;
+      if (spoken / Math.max(words, 1) < 0.45) return;
+      const now = Date.now();
+      if (now - lastSpokenAtRef.current < 1400) return;
+      if (!quietLiveRef.current) return;
       advanceLineRef.current();
     }, 200);
     return () => clearInterval(id);
-  }, [
-    complete,
-    currentLine,
-    dictaphone.lineHeardEnough,
-    dictaphone.spokenCount,
-    lineReady,
-    recording,
-  ]);
+  }, [complete, recording]);
+
+  const leaveToVoicePreview = useCallback(() => {
+    // Cosmetic slide — never blocks navigation.
+    const h = Dimensions.get('window').height;
+    Animated.timing(goldPillY, {
+      toValue: -h,
+      duration: 380,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    try {
+      navigationRef.current.replace('VoicePreview');
+    } catch {
+      navigationRef.current.navigate('VoicePreview');
+    }
+  }, [goldPillY]);
+  const leaveToVoicePreviewRef = useRef(leaveToVoicePreview);
+  leaveToVoicePreviewRef.current = leaveToVoicePreview;
+
+  /**
+   * "You're all set" → leave after a short hold.
+   * CRITICAL: deps are ONLY complete/cloneReady/cloneError. Putting
+   * `navigation` (or leave callbacks) here cleared the timers every
+   * re-render and left people stuck on gold forever.
+   */
+  useEffect(() => {
+    if (!complete || !cloneReady || cloneError) {
+      successLeaveArmedRef.current = false;
+      return;
+    }
+    if (successLeaveArmedRef.current) return;
+    successLeaveArmedRef.current = true;
+
+    playBubbleSpring();
+    void playAllSetSound();
+
+    const go = () => leaveToVoicePreviewRef.current();
+    const navAt = setTimeout(go, SUCCESS_HOLD_MS);
+    const hard = setTimeout(go, SUCCESS_HOLD_MS + 1200);
+
+    return () => {
+      clearTimeout(navAt);
+      clearTimeout(hard);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot; leave via ref
+  }, [cloneError, cloneReady, complete]);
+
+  // Welcome-style spring when gold "cloning" sheet appears.
+  useEffect(() => {
+    if (!complete || cloneReady || cloneError) return;
+    playBubbleSpring();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [complete, cloneReady, cloneError]);
+
+  const rerecordFromComplete = async () => {
+    if (!(await consentToRecord())) return;
+    successLeaveArmedRef.current = false;
+    setComplete(false);
+    finishingRef.current = false;
+    cloneStartedRef.current = false;
+    setCloneError(null);
+    setCloneReady(false);
+    resetCompleteVisuals();
+    setLineIndex(0);
+    doneLineRef.current = -1;
+    advancingRef.current = false;
+    lineOpacity.setValue(1);
+    lineY.setValue(0);
+    void dictaphone.start();
+  };
+
+  const forceContinue = () => {
+    if (!recording || complete) return;
+    advancingRef.current = false;
+    doneLineRef.current = -1;
+    if (lineIndex >= lines.length - 1) {
+      void finishReading();
+      return;
+    }
+    const moved = advanceLine();
+    if (!moved) {
+      doneLineRef.current = lineIndex;
+      setLineIndex((i) => (i >= lines.length - 1 ? i : i + 1));
+      advancingRef.current = false;
+    }
+  };
 
   const onMicPress = async () => {
-    if (complete) return;
-    if (dictaphone.status === 'recording') {
+    if (dictaphone.status !== 'recording' && !(await consentToRecord())) {
+      return;
+    }
+    if (complete) {
+      if (cloneReady || cloning) return;
+      successLeaveArmedRef.current = false;
+      setComplete(false);
       finishingRef.current = false;
-      await dictaphone.stop();
+      cloneStartedRef.current = false;
+      setCloneError(null);
+      resetCompleteVisuals();
       setLineIndex(0);
       doneLineRef.current = -1;
       lineOpacity.setValue(1);
       lineY.setValue(0);
       advancingRef.current = false;
+      await dictaphone.start();
+      return;
+    }
+    if (dictaphone.status === 'recording') {
+      void finishReading();
       return;
     }
     finishingRef.current = false;
+    resetCompleteVisuals();
     setLineIndex(0);
     doneLineRef.current = -1;
     lineOpacity.setValue(1);
     lineY.setValue(0);
     await dictaphone.start();
-  };
-
-  const goPreview = () => {
-    if (!cloneReady) return;
-    navigation.replace('VoicePreview');
   };
 
   const retryClone = () => {
@@ -282,7 +524,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
   };
 
   const skipForDev = () => {
-    // Always give a working voice so alarm testing isn't blocked by cloning.
     setVoiceId(getDefaultPremadeVoiceId(), true);
     markOnboardingComplete();
     navigation.reset({
@@ -290,37 +531,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
       routes: [{ name: 'Home' }],
     });
   };
-
-  /** Continue past clone failure (auth / server) with a premade voice. */
-  const skipCloneAndContinue = () => {
-    setVoiceId(getDefaultPremadeVoiceId(), true);
-    setPreview(null, null);
-    setCloneError(null);
-    setCloneReady(true);
-    navigation.replace('VoicePreview');
-  };
-
-  const forceContinue = () => {
-    if (!recording || complete) return;
-    if (lineIndex >= lines.length - 1) {
-      void finishReading();
-      return;
-    }
-    doneLineRef.current = lineIndex;
-    advanceLine();
-  };
-
-  const pillRadius = 220;
-  const screenH = Math.max(frameH, Dimensions.get('window').height);
-  const goldH = goldHeight.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, screenH],
-  });
-  const bottomRadius = goldHeight.interpolate({
-    inputRange: [0, 0.55, 1],
-    outputRange: [pillRadius, pillRadius, 0],
-    extrapolate: 'clamp',
-  });
 
   const hint =
     dictaphone.status === 'recording'
@@ -333,18 +543,21 @@ export function VoiceRecordScreen({ navigation }: Props) {
 
   const coach =
     !dictaphone.recognitionReady && dictaphone.status !== 'recording'
-      ? 'On iPhone, install a dev build once: npx expo run:ios'
+      ? 'Read each line aloud at a calm, natural pace.'
       : null;
 
   return (
-    <View style={styles.root} onLayout={onLayout}>
-      {VOICE_ONBOARDING_SKIP_ENABLED && !complete ? (
+    <View style={styles.root}>
+      {typeof __DEV__ !== 'undefined' &&
+      __DEV__ &&
+      VOICE_ONBOARDING_SKIP_ENABLED &&
+      !complete ? (
         <Pressable
           accessibilityRole="button"
           onPress={skipForDev}
           style={styles.skipBtn}
         >
-          <Text style={styles.skipText}>skip → test alarm</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.skipText}>skip → test alarm</Text>
         </Pressable>
       ) : null}
       <SafeAreaView style={styles.safe}>
@@ -355,11 +568,37 @@ export function VoiceRecordScreen({ navigation }: Props) {
           <BubbleEnter delay={0} fromY={10}>
             <BackButton />
           </BubbleEnter>
+          {/* Title + subtitle in ONE enter so left edges stay aligned (scale was shifting subtitle). */}
           <BubbleEnter delay={0} fromY={16}>
-            <Text style={styles.title}>{`Read this\nout loud`}</Text>
-          </BubbleEnter>
-          <BubbleEnter delay={50} fromY={12}>
-            <Text style={styles.subtitle}>Find a quiet room.</Text>
+            <View>
+              <Text maxFontSizeMultiplier={1.2} style={styles.title}>{`read this\nout loud`}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>Find a quiet room.</Text>
+              <View
+                style={styles.progressTrack}
+                accessibilityRole="progressbar"
+                accessibilityValue={{
+                  min: 0,
+                  max: lines.length,
+                  now: Math.min(lineIndex + 1, lines.length),
+                }}
+              >
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.min(
+                        100,
+                        ((lineIndex + (recording ? 0.35 : 0)) / lines.length) *
+                          100
+                      )}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text maxFontSizeMultiplier={1.5} style={styles.progressLabel}>
+                {Math.min(lineIndex + 1, lines.length)} of {lines.length}
+              </Text>
+            </View>
           </BubbleEnter>
 
           <View style={styles.stage}>
@@ -379,11 +618,16 @@ export function VoiceRecordScreen({ navigation }: Props) {
             </BubbleEnter>
           </View>
 
+          {consentDeclined && !dictaphone.error ? (
+            <Text maxFontSizeMultiplier={1.5} style={styles.error}>
+              To clone your voice, tap the mic and agree to send your recording to ElevenLabs.
+            </Text>
+          ) : null}
           {dictaphone.error ? (
-            <Text style={styles.error}>{dictaphone.error}</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.error}>{dictaphone.error}</Text>
           ) : null}
 
-          {coach ? <Text style={styles.coach}>{coach}</Text> : null}
+          {coach ? <Text maxFontSizeMultiplier={1.5} style={styles.coach}>{coach}</Text> : null}
 
           <BubbleEnter delay={100} fromY={16}>
             <View style={styles.controls}>
@@ -396,19 +640,17 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 recording={recording}
                 onPress={onMicPress}
               />
-              <Text style={styles.hint}>{hint}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.hint}>{hint}</Text>
               {recording ? (
-                <Pressable
-                  accessibilityRole="button"
+                <TextArrowButton
+                  label={
+                    lineIndex >= lines.length - 1 ? 'finish' : 'continue'
+                  }
+                  color={accents.lime}
+                  hideArrow
                   onPress={forceContinue}
                   style={styles.nextLineBtn}
-                >
-                  <Text style={styles.nextLineText}>
-                    {lineIndex >= lines.length - 1
-                      ? 'Finish recording →'
-                      : 'Continue →'}
-                  </Text>
-                </Pressable>
+                />
               ) : null}
             </View>
           </BubbleEnter>
@@ -419,81 +661,86 @@ export function VoiceRecordScreen({ navigation }: Props) {
         pointerEvents={complete ? 'auto' : 'none'}
         style={[
           styles.goldPill,
-          complete
-            ? StyleSheet.absoluteFillObject
-            : {
-                height: frameH ? goldH : 0,
-                borderBottomLeftRadius: bottomRadius,
-                borderBottomRightRadius: bottomRadius,
-              },
+          StyleSheet.absoluteFill,
+          {
+            opacity: goldPillOpacity,
+            transform: [{ translateY: goldPillY }],
+          },
         ]}
       >
-        <Animated.View
-          style={[
-            styles.completeInner,
-            {
-              opacity: completeOpacity,
-              paddingTop: Math.max(insets.top, 48) + 32,
-              paddingBottom: Math.max(insets.bottom, 16) + 20,
-            },
-          ]}
+        {/* Tap anywhere on success to leave — never trap the user again. */}
+        <Pressable
+          accessibilityRole="button"
+          disabled={!cloneReady || Boolean(cloneError)}
+          onPress={leaveToVoicePreview}
+          style={StyleSheet.absoluteFill}
         >
-          <View style={styles.completeCopy}>
-            {cloning ? <LogoSpinner /> : null}
-            <Text style={styles.completeTitle}>You’re all set!</Text>
-            {cloneError ? (
-              <Text style={styles.completeError}>{cloneError}</Text>
-            ) : cloneReady ? (
-              <Text style={styles.completeSub}>
-                Your future self has your voice now.
+          <Animated.View
+            style={[
+              styles.completeInner,
+              {
+                opacity: completeOpacity,
+                paddingTop: Math.max(insets.top, 48) + 32,
+                paddingBottom: Math.max(insets.bottom, 16) + 20,
+                transform: [
+                  { translateY: completeEnterY },
+                  { scale: completeEnterScale },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.completeCopy} pointerEvents="none">
+              {cloning && !cloneReady ? <LogoSpinner /> : null}
+              <Text maxFontSizeMultiplier={1.2} style={styles.completeTitle}>
+                {cloneError
+                  ? 'Almost'
+                  : cloneReady
+                    ? "You're all set"
+                    : 'Cloning your voice'}
               </Text>
-            ) : (
-              <>
-                <LoadingLabel
-                  text="Cloning your voice"
-                  style={styles.completeSub}
-                />
-                <Text style={styles.cloneEta}>
-                  This usually takes about 1-2 minutes
+              {cloneError ? (
+                <Text maxFontSizeMultiplier={1.5} style={styles.completeError}>{cloneError}</Text>
+              ) : cloneReady ? (
+                <Text maxFontSizeMultiplier={1.5} style={styles.cloneEta}>
+                  Your future self has your voice now.
                 </Text>
-              </>
-            )}
-          </View>
-          <View style={styles.completeFooter}>
-            {cloneError ? (
-              <>
-                <Pressable
-                  onPress={() => navigation.replace('VoiceRecord')}
-                  style={styles.goldLinkBtn}
-                >
-                  <Text style={styles.goldLinkText}>re-record</Text>
-                </Pressable>
-                {FOUNDER_AUTH_SKIP_ENABLED ? (
+              ) : (
+                <Text maxFontSizeMultiplier={1.5} style={styles.cloneEta}>
+                  This usually takes about 1–2 minutes
+                </Text>
+              )}
+            </View>
+            <View style={styles.completeFooter}>
+              {cloneError ? (
+                <>
                   <Pressable
-                    onPress={skipCloneAndContinue}
+                    onPress={rerecordFromComplete}
                     style={styles.goldLinkBtn}
                   >
-                    <Text style={styles.goldLinkText}>skip → continue</Text>
+                    <Text maxFontSizeMultiplier={1.5} style={styles.goldLinkText}>re-record</Text>
                   </Pressable>
-                ) : null}
-                <RoundArrowButton
-                  onPress={() => {
-                    if (/sign in/i.test(cloneError)) {
-                      navigation.replace('SignIn');
-                      return;
-                    }
-                    retryClone();
-                  }}
-                  color={colors.bg}
-                />
-              </>
-            ) : cloneReady ? (
-              <RoundArrowButton onPress={goPreview} color={colors.bg} />
-            ) : (
-              <View style={styles.footerPlaceholder} />
-            )}
-          </View>
-        </Animated.View>
+                  <RoundArrowButton
+                    onPress={() => {
+                      if (/sign in/i.test(cloneError)) {
+                        navigation.replace('SignIn', { mode: 'resume' });
+                        return;
+                      }
+                      // No saved take → nothing to retry; record again.
+                      if (!sampleUriRef.current) {
+                        void rerecordFromComplete();
+                        return;
+                      }
+                      retryClone();
+                    }}
+                    color={colors.bg}
+                  />
+                </>
+              ) : (
+                <View style={styles.footerPlaceholder} />
+              )}
+            </View>
+          </Animated.View>
+        </Pressable>
       </Animated.View>
     </View>
   );
@@ -541,8 +788,29 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     letterSpacing: 0.2,
     color: colors.textMuted,
-    marginBottom: 16,
-    maxWidth: 320,
+    marginBottom: 12,
+    alignSelf: 'stretch',
+    textAlign: 'left',
+  },
+  progressTrack: {
+    alignSelf: 'stretch',
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(26, 26, 26, 0.08)',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: accents.coral,
+  },
+  progressLabel: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: 12,
+    alignSelf: 'stretch',
   },
   stage: {
     flex: 1,
@@ -566,15 +834,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   nextLineBtn: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  nextLineText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
-    color: colors.textMuted,
-    textDecorationLine: 'underline',
+    marginTop: 12,
+    alignSelf: 'center',
   },
   error: {
     fontFamily: fonts.body,
@@ -620,14 +881,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...noFakeBold,
   },
-  completeSub: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 18,
-    lineHeight: 24,
-    textAlign: 'center',
-    color: colors.text,
-    opacity: 0.7,
-  },
   cloneEta: {
     marginTop: 8,
     fontFamily: fonts.bodyLight,
@@ -636,6 +889,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.text,
     opacity: 0.55,
+    paddingHorizontal: 12,
   },
   completeFooter: {
     alignItems: 'flex-end',

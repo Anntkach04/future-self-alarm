@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { reportError } from '../services/errorReporting';
 
 type Props = { children: React.ReactNode };
 type State = { error: Error | null };
@@ -11,21 +12,47 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { error };
   }
 
+  componentDidCatch(error: Error) {
+    reportError(error, 'render', true);
+  }
+
+  private retry = () => this.setState({ error: null });
+
   render() {
     if (!this.state.error) return this.props.children;
 
     return (
       <View style={styles.root}>
-        <Text style={styles.title}>Something went wrong</Text>
+        <Text maxFontSizeMultiplier={1.5} style={styles.title}>Something went wrong</Text>
         <ScrollView style={styles.scroll}>
-          <Text style={styles.body}>{this.state.error.message}</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.body}>{this.state.error.message}</Text>
         </ScrollView>
+        <Pressable
+          accessibilityRole="button"
+          onPress={this.retry}
+          style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}
+        >
+          <Text maxFontSizeMultiplier={1.5} style={styles.buttonText}>Try again</Text>
+        </Pressable>
       </View>
     );
   }
 }
 
 const styles = StyleSheet.create({
+  button: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginBottom: 32,
+  },
+  buttonText: {
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
   root: {
     flex: 1,
     backgroundColor: '#FFFCF5',

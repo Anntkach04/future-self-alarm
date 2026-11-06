@@ -7,8 +7,7 @@ Do this now. Linking App Store products happens later with sister + ASC.
 1. Open https://app.revenuecat.com and sign up / log in  
 2. **Create new project** → name: `Future Self Alarm`  
 3. **Add app** → platform **iOS**  
-4. Bundle ID (for now): `com.anonymous.future-self-alarm`  
-   (change later when you create the real App ID with sister)
+4. Bundle ID: `com.futureself.alarm`
 
 ## 2. Copy the public SDK key
 

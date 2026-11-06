@@ -46,7 +46,7 @@ function pickAngle(answers = {}) {
     answers.weekday,
     answers.name,
     ...(answers.futureSelf || []),
-    ...(answers.alreadyProud || []),
+    ...(answers.morningHabits || answers.alreadyProud || []),
     String(Date.now()),
   ].join('|');
   let hash = 0;
@@ -64,19 +64,20 @@ function buildScriptMessages(answers = {}) {
 
   const system = `You write spoken morning alarm scripts for Future Self Alarm.
 
-The listener wakes to their OWN cloned voice. Write like a real person talking to themselves in bed: natural, intimate, slightly imperfect. Never like a podcast host, coach, or AI assistant.
+The listener wakes to their OWN cloned voice speaking naturally — like a real person leaving a casual voice message. Warm, spontaneous, conversational. Subtle changes in pace, natural pauses, soft breaths implied by commas/periods, slight imperfections. Never polished, robotic, exaggerated, or like reading a script. Never like a podcast host, coach, wellness app, or AI assistant.
 
 Voice of the script:
-- First person to second person: "Hey ${name}…", "it's me", "I need you up with me".
+- First person to second person: "Hey ${name}", "it's me", "come on".
 - Address them by name once near the start.
-- Warm and honest. Light urgency is OK ("come on", "get up with me") but NO guilt, hustle porn, or shame.
-- Weave goals / pride / hard-morning needs as lived feelings, not a bullet list.
+- Warm and honest. Short sentences. Fragments OK. Light urgency ("come on", "sit up") but NO guilt, hustle, affirmations-as-therapy, or "I'm so proud of you" pep-talk loops.
+- Ban phrases that sound AI: "you've got this", "best version of yourself", "future self", "lean into", "hold space", "journey", "manifest", "soft morning light" as purple prose.
+- Weave goals / pride / hard mornings as lived feelings, not a bullet list.
 - Match the requested voice style.
-- Aim for ${length.words} so it speaks for ${length.seconds}. Never under 70 words. Prefer about 90 to 100.
-- EVERY script must feel different: new opening, new image, new closer. Do not reuse stock lines like "from your future" every time unless it fits naturally once.
+- Aim for ${length.words} so it speaks for ${length.seconds}. Never under 70 words. Prefer about 85 to 100.
+- EVERY script must feel different: new opening, new concrete detail, new closer.
 - Today's creative angle: ${angle}.
 - No emoji. No stage directions. No quotes around the whole script. Plain spoken English (or match the user's language if answers are clearly not English).
-- Never use em or en dashes. Prefer commas or periods. Only if yesterday's mood shapes a short aside, you may use a short hyphen like "heavy - so start soft".
+- Never use em or en dashes. Prefer commas or periods. A short hyphen is OK once ("heavy - go easy").
 - Return ONLY the spoken script.`;
 
   const user = [
@@ -86,9 +87,9 @@ Voice of the script:
     `Creative angle: ${angle}`,
     `How they want to feel on waking: ${list(answers.morningFeelings)}`,
     `Main goals / who they are becoming: ${list(answers.futureSelf)}`,
-    `What they are already proud of: ${list(answers.alreadyProud)}`,
+    `Morning habits they want to keep: ${list(answers.morningHabits || answers.alreadyProud)}`,
     `Line they need on a hard morning: ${list(answers.hardMornings)}`,
-    `Voice style: ${answers.voiceStyle || 'Warm, almost a whisper'}`,
+    `Voice style: ${answers.voiceStyle || 'Casual voice message — warm, spontaneous, natural pauses'}`,
     answers.moodForTomorrow
       ? `How they felt YESTERDAY (shapes THIS wake only; do not mention “mood check-in”): ${answers.moodForTomorrow}${answers.moodNoteForTomorrow ? `; note: ${answers.moodNoteForTomorrow}` : ''}`
       : null,

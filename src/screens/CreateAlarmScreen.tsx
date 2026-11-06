@@ -1,18 +1,9 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 import { AlarmDayPicker } from '../components/AlarmDayPicker';
 import { AppleTimePicker } from '../components/AppleTimePicker';
 import { BackButton } from '../components/BackButton';
-import { LoadingLabel } from '../components/LoadingLabel';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -22,7 +13,7 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import { buildAlarmAudioForId } from '../services/alarmGeneration';
 import {
-  playAlarmAudio,
+  ensureNotificationPermissions,
   scheduleAlarmNotifications,
 } from '../services/alarmScheduler';
 import { resolveVoiceId, isPremadeDemoVoiceId } from '../services/defaultVoice';
@@ -35,10 +26,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreateAlarm'>;
 
 export function CreateAlarmScreen({ navigation, route }: Props) {
   const { addAlarm, updateAlarm, removeAlarm, alarms } = useAlarms();
-  const { answers, voice, markOnboardingComplete, setVoiceId, clearVoice } =
-    useOnboarding();
+  const {
+    answers,
+    voice,
+    onboardingComplete,
+    markOnboardingComplete,
+    setVoiceId,
+    clearVoice,
+  } = useOnboarding();
   const { today } = useMoodCheckIn();
-  const { voiceLevel, bedLevel, isPaused } = useAppSettings();
+  const { voiceLevel, bedLevel, isPaused, setNotificationsReady } =
+    useAppSettings();
   const editingId = route.params?.alarmId;
   const existing = useMemo(
     () => alarms.find((a) => a.id === editingId),
@@ -50,13 +48,94 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
   const [days, setDays] = useState<number[]>(
     existing?.days ?? (answers.wakeDays.length ? answers.wakeDays : [...WEEKDAYS])
   );
-  const [enabled, setEnabled] = useState(existing?.enabled ?? true);
-  const [snoozeEnabled, setSnoozeEnabled] = useState(
-    existing?.snoozeEnabled ?? true
-  );
-  const [snoozeMinutes] = useState(existing?.snoozeMinutes ?? 10);
+  const [snoozeOn, setSnoozeOn] = useState(existing?.snoozeEnabled !== false);
+  const [vibrate, setVibrate] = useState(existing?.vibrate ?? true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const hourRef = useRef(hour);
+  const minuteRef = useRef(minute);
+  const daysRef = useRef(days);
+  const snoozeOnRef = useRef(snoozeOn);
+  const vibrateRef = useRef(vibrate);
+  hourRef.current = hour;
+  minuteRef.current = minute;
+  daysRef.current = days;
+  snoozeOnRef.current = snoozeOn;
+  vibrateRef.current = vibrate;
+
+  const leaveAfterSave = (then: 'home' | 'another') => {
+    if (then === 'another') {
+      navigation.replace('CreateAlarm');
+      return;
+    }
+    if (!onboardingComplete) {
+      markOnboardingComplete();
+      navigation.replace('OnboardingCongrats');
+      return;
+    }
+    navigation.replace('Home');
+  };
+
+  /** Voice + schedule after UI already left — never block Done on TTS. */
+  const finishVoiceInBackground = (alarmId: string, payload: {
+    hour: number;
+    minute: number;
+    label: string;
+    enabled: boolean;
+    days: number[];
+    snoozeEnabled: boolean;
+    snoozeMinutes: number;
+    vibrate: boolean;
+  }) => {
+    void (async () => {
+      try {
+        const voiceId = resolveVoiceId(voice.voiceId);
+        if (!voiceId || voice.isDemo || isPremadeDemoVoiceId(voiceId)) return;
+
+        const reuseUri = existing?.audioUri ?? null;
+        let uri = reuseUri;
+        let text = existing?.scriptText ?? null;
+
+        // Reuse voice when only time/days/snooze changed.
+        if (!uri) {
+          const { ensureGuestSession } = await import('../services/apiAuth');
+          await ensureGuestSession();
+          const health = await checkVoiceApiHealth();
+          if (!health.hasKey && !health.elevenLabs) return;
+
+          const built = await buildAlarmAudioForId({
+            alarmId,
+            voiceId,
+            answers,
+            mood: today
+              ? { label: today.moodLabel, note: today.note }
+              : null,
+            voiceLevel,
+            bedLevel,
+          });
+          uri = built.uri;
+          text = built.text;
+          updateAlarm(alarmId, { audioUri: uri, scriptText: text });
+        }
+
+        if (isPaused || !uri) return;
+        const allowed = await ensureNotificationPermissions();
+        setNotificationsReady(allowed);
+        await scheduleAlarmNotifications(
+          {
+            id: alarmId,
+            ...payload,
+            audioUri: uri,
+            scriptText: text,
+          },
+          uri
+        );
+      } catch (e) {
+        console.warn('Background alarm voice failed', e);
+      }
+    })();
+  };
 
   const persistAnd = async (then: 'home' | 'another') => {
     if (saving) return;
@@ -80,21 +159,15 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         setVoiceId(voiceId, true);
       }
 
-      const health = await checkVoiceApiHealth();
-      if (!health.hasKey && !health.elevenLabs) {
-        throw new Error(
-          'Cannot reach the voice server. Check Wi-Fi, then try again.'
-        );
-      }
-
       const payload = {
-        hour,
-        minute,
+        hour: hourRef.current,
+        minute: minuteRef.current,
         label: existing?.label ?? 'Morning Future Self',
-        enabled,
-        days: days.length ? days : [...WEEKDAYS],
-        snoozeEnabled,
-        snoozeMinutes,
+        enabled: existing?.enabled ?? true,
+        days: daysRef.current.length ? [...daysRef.current] : [...WEEKDAYS],
+        snoozeEnabled: snoozeOnRef.current,
+        snoozeMinutes: 10,
+        vibrate: vibrateRef.current,
       };
 
       const alarmId = existing ? existing.id : addAlarm(payload).id;
@@ -102,37 +175,9 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         updateAlarm(existing.id, payload);
       }
 
-      const { uri, text, systemSound } = await buildAlarmAudioForId({
-        alarmId,
-        voiceId,
-        answers,
-        mood: today
-          ? { label: today.moodLabel, note: today.note }
-          : null,
-        voiceLevel,
-        bedLevel,
-      });
-
-      const saved = {
-        id: alarmId,
-        ...payload,
-        audioUri: uri,
-        scriptText: text,
-      };
-      updateAlarm(alarmId, { audioUri: uri, scriptText: text });
-      if (!isPaused) {
-        await scheduleAlarmNotifications(saved, uri);
-      }
-      if (!systemSound && Platform.OS === 'ios') {
-        console.warn('Wake CAF missing — using notification without custom sound');
-      }
-
-      if (then === 'another') {
-        navigation.replace('CreateAlarm');
-        return;
-      }
-      markOnboardingComplete();
-      navigation.replace('Home');
+      // Leave immediately — voice builds in the background.
+      leaveAfterSave(then);
+      finishVoiceInBackground(alarmId, payload);
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'Could not save alarm';
       const missingVoice =
@@ -145,7 +190,6 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
       } else {
         setError(userFacingError(e, 'Could not save alarm'));
       }
-    } finally {
       setSaving(false);
     }
   };
@@ -154,14 +198,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     <Screen>
       <View style={styles.page}>
         <BackButton style={styles.back} />
-        <Text style={styles.title}>
+        <Text maxFontSizeMultiplier={1.2} style={styles.title}>
           {uiLabel(existing ? 'edit alarm' : 'set up alarm')}
-        </Text>
-        <Text style={styles.hint}>
-          Schedules a time-sensitive Future Self alert with your cloned voice —
-          not a Clock.app alarm. Works locked and on Silent when alerts are
-          allowed. Focus / Do Not Disturb can still block it unless Time
-          Sensitive is on for this app.
         </Text>
 
         <View style={styles.timeZone}>
@@ -170,6 +208,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
             hour={hour}
             minute={minute}
             onChange={(h, m) => {
+              hourRef.current = h;
+              minuteRef.current = m;
               setHour(h);
               setMinute(m);
             }}
@@ -177,85 +217,63 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.repeatSection}>
-          <AlarmDayPicker days={days} onChange={setDays} />
-        </View>
-
-        <View style={styles.row}>
-          <View style={styles.rowCopy}>
-            <Text style={styles.rowTitle}>Alarm on</Text>
-            <Text style={styles.rowSub}>Off until you turn it back on</Text>
-          </View>
-          <Switch
-            value={enabled}
-            onValueChange={setEnabled}
-            trackColor={{ false: colors.border, true: colors.text }}
+          <AlarmDayPicker
+            days={days}
+            onChange={(next) => {
+              daysRef.current = next;
+              setDays(next);
+            }}
           />
         </View>
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text style={styles.rowTitle}>Keep waking me</Text>
-            <Text style={styles.rowSub}>
-              Rings again every {snoozeMinutes} min (system schedule) until you
-              tap I&apos;m up
+            <Text maxFontSizeMultiplier={1.2} style={styles.rowTitle}>10 min</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.rowSub}>
+              Call again if you don’t get up
             </Text>
           </View>
           <Switch
-            value={snoozeEnabled}
-            onValueChange={setSnoozeEnabled}
+            value={snoozeOn}
+            onValueChange={(v) => {
+              snoozeOnRef.current = v;
+              setSnoozeOn(v);
+            }}
             trackColor={{ false: colors.border, true: colors.text }}
           />
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {saving ? (
-          <View style={styles.saving}>
-            <ActivityIndicator color={colors.text} />
-            <LoadingLabel
-              text="Building your morning voice"
-              style={styles.savingText}
-            />
+        <View style={styles.row}>
+          <View style={styles.rowCopy}>
+            <Text maxFontSizeMultiplier={1.2} style={styles.rowTitle}>vibrate</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.rowSub}>
+              Buzz when your future self starts talking
+            </Text>
           </View>
-        ) : null}
+          <Switch
+            value={vibrate}
+            onValueChange={(v) => {
+              vibrateRef.current = v;
+              setVibrate(v);
+            }}
+            trackColor={{ false: colors.border, true: colors.text }}
+          />
+        </View>
 
-        {existing?.audioUri ? (
-          <View style={styles.previewRow}>
-            <TextArrowButton
-              label="preview in 10s"
-              color={accents.lime}
-              onPress={() => {
-                setTimeout(() => {
-                  void playAlarmAudio(existing.audioUri!);
-                }, 10_000);
-              }}
-              disabled={saving}
-            />
-          </View>
-        ) : null}
+        {error ? <Text maxFontSizeMultiplier={1.5} style={styles.error}>{error}</Text> : null}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, !existing && styles.footerSingle]}>
           {existing ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Delete alarm"
+            <TextArrowButton
+              label="delete"
+              color={accents.coral}
               onPress={() => {
                 removeAlarm(existing.id);
                 navigation.goBack();
               }}
-              style={styles.deleteBtn}
-              disabled={saving}
-            >
-              <Text style={styles.deleteText}>Delete</Text>
-            </Pressable>
-          ) : (
-            <TextArrowButton
-              label="add alarm"
-              color={accents.gold}
-              onPress={() => void persistAnd('another')}
               disabled={saving}
             />
-          )}
+          ) : null}
           <TextArrowButton
             label={existing ? 'save' : 'done'}
             color={colors.fab}
@@ -271,35 +289,24 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
+    paddingTop: spacing.md,
   },
   back: {
-    marginTop: 0,
+    marginBottom: 8,
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 40,
-    lineHeight: 44,
+    fontSize: 34,
+    lineHeight: 40,
     color: colors.text,
-    marginBottom: spacing.sm,
+    marginBottom: 12,
     ...noFakeBold,
   },
-  hint: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
-  },
   timeZone: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 120,
-    paddingVertical: spacing.lg,
+    marginBottom: 8,
   },
   repeatSection: {
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
@@ -312,54 +319,36 @@ const styles = StyleSheet.create({
   },
   rowCopy: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
   },
   rowTitle: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 16,
+    fontFamily: fonts.headingRegular,
+    fontSize: 20,
     color: colors.text,
+    ...noFakeBold,
   },
   rowSub: {
     fontFamily: fonts.bodyLight,
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,
+    marginTop: 2,
   },
-  previewRow: {
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
+  error: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: accents.coral,
+    marginTop: 8,
   },
   footer: {
+    marginTop: 'auto',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    gap: 12,
+    paddingBottom: 8,
   },
-  deleteBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-  },
-  deleteText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 16,
-    color: '#FF3B30',
-  },
-  error: {
-    color: '#C0392B',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  saving: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  savingText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.textMuted,
+  footerSingle: {
+    justifyContent: 'flex-end',
   },
 });

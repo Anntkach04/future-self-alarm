@@ -36,16 +36,16 @@ export function NotificationSettingsScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text style={styles.title}>Notifications</Text>
-      <Text style={styles.body}>
+      <Text maxFontSizeMultiplier={1.2} style={styles.title}>notifications</Text>
+      <Text maxFontSizeMultiplier={1.5} style={styles.body}>
         {notificationsReady
-          ? 'Alerts are on. Future You wakes you with a notification + your voice — not the Clock app. Focus modes can still quiet alerts unless Time Sensitive is allowed for Future Self.'
-          : 'Alerts are off. We can’t wake you until you allow them in Settings.'}
+          ? 'Alerts are on.'
+          : 'Alerts are off. Allow them in Settings so mornings can ring.'}
       </Text>
 
       <View style={styles.block}>
-        <Text style={styles.blockTitle}>Pause all alarms</Text>
-        <Text style={styles.blockBody}>
+        <Text maxFontSizeMultiplier={1.2} style={styles.blockTitle}>Pause all alarms</Text>
+        <Text maxFontSizeMultiplier={1.5} style={styles.blockBody}>
           {isPaused && pauseUntil
             ? `Paused until ${pauseUntil}.`
             : 'Turn everything off for a few days. Vacation mode.'}

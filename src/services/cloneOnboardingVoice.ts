@@ -37,7 +37,7 @@ async function previewWithPremadeVoice(
   voiceId: string,
   answers: OnboardingAnswers
 ): Promise<Omit<CloneResult, 'voiceId'>> {
-  const text = buildAlarmScript(answers.name);
+  const text = buildAlarmScript(answers.name, null, answers.morningHabits);
   const tts = await synthesizeSpeech({ voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return { previewPath, previewText: text, isDemo: true };
@@ -90,12 +90,22 @@ export async function cloneOnboardingVoice(params: {
     return {
       voiceId: clone.voiceId,
       previewPath,
-      previewText: alarm.text || buildAlarmScript(params.answers.name),
+      previewText:
+        alarm.text ||
+        buildAlarmScript(
+          params.answers.name,
+          null,
+          params.answers.morningHabits
+        ),
       isDemo: false,
     };
   }
 
-  const text = buildAlarmScript(params.answers.name);
+  const text = buildAlarmScript(
+    params.answers.name,
+    null,
+    params.answers.morningHabits
+  );
   const tts = await synthesizeSpeech({ voiceId: clone.voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return {

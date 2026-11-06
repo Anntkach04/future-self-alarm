@@ -27,7 +27,11 @@ import { WaitingView } from './src/components/WaitingView';
 import { initAlarmNotifications } from './src/services/alarmScheduler';
 import { runStorageMigrations } from './src/services/migrations';
 import { lockWebViewport } from './src/utils/lockWebViewport';
+import { installGlobalErrorReporting } from './src/services/errorReporting';
+
+installGlobalErrorReporting();
 import { DeferredMount } from './src/components/DeferredMount';
+import { AlarmAudioRepairHost } from './src/components/AlarmAudioRepairHost';
 import { EveningRegenHost } from './src/components/EveningRegenHost';
 import { PauseAlarmsHost } from './src/components/PauseAlarmsHost';
 import { ProfileSyncHost } from './src/components/ProfileSyncHost';
@@ -96,6 +100,7 @@ export default function App() {
                   <AlarmWakeBanner />
                   <DeferredMount delayMs={4000}>
                     <SoftStatusBanners />
+                    <AlarmAudioRepairHost />
                     <EveningRegenHost />
                     <PauseAlarmsHost />
                     <ProfileSyncHost />

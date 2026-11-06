@@ -18,7 +18,7 @@ export type OnboardingAnswers = {
   name: string;
   morningFeelings: string[];
   futureSelf: string[];
-  alreadyProud: string[];
+  morningHabits: string[];
   hardMornings: string[];
   voiceStyle: string | null;
   messageLength: string | null;
@@ -47,8 +47,8 @@ type OnboardingContextValue = {
   addMorningFeeling: (value: string) => void;
   toggleFutureSelf: (value: string) => void;
   addFutureSelf: (value: string) => void;
-  toggleAlreadyProud: (value: string) => void;
-  addAlreadyProud: (value: string) => void;
+  toggleMorningHabit: (value: string) => void;
+  addMorningHabit: (value: string) => void;
   toggleHardMorning: (value: string) => void;
   addHardMorning: (value: string) => void;
   setVoiceStyle: (value: string) => void;
@@ -75,11 +75,11 @@ const defaultAnswers: OnboardingAnswers = {
   name: '',
   morningFeelings: [],
   futureSelf: [],
-  alreadyProud: [],
+  morningHabits: [],
   hardMornings: [],
   voiceStyle: null,
   messageLength: 'About 30 seconds',
-  musicBedId: 'bali-morning',
+    musicBedId: 'soft-calm',
   wakeHour: 7,
   wakeMinute: 0,
   wakeDays: [...WEEKDAYS],
@@ -129,7 +129,30 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
             onboardingComplete?: boolean;
           };
           if (parsed.answers) {
-            setAnswers({ ...defaultAnswers, ...parsed.answers });
+            const rawAnswers = parsed.answers as OnboardingAnswers & {
+              alreadyProud?: string[];
+            };
+            const next = { ...defaultAnswers, ...rawAnswers };
+            // Migrated away from “already proud” → morning habits.
+            if (
+              (!next.morningHabits || next.morningHabits.length === 0) &&
+              Array.isArray(rawAnswers.alreadyProud)
+            ) {
+              next.morningHabits = [];
+            }
+            delete (next as { alreadyProud?: string[] }).alreadyProud;
+            // bali bed removed — never keep it as the active under-voice track
+            if (
+              next.musicBedId === 'bali-morning' ||
+              next.musicBedId === 'bali' ||
+              next.musicBedId === 'yoga-air' ||
+              next.musicBedId === 'soft-massage' ||
+              next.musicBedId === 'light-water' ||
+              next.musicBedId === 'warm-earth'
+            ) {
+              next.musicBedId = 'soft-calm';
+            }
+            setAnswers(next);
           }
           if (parsed.voice) {
             setVoice({ ...defaultVoice, ...parsed.voice });
@@ -231,15 +254,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           ...prev,
           futureSelf: addToList(prev.futureSelf, value),
         })),
-      toggleAlreadyProud: (value) =>
+      toggleMorningHabit: (value) =>
         setAnswers((prev) => ({
           ...prev,
-          alreadyProud: toggleInList(prev.alreadyProud, value),
+          morningHabits: toggleInList(prev.morningHabits, value),
         })),
-      addAlreadyProud: (value) =>
+      addMorningHabit: (value) =>
         setAnswers((prev) => ({
           ...prev,
-          alreadyProud: addToList(prev.alreadyProud, value),
+          morningHabits: addToList(prev.morningHabits, value),
         })),
       toggleHardMorning: (value) =>
         setAnswers((prev) => ({

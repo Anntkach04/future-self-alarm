@@ -17,6 +17,29 @@ import { librarySoundExists } from '../../modules/ios-library-sounds/src';
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 
 const SCHEDULE_AHEAD = 7;
+/** iOS keeps only the soonest 64 pending local notifications per app. */
+const IOS_PENDING_LIMIT = 64;
+/** Leave room for test wakes / one-off snoozes. */
+const NOTIFICATION_HEADROOM = 4;
+const MAX_SCHEDULE_AHEAD = 14;
+
+/** Enabled alarms that may need the notification path (set on reschedule). */
+let enabledAlarmCount = 1;
+
+/**
+ * Split the 64-notification budget across alarms so none is silently dropped.
+ * 1 alarm → 14 days + 6 follow-ups; 5 → 6 + 6; 10 → 2 + 4.
+ */
+function notificationBudget() {
+  const n = Math.max(1, enabledAlarmCount);
+  const perAlarm = Math.max(
+    2,
+    Math.floor((IOS_PENDING_LIMIT - NOTIFICATION_HEADROOM) / n)
+  );
+  const snooze = Math.min(SNOOZE_CHAIN, Math.max(1, perAlarm - 2));
+  const ahead = Math.max(1, Math.min(MAX_SCHEDULE_AHEAD, perAlarm - snooze));
+  return { ahead, snooze };
+}
 /** Follow-ups after the *next* wake only (system-level, app can be killed). */
 const SNOOZE_CHAIN = 6;
 /**
@@ -24,7 +47,7 @@ const SNOOZE_CHAIN = 6;
  * Used when the per-alarm AI CAF is missing or corrupt — never silent.
  */
 export const FALLBACK_WAKE_SOUND = 'fs_fallback.caf';
-const APP_GROUP = 'group.com.anonymous.future-self-alarm';
+const APP_GROUP = 'group.com.futureself.alarm';
 
 let playback: AudioPlayer | null = null;
 let handlersReady = false;
@@ -48,12 +71,14 @@ async function configureAudioForAlarm() {
   await setAudioModeAsync({
     allowsRecording: false,
     shouldPlayInBackground: true,
+    // Keep sounding even if the Silent switch is on / media was ducked.
     playsInSilentMode: true,
     interruptionMode: 'doNotMix',
   });
 }
 
 async function stopPlayback() {
+  stopRingHaptics();
   if (!playback) return;
   try {
     playback.pause();
@@ -64,14 +89,54 @@ async function stopPlayback() {
   playback = null;
 }
 
-export async function playAlarmAudio(uri: string) {
+let ringingHaptic: ReturnType<typeof setInterval> | null = null;
+
+function stopRingHaptics() {
+  if (ringingHaptic) {
+    clearInterval(ringingHaptic);
+    ringingHaptic = null;
+  }
+}
+
+async function pulseAlarmHaptics() {
+  try {
+    const Haptics = await import('expo-haptics');
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  } catch {
+    /* optional */
+  }
+}
+
+/** Play wake audio once (no loop). Optional vibrate pulses while it starts. */
+export async function playAlarmAudio(
+  uri: string,
+  opts?: { vibrate?: boolean }
+) {
   if (!uri || Platform.OS === 'web') return;
   await configureAudioForAlarm();
   await stopPlayback();
+  stopRingHaptics();
+  if (opts?.vibrate !== false) {
+    void pulseAlarmHaptics();
+    ringingHaptic = setInterval(() => {
+      void pulseAlarmHaptics();
+    }, 1400);
+    setTimeout(stopRingHaptics, 8000);
+  }
   const player = createAudioPlayer({ uri });
+  player.loop = false;
   player.volume = 1;
   player.play();
   playback = player;
+  // Keep volume pinned — user turning media down mid-wake shouldn't mute to 0.
+  const pin = setInterval(() => {
+    try {
+      if (playback) playback.volume = 1;
+    } catch {
+      clearInterval(pin);
+    }
+  }, 400);
+  setTimeout(() => clearInterval(pin), 45000);
 }
 
 /** Read-only check — never prompts. Use from silent schedule paths. */
@@ -131,6 +196,23 @@ export function alarmKitUUID(alarmId: string) {
   const hex = (n: number) => (n >>> 0).toString(16).padStart(8, '0');
   const a = hex(h1) + hex(h2) + hex(h3) + hex(h4);
   return `${a.slice(0, 8)}-${a.slice(8, 12)}-4${a.slice(13, 16)}-a${a.slice(17, 20)}-${a.slice(20, 32)}`;
+}
+
+type KitAction = 'dismiss' | 'snooze';
+
+/** AlarmKit launch payload: which button was pressed + our alarm id. */
+function kitPayload(action: KitAction, alarmId: string) {
+  return `${action}:${alarmId}`;
+}
+
+function parseKitPayload(
+  raw: unknown
+): { action: KitAction | 'legacy'; alarmId: string } | null {
+  if (typeof raw !== 'string' || !raw) return null;
+  const match = /^(dismiss|snooze):(.+)$/.exec(raw);
+  if (match) return { action: match[1] as KitAction, alarmId: match[2] };
+  // Alarms scheduled before b76 carried the bare id.
+  return { action: 'legacy', alarmId: raw };
 }
 
 /** Our days: 0=Mon…6=Sun → AlarmKit: 1=Sun…7=Sat */
@@ -201,12 +283,16 @@ async function loadAlarmKit() {
   }
 }
 
-export async function ensureAlarmKitReady() {
+/**
+ * @param force — re-check after Settings (clears cached deny).
+ * First call shows the system AlarmKit permission sheet.
+ */
+export async function ensureAlarmKitReady(force = false) {
   if (Platform.OS !== 'ios') {
     alarmKitReady = false;
     return false;
   }
-  if (alarmKitReady != null) return alarmKitReady;
+  if (!force && alarmKitReady != null) return alarmKitReady;
   const kit = await loadAlarmKit();
   if (!kit) {
     alarmKitReady = false;
@@ -227,6 +313,20 @@ export async function ensureAlarmKitReady() {
     alarmKitReady = false;
     return false;
   }
+}
+
+/**
+ * Soft check for nudges. Uses cache when set; when unknown, probes once
+ * (requestAuthorization returns status without a second sheet after the first ask).
+ */
+export async function hasAlarmKitPermission() {
+  if (Platform.OS !== 'ios') return false;
+  if (alarmKitReady === true) return true;
+  if (alarmKitReady === false) {
+    // Re-probe after Settings — may flip to authorized without a new sheet.
+    return ensureAlarmKitReady(true);
+  }
+  return false;
 }
 
 async function cancelAlarmKit(alarmId: string) {
@@ -279,6 +379,7 @@ async function scheduleOneWakeNotification(params: {
   audioUri: string | null;
   snoozeEnabled: boolean;
   snoozeMinutes: number;
+  vibrate?: boolean;
   kind: 'wake' | 'snooze';
 }) {
   await Notifications.scheduleNotificationAsync({
@@ -299,6 +400,7 @@ async function scheduleOneWakeNotification(params: {
         audioUri: params.audioUri || undefined,
         snoozeEnabled: params.snoozeEnabled,
         snoozeMinutes: params.snoozeMinutes,
+        vibrate: (params as { vibrate?: boolean }).vibrate !== false,
         kind: params.kind,
       },
     },
@@ -323,7 +425,8 @@ async function scheduleNotificationFallback(
     );
   }
 
-  const times = nextAlarmOccurrences(alarm);
+  const budget = notificationBudget();
+  const times = nextAlarmOccurrences(alarm, budget.ahead);
   const sound = notificationSoundFor(alarm.id, hasSystemSound);
   const body = notificationBodyFor(alarm);
   const snoozeOn = alarm.snoozeEnabled !== false;
@@ -331,26 +434,33 @@ async function scheduleNotificationFallback(
     typeof alarm.snoozeMinutes === 'number' && alarm.snoozeMinutes > 0
       ? alarm.snoozeMinutes
       : 10;
+  const vibrateOn = alarm.vibrate !== false;
 
-  // Main wakes in parallel. Snooze chain only for the soonest occurrence —
-  // scheduling 14×6 follow-ups froze the UI on launch.
+  // Main wakes in parallel. Snooze chain only when explicitly enabled.
+  // Last pre-scheduled wake: ask the user to open the app so the window
+  // refills — otherwise wakes silently stop after `budget.ahead` days.
+  const lastIndex = times.length - 1;
   const jobs: Promise<unknown>[] = times.map((date, index) =>
     scheduleOneWakeNotification({
       identifier: notificationId(alarm.id, index),
       date,
       alarmId: alarm.id,
-      body,
+      body:
+        index === lastIndex && times.length > 1
+          ? 'Open Future Self today so your next alarms stay on.'
+          : body,
       sound,
       audioUri,
       snoozeEnabled: snoozeOn,
       snoozeMinutes: snoozeMin,
+      vibrate: vibrateOn,
       kind: 'wake',
     })
   );
 
   if (snoozeOn && times[0]) {
     const nextWake = times[0];
-    for (let step = 1; step <= SNOOZE_CHAIN; step += 1) {
+    for (let step = 1; step <= budget.snooze; step += 1) {
       const follow = new Date(nextWake.getTime() + step * snoozeMin * 60 * 1000);
       jobs.push(
         scheduleOneWakeNotification({
@@ -362,6 +472,7 @@ async function scheduleNotificationFallback(
           audioUri,
           snoozeEnabled: true,
           snoozeMinutes: snoozeMin,
+          vibrate: vibrateOn,
           kind: 'snooze',
         })
       );
@@ -396,8 +507,12 @@ async function scheduleWithAlarmKit(
   const withExt = alarmSoundBaseName(alarm.id);
   const withoutExt = withExt.replace(/\.caf$/i, '');
   const weekdays = toAlarmKitWeekdays(alarmDays(alarm));
-  const snoozeOn = alarm.snoozeEnabled !== false;
-  const snoozeSec = Math.max(60, (alarm.snoozeMinutes || 10) * 60);
+  // Always offer Later → 10 min. Notification path also pre-schedules +10/+20…
+  const snoozeMin =
+    typeof alarm.snoozeMinutes === 'number' && alarm.snoozeMinutes > 0
+      ? alarm.snoozeMinutes
+      : 10;
+  const snoozeSec = Math.max(60, snoozeMin * 60);
 
   try {
     await kit.cancelAlarm(id).catch(() => undefined);
@@ -411,14 +526,14 @@ async function scheduleWithAlarmKit(
         title: 'Future You',
         soundName: name,
         launchAppOnDismiss: true,
-        dismissPayload: alarm.id,
-        doSnoozeIntent: snoozeOn,
-        launchAppOnSnooze: snoozeOn,
-        snoozePayload: alarm.id,
+        dismissPayload: kitPayload('dismiss', alarm.id),
+        doSnoozeIntent: true,
+        launchAppOnSnooze: true,
+        snoozePayload: kitPayload('snooze', alarm.id),
         snoozeDuration: snoozeSec,
         tintColor: '#BADFFF',
         stopButtonLabel: "I'm up",
-        snoozeButtonLabel: 'Later',
+        snoozeButtonLabel: 'Snooze 10 min',
       });
 
     // Prefer AlarmKit = real system alarm UI with YOUR CAF (not a chat push).
@@ -446,13 +561,11 @@ export type ScheduleWakeResult = {
 };
 
 /**
- * iOS reality for a *cloned* voice wake (see docs/ALARM_ENGINE.md):
- * - Dynamic CAF (≤28s) → Library/Sounds → UNNotificationSound on lock screen.
- * - Full AI MP3 plays in-app when the notification opens the app.
- * - AlarmKit `.named(sound)` is unreliable for Library/Sounds clones (often
- *   default tone), so we schedule notification + system follow-up chain only.
- * - Missing/corrupt CAF → bundled `fs_fallback.caf`.
- * - Min iOS is 26.1 (AlarmKit-era); we do not ship a ≤25 limited mode.
+ * Wake path (iOS 26.1+):
+ * 1) AlarmKit — real system alarm UI (I'm up / Later, Silent / Focus) with
+ *    your voice CAF when Library/Sounds resolves.
+ * 2) Else time-sensitive local notification + CAF (or bundled fallback).
+ * Never schedule Kit *and* a wake notification together (double sound).
  */
 export async function scheduleAlarmNotifications(
   alarm: Alarm,
@@ -466,26 +579,134 @@ export async function scheduleAlarmNotifications(
     return { hasCustomVoice: false, mode: 'none' };
   }
 
-  const soundPath = alarmSoundPath(alarm.id);
-  let hasSystemSound = false;
-  if (Platform.OS === 'ios') {
-    hasSystemSound = await librarySoundExists(alarmSoundFileName(alarm.id));
-  } else if (soundPath) {
-    const FileSystem = await import('expo-file-system/legacy');
-    const info = await FileSystem.getInfoAsync(soundPath);
-    hasSystemSound = Boolean(info.exists);
-  }
+  // If MP3 exists but Library/Sounds CAF was wiped (migration / clear), rebuild it.
+  const hasSystemSound = await ensureCustomWakeSound(alarm.id, audioUri);
 
   await cancelScheduledAlarm(alarm.id);
 
-  // Do not request AlarmKit here — cloned wakes use notifications + CAF.
-  // AlarmKit auth is only prompted inside scheduleWithAlarmKit when used.
+  // AlarmKit first = real system alarm UI (I'm up / Later). Custom voice CAF
+  // must be Apple ima4 in Library/Sounds (see server mix). Notification only
+  // if Kit unavailable / unauthorized.
+  if (hasSystemSound) {
+    const usedKit = await scheduleWithAlarmKit(alarm, true);
+    if (usedKit) {
+      // AlarmKit owns snooze and keeps ringing until Stop/Snooze. No
+      // notification chain here: it doubled the +10 min ring and kept firing
+      // after the system "I'm up".
+      return { hasCustomVoice: true, mode: 'alarmkit' };
+    }
+  }
 
+  // Notification path: play-once CAF + pre-scheduled +10/+20… until I’m up.
   await scheduleNotificationFallback(alarm, audioUri, hasSystemSound);
   return {
     hasCustomVoice: hasSystemSound,
     mode: 'notification',
   };
+}
+
+/** Ensure fs_alarm_*.caf exists when we still have the mixed MP3. */
+async function ensureCustomWakeSound(
+  alarmId: string,
+  audioUri: string | null
+): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  const fileName = alarmSoundFileName(alarmId);
+  if (Platform.OS === 'ios') {
+    if (await librarySoundExists(fileName)) return true;
+  } else {
+    const soundPath = alarmSoundPath(alarmId);
+    if (soundPath) {
+      const FileSystem = await import('expo-file-system/legacy');
+      const info = await FileSystem.getInfoAsync(soundPath);
+      if (info.exists) return true;
+    }
+  }
+  if (!audioUri) return false;
+  try {
+    const { installAlarmSystemSound } = await import('./alarmSoundFile');
+    await installAlarmSystemSound({ alarmId, mp3Uri: audioUri });
+    if (Platform.OS === 'ios') {
+      return librarySoundExists(fileName);
+    }
+    return true;
+  } catch (error) {
+    console.warn('Could not rebuild wake CAF', error);
+    return false;
+  }
+}
+
+/**
+ * Real system (or notification) wake in N seconds — for “test / preview”.
+ * Not in-app AV playback.
+ */
+export async function scheduleTestAlarmInSeconds(params: {
+  alarmId: string;
+  audioUri: string | null;
+  seconds?: number;
+}): Promise<'alarmkit' | 'notification'> {
+  const seconds = Math.max(5, Math.min(params.seconds ?? 10, 120));
+  if (Platform.OS === 'web') return 'notification';
+
+  const fireAt = new Date(Date.now() + seconds * 1000);
+  const hasSystemSound = await ensureCustomWakeSound(
+    params.alarmId,
+    params.audioUri
+  );
+  const soundName = hasSystemSound
+    ? alarmSoundFileName(params.alarmId)
+    : FALLBACK_WAKE_SOUND;
+
+  const kit = await loadAlarmKit();
+  if (kit) {
+    const ready = await ensureAlarmKitReady();
+    if (ready) {
+      const id = alarmKitUUID(`test_${params.alarmId}`);
+      try {
+        await kit.cancelAlarm(id).catch(() => undefined);
+        const ok = await kit.scheduleAlarm({
+          id,
+          date: fireAt,
+          title: 'Future You',
+          soundName,
+          launchAppOnDismiss: true,
+          dismissPayload: kitPayload('dismiss', params.alarmId),
+          stopButtonLabel: "I'm up",
+          snoozeButtonLabel: 'Snooze 10 min',
+          tintColor: '#BADFFF',
+          doSnoozeIntent: true,
+          launchAppOnSnooze: true,
+          snoozePayload: kitPayload('snooze', params.alarmId),
+          snoozeDuration: 10 * 60,
+        });
+        if (ok) return 'alarmkit';
+      } catch (error) {
+        console.warn('AlarmKit test schedule failed', error);
+      }
+    }
+  }
+
+  const ok = await hasNotificationPermissions();
+  if (!ok) {
+    throw new Error(
+      'Notifications are off. Allow alerts so Future Self can wake you.'
+    );
+  }
+  await Notifications.cancelScheduledNotificationAsync(
+    `fs_test_${params.alarmId}`
+  ).catch(() => undefined);
+  await scheduleOneWakeNotification({
+    identifier: `fs_test_${params.alarmId}`,
+    date: fireAt,
+    alarmId: params.alarmId,
+    body: 'Test wake — your morning voice.',
+    sound: notificationSoundFor(params.alarmId, hasSystemSound),
+    audioUri: params.audioUri,
+    snoozeEnabled: false,
+    snoozeMinutes: 10,
+    kind: 'wake',
+  });
+  return 'notification';
 }
 
 async function handleAlarmNotification(
@@ -494,18 +715,14 @@ async function handleAlarmNotification(
   const data = notification.request.content.data;
   if (!isFutureSelfAlarmData(data)) return;
   const uri = typeof data.audioUri === 'string' ? data.audioUri : null;
-  // Full MP3 when the app is awake (can be longer than the ≤28s lock-screen CAF).
-  if (uri) {
-    try {
-      await playAlarmAudio(uri);
-    } catch (error) {
-      console.warn('Alarm audio playback failed; lock-screen sound already played', error);
-    }
+  const vibrate = (data as { vibrate?: boolean }).vibrate !== false;
+  // Lock-screen / notification already played the CAF. Do NOT play the MP3
+  // again — that felt like the same message repeating.
+  await stopPlayback();
+  if (vibrate) {
+    void pulseAlarmHaptics();
   }
   emitRinging({ alarmId: data.alarmId, audioUri: uri });
-  // Follow-ups are pre-scheduled at schedule time (system-level). Do not
-  // schedule another JS-dependent snooze here — that failed when the app
-  // was killed and double-fired when it was open.
 }
 
 function triggerDateMs(
@@ -574,9 +791,46 @@ export async function scheduleSnooze(
 }
 
 /**
+ * Pause the current ring and fire again in `minutes` — does NOT disable the
+ * recurring alarm or cancel tomorrow’s schedule.
+ */
+export async function snoozeRingingAlarm(
+  alarmId: string,
+  audioUri: string | null,
+  minutes = 10
+) {
+  await stopPlayback();
+  stopRingHaptics();
+  if (Platform.OS !== 'web') {
+    // Drop any pre-baked +10/+20 chain for this morning, then one clean snooze.
+    await cancelNearTermSnoozes(alarmId);
+    await Notifications.cancelScheduledNotificationAsync(
+      `fs_test_snooze_${alarmId}`
+    ).catch(() => undefined);
+    try {
+      const presented = await Notifications.getPresentedNotificationsAsync();
+      await Promise.all(
+        presented
+          .filter((n) => {
+            const data = n.request.content.data;
+            return isFutureSelfAlarmData(data) && data.alarmId === alarmId;
+          })
+          .map((n) =>
+            Notifications.dismissNotificationAsync(n.request.identifier)
+          )
+      );
+    } catch {
+      // ignore
+    }
+    await scheduleSnooze(alarmId, audioUri, minutes, true);
+  }
+  emitRinging(null);
+}
+
+/**
  * Stop in-app playback and cancel near-term system follow-ups.
- * - Notification path: cancels pre-scheduled snooze chain for this morning.
- * - AlarmKit path (if used): cancels via native AlarmKit + App Intent storage.
+ * Does NOT wipe the recurring AlarmKit / weekly schedule — only this morning’s
+ * snooze chain and presented alerts.
  * Note: iOS cannot interrupt an already-playing UNNotificationSound mid-clip;
  * "I'm up" stops our AV player and prevents the next rings.
  */
@@ -584,7 +838,13 @@ export async function dismissAlarm(alarmId: string) {
   await stopPlayback();
   if (Platform.OS !== 'web') {
     await cancelNearTermSnoozes(alarmId);
-    await cancelAlarmKit(alarmId);
+    await Notifications.cancelScheduledNotificationAsync(
+      snoozeId(alarmId)
+    ).catch(() => undefined);
+    await Notifications.cancelScheduledNotificationAsync(
+      `fs_test_snooze_${alarmId}`
+    ).catch(() => undefined);
+    // Do not cancelAlarmKit here — that deleted the weekly schedule.
     try {
       const presented = await Notifications.getPresentedNotificationsAsync();
       await Promise.all(
@@ -652,14 +912,23 @@ export async function consumeAlarmKitLaunch(audioByAlarmId: Record<string, strin
   if (!kit) return;
   try {
     const payload = kit.getLaunchPayload();
-    if (!payload?.alarmId && !payload?.payload) return;
-    const logicalId =
-      (typeof payload.payload === 'string' && payload.payload) ||
-      null;
-    const alarmId = logicalId;
-    if (!alarmId) return;
+    const parsed = parseKitPayload(payload?.payload);
+    if (!parsed) return;
+    const { action, alarmId } = parsed;
+    if (action === 'dismiss') {
+      // System "I'm up" already stopped the alarm — just clear leftovers,
+      // never show the ringing banner again.
+      await dismissAlarm(alarmId);
+      return;
+    }
+    // AlarmKit already played the wake CAF on the lock screen — no second play.
+    await stopPlayback();
+    if (action === 'snooze') {
+      // Kit re-rings in snoozeDuration by itself.
+      emitRinging(null);
+      return;
+    }
     const uri = audioByAlarmId[alarmId] ?? null;
-    if (uri) await playAlarmAudio(uri);
     emitRinging({ alarmId, audioUri: uri });
   } catch {
     // ignore
@@ -678,6 +947,7 @@ async function rescheduleAllAlarmsOnce(
   alarms: Alarm[],
   audioByAlarmId: Record<string, string | null>
 ) {
+  enabledAlarmCount = alarms.filter((a) => a.enabled).length;
   await Promise.all(
     alarms.map(async (alarm) => {
       if (!alarm.enabled) {

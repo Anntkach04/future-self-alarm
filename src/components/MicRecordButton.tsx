@@ -11,26 +11,27 @@ type Props = {
 const IDLE = brightPalette[2];
 const RECORDING = brightPalette[6];
 
+/** Crisp vector mic — larger viewBox, no tiny bitmap scaling. */
 function MicIcon({ color }: { color: string }) {
   return (
-    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-      <Rect x="9" y="3" width="6" height="11" rx="3" fill={color} />
+    <Svg width={36} height={36} viewBox="0 0 48 48" fill="none">
+      <Rect x="18" y="6" width="12" height="22" rx="6" fill={color} />
       <Path
-        d="M7 11a5 5 0 0 0 10 0"
+        d="M14 22c0 5.523 4.477 10 10 10s10-4.477 10-10"
         stroke={color}
-        strokeWidth="1.8"
+        strokeWidth="3.2"
         strokeLinecap="round"
       />
       <Path
-        d="M12 16.5V20.5"
+        d="M24 32v8"
         stroke={color}
-        strokeWidth="1.8"
+        strokeWidth="3.2"
         strokeLinecap="round"
       />
       <Path
-        d="M9.5 20.5h5"
+        d="M18 40h12"
         stroke={color}
-        strokeWidth="1.8"
+        strokeWidth="3.2"
         strokeLinecap="round"
       />
     </Svg>

@@ -17,7 +17,7 @@ export function FutureSelfScreen({ navigation }: Props) {
       onToggle={toggleFutureSelf}
       onAddCustom={addFutureSelf}
       addPlaceholder="Write a goal in your own words"
-      onSubmit={() => navigation.navigate('AlreadyYou')}
+      onSubmit={() => navigation.navigate('MorningHabits')}
     />
   );
 }

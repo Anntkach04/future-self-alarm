@@ -9,6 +9,7 @@ export const APP_STORAGE_KEYS = {
   appSettings: 'fsa.app_settings.v1',
   moodCheckIn: 'fsa.mood_checkin.v1',
   storageSchema: 'fsa.storage_schema.v1',
+  aiConsent: 'fsa.ai_consent.v1',
 } as const;
 
 export async function cancelAllAlarmNotifications() {
@@ -22,6 +23,12 @@ export async function cancelAllAlarmNotifications() {
 
 export async function clearPersistedAppData() {
   await AsyncStorage.multiRemove(Object.values(APP_STORAGE_KEYS));
+  try {
+    const { clearAiConsent } = await import('./aiConsent');
+    await clearAiConsent();
+  } catch {
+    // ignore
+  }
   try {
     const { clearApiSession } = await import('./apiAuth');
     await clearApiSession();

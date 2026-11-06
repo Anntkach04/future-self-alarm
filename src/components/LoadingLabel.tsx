@@ -20,7 +20,7 @@ export function LoadingDots({ style }: DotsProps) {
 
   // Fixed width so the line doesn’t jump as dots grow.
   return (
-    <Text style={[styles.dots, style]} accessible={false}>
+    <Text maxFontSizeMultiplier={1.5} style={[styles.dots, style]} accessible={false}>
       {'.'.repeat(step)}
       {'\u00A0'.repeat(3 - step)}
     </Text>
@@ -42,7 +42,7 @@ export function LoadingLabel({ text, style, dotsStyle }: LabelProps) {
   const base = text.replace(/[\s.…]+$/u, '').trimEnd();
   return (
     <View style={styles.row} accessibilityRole="text">
-      <Text style={style}>
+      <Text maxFontSizeMultiplier={1.5} style={style}>
         {base}
         <LoadingDots style={dotsStyle ?? style} />
       </Text>

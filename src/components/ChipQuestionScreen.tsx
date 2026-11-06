@@ -23,7 +23,6 @@ import {
   noFakeLight,
   spacing,
 } from '../theme';
-
 const ROW_GAP = 2;
 
 type Props = {
@@ -150,21 +149,18 @@ export function ChipQuestionScreen({
           <BubbleEnter delay={0} fromY={10}>
             <BackButton style={styles.backInScroll} />
           </BubbleEnter>
-          <View style={styles.header}>
-            <BubbleEnter delay={0} fromY={16}>
-              <Text style={styles.question}>{question}</Text>
-            </BubbleEnter>
-            {subtitle ? (
-              <BubbleEnter delay={50} fromY={12}>
-                <Text style={styles.subtitle}>{subtitle}</Text>
-              </BubbleEnter>
-            ) : null}
-          </View>
+          {/* One enter block so heading + subtitle share the same left edge (no scale drift). */}
+          <BubbleEnter delay={0} fromY={16}>
+            <View style={styles.header}>
+              <Text maxFontSizeMultiplier={1.2} style={styles.question}>{question}</Text>
+              {subtitle ? <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>{subtitle}</Text> : null}
+            </View>
+          </BubbleEnter>
 
           {showCustomInput ? (
             <View style={styles.addTop}>
               <View style={styles.addInputUnderline}>
-                <TextInput
+                <TextInput maxFontSizeMultiplier={1.5}
                   value={custom}
                   onChangeText={setCustom}
                   placeholder={addPlaceholder}
@@ -198,7 +194,7 @@ export function ChipQuestionScreen({
 
           {helperText ? (
             <BubbleEnter delay={120} fromY={8}>
-              <Text style={styles.helper}>{helperText}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.helper}>{helperText}</Text>
             </BubbleEnter>
           ) : null}
         </ScrollView>
@@ -224,7 +220,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   page: {
-    paddingTop: spacing.webTop,
+    paddingTop: spacing.webTop + 12,
     paddingBottom: 12,
     paddingHorizontal: spacing.inset,
     overflow: 'visible' as const,
@@ -234,6 +230,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 16,
+    width: '100%',
+    alignItems: 'stretch',
   },
   question: {
     fontFamily: fonts.headingRegular,
@@ -242,6 +240,7 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     textAlign: 'left',
     marginBottom: 12,
+    alignSelf: 'stretch',
     ...noFakeBold,
     ...headingClipFix,
   },
@@ -251,6 +250,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     letterSpacing: 0.2,
+    alignSelf: 'stretch',
+    textAlign: 'left',
     ...(Platform.OS === 'web'
       ? ({ fontWeight: '300', fontSynthesis: 'none' } as object)
       : { fontWeight: '300' as const }),

@@ -10,7 +10,9 @@ type Props = {
 
 const SPOKEN = brightPalette[6];
 
-/** Word chips in a wrapping row — avoids nested-Text edge clipping. */
+/**
+ * Comfortable size: script chunks are written to wrap into ~1–2 lines here.
+ */
 export function KaraokeLine({ text, spokenCount }: Props) {
   const words = useMemo(() => displayWords(text), [text]);
   const highlighted = useMemo(
@@ -21,7 +23,7 @@ export function KaraokeLine({ text, spokenCount }: Props) {
   return (
     <View style={styles.wrap}>
       {words.map((word, i) => (
-        <Text
+        <Text maxFontSizeMultiplier={1.2}
           key={`${text}-${i}`}
           style={[styles.word, i < highlighted ? styles.spoken : styles.unspoken]}
         >
@@ -40,14 +42,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
-    rowGap: 4,
-    columnGap: 6,
+    rowGap: 6,
+    columnGap: 8,
   },
   word: {
     fontFamily: fonts.headingRegular,
-    fontSize: 26,
-    lineHeight: 34,
-    letterSpacing: 0.2,
+    fontSize: 30,
+    lineHeight: 38,
+    letterSpacing: 0.15,
     ...noFakeBold,
   },
   spoken: {

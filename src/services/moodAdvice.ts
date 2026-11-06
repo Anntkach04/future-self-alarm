@@ -1,3 +1,4 @@
+import { ensureAiConsent } from './aiConsent';
 import { authHeaders } from './apiAuth';
 import { getApiUrl } from './elevenlabs';
 
@@ -14,6 +15,10 @@ export async function fetchMoodAdvice(input: {
   note: string;
   name: string;
 }): Promise<MoodAdviceResult> {
+  // Mood notes go to OpenAI only with consent (App Review 5.1.2).
+  if (!(await ensureAiConsent())) {
+    return { text: FALLBACK, fromAi: false };
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
   try {

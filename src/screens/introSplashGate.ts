@@ -63,7 +63,12 @@ export function subscribeIntroSplash(listener: Listener) {
   };
 }
 
-/** Test / reset only */
+/** Welcome already played — Intro must not show a second blue splash. */
+export function markIntroSplashFinished() {
+  markFinished();
+}
+
+/** Test / reset only — call on each cold start before Welcome if needed. */
 export function resetIntroSplashGate() {
   if (timer) clearTimeout(timer);
   timer = null;

@@ -39,22 +39,26 @@ export const FUTURE_SELF_OPTIONS: BubbleOption[] = [
   bubble('Feel less rushed', '#D8C29E', { align: 'right', nudge: -4 }),
 ];
 
-export const ALREADY_YOU_OPTIONS: BubbleOption[] = [
-  bubble('I start even when scared', '#E98D73', { align: 'left', nudge: 4 }),
-  bubble("I'm gentle with myself", '#EDB28C', { align: 'right', nudge: 0 }),
-  bubble('I keep showing up', '#8FBDB7', { align: 'left', nudge: 40 }),
-  bubble('I trust my own pace', '#D8C29E', { align: 'right', nudge: -16 }),
-  bubble('I rest without guilt', '#AFC9A8', { align: 'left', nudge: 0 }),
-  bubble('I choose myself', '#FEC554', { align: 'right', nudge: 8 }),
+/** Morning rituals — remind what they set out to do after waking. */
+export const MORNING_HABIT_OPTIONS: BubbleOption[] = [
+  bubble('Morning workout', '#B9F34A', { align: 'left', nudge: 0 }),
+  bubble('Protein breakfast', '#FEC554', { align: 'right', nudge: -8 }),
+  bubble('Journaling', '#ADDEFF', { align: 'left', nudge: 28 }),
+  bubble('Drink water first', '#8FBDB7', { align: 'right', nudge: 0 }),
+  bubble('Make the bed', '#EDB28C', { align: 'left', nudge: 12 }),
+  bubble('No phone for 20 min', '#B9ADD9', { align: 'right', nudge: -16 }),
 ];
 
 export const HARD_MORNING_OPTIONS: BubbleOption[] = [
-  bubble('You are enough.', '#ADDEFF', { align: 'left', nudge: 0 }),
-  bubble('One step is enough.', '#B9F34A', { align: 'right', nudge: -8 }),
-  bubble("You're not behind.", '#D8C29E', { align: 'left', nudge: 32 }),
-  bubble('Today can feel lighter.', '#EDB28C', { align: 'right', nudge: 0 }),
-  bubble('Good things are coming.', '#FEC554', { align: 'left', nudge: 16 }),
+  bubble('One step is enough.', '#B9F34A', { align: 'left', nudge: 0 }),
+  bubble("You're not behind.", '#D8C29E', { align: 'right', nudge: -8 }),
+  bubble('Today can feel lighter.', '#EDB28C', { align: 'left', nudge: 32 }),
+  bubble('Good things are coming.', '#FEC554', { align: 'right', nudge: 0 }),
   bubble('Keep your promise to yourself.', '#8FBDB7', {
+    align: 'left',
+    nudge: 16,
+  }),
+  bubble('Soft mornings still count.', '#ADDEFF', {
     align: 'right',
     nudge: -4,
   }),
@@ -74,14 +78,10 @@ export const MESSAGE_LENGTH_OPTIONS: BubbleOption[] = [
 ];
 
 export const MUSIC_BED_OPTIONS: BubbleOption[] = [
-  bubble('Bali morning', '#EDB28C', { caption: 'warm air', id: 'bali-morning' }),
-  bubble('Yoga air', '#ADDEFF', { caption: 'open & light', id: 'yoga-air' }),
-  bubble('Soft massage', '#AFC9A8', {
-    caption: 'slow & round',
-    id: 'soft-massage',
+  bubble('Soft calm', '#AFC9A8', {
+    caption: 'quiet modern pad',
+    id: 'soft-calm',
   }),
-  bubble('Light water', '#B9ADD9', { caption: 'quiet flow', id: 'light-water' }),
-  bubble('Warm earth', '#D8C29E', { caption: 'grounded', id: 'warm-earth' }),
 ];
 
 /** Brighter plus chip */
@@ -90,20 +90,20 @@ export const ADD_CHIP_COLOR = '#FFD84D';
 export const INTRO_SLIDES = [
   {
     label: '',
-    title: 'Wake up\nto your\nFuture Self',
+    title: 'Wake up\nto your\nfuture self',
     body: 'No random ringtone.\nYour own voice.\nEvery morning.',
     card: 'sky' as const,
   },
   {
     label: '',
-    title: 'Stay on\nTrack',
-    body: 'A small reminder.\nExactly when you need it.',
+    title: 'Read for\none minute',
+    body: 'Read a short script aloud.\nWe turn it into a voice\nthat sounds like you.',
     card: 'coral' as const,
   },
   {
     label: '',
-    title: 'Keep\nmoving\nforward',
-    body: 'The future you want\nstarts today.\nOne morning at a time.',
+    title: 'Hear it\ntomorrow\nmorning',
+    body: 'Your name, your habits,\nin your own voice —\nright when you wake.',
     card: 'gold' as const,
   },
 ];

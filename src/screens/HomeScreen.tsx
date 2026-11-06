@@ -4,15 +4,15 @@ import {
   Image,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Switch,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AlarmPermissionNudge } from '../components/AlarmPermissionNudge';
 import { MoodWhySheet } from '../components/MoodWhySheet';
-import { SwipeDeleteRow } from '../components/SwipeDeleteRow';
+import { NotificationPermissionNudge } from '../components/NotificationPermissionNudge';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAppSettings } from '../context/AppSettingsContext';
 import {
@@ -23,7 +23,6 @@ import {
 } from '../context/AlarmsContext';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
-import { playAlarmAudio } from '../services/alarmScheduler';
 import { BASE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
 import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
@@ -45,17 +44,13 @@ function alarmSortKey(a: Pick<Alarm, 'hour' | 'minute'>) {
 
 export function HomeScreen({ navigation }: Props) {
   const { answers } = useOnboarding();
-  const { alarms, removeAlarm, toggleAlarm } = useAlarms();
+  const { alarms, toggleAlarm } = useAlarms();
   const { today, saveCheckIn } = useMoodCheckIn();
-  const { morningsKept, isPaused, pauseUntil } = useAppSettings();
+  const { isPaused, pauseUntil } = useAppSettings();
   const [sheetMood, setSheetMood] = useState<Mood | null>(null);
 
   const greeting = greetingForHour(new Date().getHours());
   const title = answers.name ? `${greeting}, ${answers.name}` : greeting;
-  const shareLine =
-    alarms.find((a) => a.enabled && a.scriptText)?.scriptText ||
-    alarms.find((a) => a.scriptText)?.scriptText ||
-    null;
 
   const listedAlarms = useMemo(
     () => [...alarms].sort((a, b) => alarmSortKey(a) - alarmSortKey(b)),
@@ -81,22 +76,17 @@ export function HomeScreen({ navigation }: Props) {
           <Image source={MENU} style={styles.menuIcon} resizeMode="contain" />
         </Pressable>
 
-        <Text style={styles.hello}>{title}</Text>
-        {morningsKept > 0 ? (
-          <Text style={styles.streak}>
-            {morningsKept} morning{morningsKept === 1 ? '' : 's'} kept
-          </Text>
-        ) : null}
+        <Text maxFontSizeMultiplier={1.2} style={styles.hello}>{title}</Text>
 
         {isPaused ? (
-          <Text style={styles.pausedGlobal}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.pausedGlobal}>
             Alarms paused{pauseUntil ? ` until ${pauseUntil}` : ''}. Resume in
             Menu → Notifications when you’re back.
           </Text>
         ) : null}
 
-        <Text style={styles.feeling}>How are you feeling today?</Text>
-        <Text style={styles.moodHint}>
+        <Text maxFontSizeMultiplier={1.2} style={styles.feeling}>How are you feeling today?</Text>
+        <Text maxFontSizeMultiplier={1.5} style={styles.moodHint}>
           This shapes tomorrow’s wake only - not every morning forever.
         </Text>
         <View style={styles.moodRow}>
@@ -112,7 +102,7 @@ export function HomeScreen({ navigation }: Props) {
                   selected && styles.moodSelected,
                 ]}
               >
-                <Text style={styles.moodLabel}>{uiLabel(mood.label)}</Text>
+                <Text maxFontSizeMultiplier={1.2} style={styles.moodLabel}>{uiLabel(mood.label)}</Text>
               </Pressable>
             );
           })}
@@ -128,7 +118,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <View style={styles.block}>
           {allPaused ? (
-            <Text style={styles.pausedBanner}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.pausedBanner}>
               All alarms are off. Turn one on if you want Future You to wake
               you tomorrow.
             </Text>
@@ -136,16 +126,11 @@ export function HomeScreen({ navigation }: Props) {
 
           {hasAlarms ? (
             listedAlarms.map((alarm, index) => (
-              <SwipeDeleteRow
+              <View
                 key={alarm.id}
-                onDelete={() => removeAlarm(alarm.id)}
+                style={[styles.alarmRow, index > 0 && styles.alarmRowBorder]}
               >
-                <View
-                  style={[
-                    styles.alarmRow,
-                    index > 0 && styles.alarmRowBorder,
-                  ]}
-                >
+                <View style={styles.alarmTop}>
                   <Pressable
                     style={styles.alarmMain}
                     onPress={() =>
@@ -154,7 +139,7 @@ export function HomeScreen({ navigation }: Props) {
                       })
                     }
                   >
-                    <Text
+                    <Text maxFontSizeMultiplier={1.2}
                       style={[
                         styles.alarmTime,
                         !alarm.enabled && styles.alarmDim,
@@ -162,7 +147,7 @@ export function HomeScreen({ navigation }: Props) {
                     >
                       {formatAlarmTime(alarm)}
                     </Text>
-                    <Text
+                    <Text maxFontSizeMultiplier={1.2}
                       style={[
                         styles.alarmDays,
                         !alarm.enabled && styles.alarmDim,
@@ -170,6 +155,11 @@ export function HomeScreen({ navigation }: Props) {
                     >
                       {formatAlarmDays(alarm.days)}
                     </Text>
+                    {!alarm.audioUri ? (
+                      <Text maxFontSizeMultiplier={1.5} style={styles.alarmPreparing}>
+                        Preparing your voice…
+                      </Text>
+                    ) : null}
                   </Pressable>
                   <Switch
                     value={alarm.enabled}
@@ -177,11 +167,11 @@ export function HomeScreen({ navigation }: Props) {
                     trackColor={{ false: colors.border, true: colors.text }}
                   />
                 </View>
-              </SwipeDeleteRow>
+              </View>
             ))
           ) : (
             <View style={styles.alarmRow}>
-              <Text style={styles.emptyAlarms}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.emptyAlarms}>
                 No wake set yet. Add an alarm so Future You can call you in the
                 morning.
               </Text>
@@ -193,31 +183,7 @@ export function HomeScreen({ navigation }: Props) {
               color={accents.coral}
               onPress={() => navigation.navigate('CreateAlarm')}
             />
-            {listedAlarms[0]?.audioUri ? (
-              <TextArrowButton
-                label="test in 10s"
-                color={accents.lime}
-                onPress={() => {
-                  const uri = listedAlarms.find((a) => a.audioUri)?.audioUri;
-                  if (!uri) return;
-                  setTimeout(() => {
-                    void playAlarmAudio(uri);
-                  }, 10_000);
-                }}
-              />
-            ) : null}
           </View>
-          {shareLine ? (
-            <View style={styles.shareRow}>
-              <TextArrowButton
-                label="share morning line"
-                color={accents.gold}
-                onPress={() => {
-                  void Share.share({ message: shareLine });
-                }}
-              />
-            </View>
-          ) : null}
         </View>
       </ScrollView>
 
@@ -235,6 +201,9 @@ export function HomeScreen({ navigation }: Props) {
           })
         }
       />
+      <NotificationPermissionNudge placement="bottom" />
+      {/* AlarmKit deny nudge only on Home — not on Create Alarm. */}
+      <AlarmPermissionNudge placement="bottom" />
     </SafeAreaView>
   );
 }
@@ -264,15 +233,9 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 20,
     ...noFakeBold,
     ...headingClipFix,
-  },
-  streak: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 15,
-    color: colors.textMuted,
-    marginBottom: 12,
   },
   pausedGlobal: {
     fontFamily: fonts.body,
@@ -281,16 +244,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 20,
   },
-  shareRow: {
-    marginTop: 12,
-    alignItems: 'flex-start',
-  },
   feeling: {
     fontFamily: fonts.headingRegular,
     fontSize: 24,
     lineHeight: 30,
     color: colors.text,
-    marginTop: 16,
+    marginTop: 4,
     marginBottom: 6,
     ...noFakeBold,
     ...headingClipFix,
@@ -337,6 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     padding: 18,
     marginBottom: 20,
+    overflow: 'hidden',
   },
   pausedBanner: {
     fontFamily: fonts.body,
@@ -353,19 +313,30 @@ const styles = StyleSheet.create({
   },
   alarmRow: {
     paddingVertical: 8,
+  },
+  alarmMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  /** Time + on/off on one horizontal line. */
+  alarmTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-  },
-  alarmMain: {
-    flex: 1,
+    minHeight: 56,
   },
   alarmRowBorder: {
     borderTopWidth: 1,
     borderTopColor: colors.text,
     marginTop: 4,
     paddingTop: 12,
+  },
+  alarmPreparing: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 4,
   },
   alarmActions: {
     flexDirection: 'row',
@@ -377,10 +348,12 @@ const styles = StyleSheet.create({
   alarmTime: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 52,
+    lineHeight: 56,
     color: colors.text,
     fontVariant: ['tabular-nums'],
+    flexShrink: 0,
     ...noFakeBold,
+    ...headingClipFix,
   },
   alarmDays: {
     fontFamily: fonts.headingRegular,

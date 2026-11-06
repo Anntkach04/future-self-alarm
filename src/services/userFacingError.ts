@@ -29,6 +29,9 @@ export function userFacingError(
   if (/No subscription package|RevenueCat/i.test(text)) {
     return 'Subscription is not ready yet. Try Restore, or try again later.';
   }
+  if (/Account not found|Session expired|Sign in again/i.test(text)) {
+    return 'Session reset after a server hiccup. Tap save again.';
+  }
 
   // Keep short; strip HTML / huge dumps.
   const clean = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();

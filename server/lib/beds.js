@@ -5,17 +5,15 @@ const BEDS_DIR = path.join(__dirname, '..', 'assets', 'beds');
 
 const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg)$/i;
 
-/** Five under-voice beds — mp3 or m4a in assets/beds. */
+/**
+ * Under-voice beds — modern soft calm only.
+ * No bali / yoga / spa-gong direction.
+ */
 const BEDS = [
-  { id: 'bali-morning', file: 'bali-morning.m4a', label: 'Bali morning' },
-  { id: 'yoga-air', file: 'yoga-air.m4a', label: 'Yoga air' },
-  { id: 'soft-massage', file: 'soft-massage.m4a', label: 'Soft massage' },
-  { id: 'light-water', file: 'light-water.m4a', label: 'Light water' },
-  { id: 'warm-earth', file: 'warm-earth.m4a', label: 'Warm earth' },
+  { id: 'soft-calm', file: 'soft-calm.m4a', label: 'Soft calm' },
 ];
 
 function bedCandidates(bed) {
-  const base = path.join(BEDS_DIR, bed.id);
   const named = path.join(BEDS_DIR, bed.file);
   const out = [named];
   if (!fs.existsSync(BEDS_DIR)) return out;
@@ -49,29 +47,23 @@ function resolveBed(bedId) {
   return file ? { ...wanted, path: file, file: path.basename(file) } : null;
 }
 
-function pickBedId(answers = {}) {
-  const blob = [
-    answers.voiceStyle,
-    ...(Array.isArray(answers.morningFeelings) ? answers.morningFeelings : []),
-    ...(Array.isArray(answers.hardMornings) ? answers.hardMornings : []),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  if (/whisper|soft|unhurried|gentle|tender|massage/.test(blob)) {
-    return 'soft-massage';
-  }
-  if (/bright|happy|energy|smiling|light &/.test(blob)) {
-    return 'bali-morning';
-  }
-  if (/calm|wise|yoga|ground/.test(blob)) return 'yoga-air';
-  if (/strong|focus|earth|body/.test(blob)) return 'warm-earth';
-  return 'light-water';
+function pickBedId() {
+  return 'soft-calm';
 }
 
 function findBedFile(bedId) {
-  const bed = resolveBed(bedId);
+  // Legacy spa/bali ids → soft calm. Empty → soft calm (product default).
+  const legacy =
+    !bedId ||
+    bedId === 'bali-morning' ||
+    bedId === 'bali' ||
+    bedId === 'yoga-air' ||
+    bedId === 'soft-massage' ||
+    bedId === 'light-water' ||
+    bedId === 'warm-earth' ||
+    bedId === 'none';
+  const id = legacy ? 'soft-calm' : bedId;
+  const bed = resolveBed(id);
   return bed ? bed.path : null;
 }
 

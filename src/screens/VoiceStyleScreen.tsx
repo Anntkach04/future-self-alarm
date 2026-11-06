@@ -16,7 +16,7 @@ export function VoiceStyleScreen({ navigation }: Props) {
       selected={answers.voiceStyle ? [answers.voiceStyle] : []}
       onToggle={setVoiceStyle}
       allowAdd={false}
-      onSubmit={() => navigation.navigate('WakeUpTime')}
+      onSubmit={() => navigation.navigate('VoiceRecord')}
     />
   );
 }

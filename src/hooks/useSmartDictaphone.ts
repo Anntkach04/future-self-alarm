@@ -12,12 +12,19 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import {
+  isLineFullyLit,
   isLineHeardEnough,
   lineWordCount,
   matchedPrefixCount,
 } from '../services/speechMatch';
+import type { RecordingQualityStats } from '../services/recordingQuality';
 
 export type DictaphoneStatus = 'idle' | 'recording' | 'stopped';
+
+export type SmartDictaphoneOptions = {
+  /** Fired the moment STT has heard enough of the current line — primary auto-advance path. */
+  onLineComplete?: () => void;
+};
 
 function formatMs(ms: number) {
   const total = Math.floor(ms / 1000);
@@ -52,7 +59,10 @@ function contextualHints(line: string) {
   return [...words, ...numberBias].slice(0, 20);
 }
 
-export function useSmartDictaphone(currentLine: string) {
+export function useSmartDictaphone(
+  currentLine: string,
+  options?: SmartDictaphoneOptions
+) {
   const [status, setStatus] = useState<DictaphoneStatus>('idle');
   const [uri, setUri] = useState<string | null>(null);
   const [durationMs, setDurationMs] = useState(0);
@@ -75,6 +85,12 @@ export function useSmartDictaphone(currentLine: string) {
   const acceptAfterRef = useRef(0);
   const lastMeterAtRef = useRef(0);
   const lastSpeechAtRef = useRef(0);
+  const onLineCompleteRef = useRef(options?.onLineComplete);
+  onLineCompleteRef.current = options?.onLineComplete;
+  const lineCompleteFiredRef = useRef(false);
+  const peakVolumeRef = useRef(-2);
+  const speechMsRef = useRef(0);
+  const speechTickAtRef = useRef(0);
   const [quiet, setQuiet] = useState(true);
 
   lineRef.current = currentLine;
@@ -86,9 +102,10 @@ export function useSmartDictaphone(currentLine: string) {
     setHearing(false);
     setQuiet(true);
     lineGenRef.current += 1;
+    lineCompleteFiredRef.current = false;
     // Brief ignore of leftover STT from the previous line.
     // Do NOT stop/restart recognition here — that froze karaoke advance on device.
-    acceptAfterRef.current = Date.now() + 280;
+    acceptAfterRef.current = Date.now() + 90;
     lastSpeechAtRef.current = 0;
   }, [currentLine]);
 
@@ -100,25 +117,44 @@ export function useSmartDictaphone(currentLine: string) {
     }
   }, []);
 
-  const applyTranscript = useCallback((heard: string, gen: number) => {
-    if (gen !== lineGenRef.current) return;
-    if (Date.now() < acceptAfterRef.current) return;
-    const trimmed = heard.trim();
-    if (!trimmed) return;
-    const next = matchedPrefixCount(lineRef.current, trimmed);
-    if (next > spokenRef.current) {
-      spokenRef.current = next;
-      setSpokenCount(next);
-      lastSpeechAtRef.current = Date.now();
-      setHearing(true);
-      setQuiet(false);
-    } else if (next > 0) {
-      // Matched something earlier — still "in" the line, but don't treat noise as speech.
-      lastSpeechAtRef.current = Date.now();
-      setHearing(true);
-      setQuiet(false);
+  const maybeFireLineComplete = useCallback((spoken: number, line: string) => {
+    if (lineCompleteFiredRef.current) return;
+    const words = lineWordCount(line);
+    // Only when the line is essentially done — never on the first word(s).
+    if (
+      (words > 0 && spoken >= words) ||
+      isLineFullyLit(line, spoken) ||
+      isLineHeardEnough(spoken, words)
+    ) {
+      lineCompleteFiredRef.current = true;
+      onLineCompleteRef.current?.();
     }
   }, []);
+
+  const applyTranscript = useCallback(
+    (heard: string, gen: number) => {
+      if (gen !== lineGenRef.current) return;
+      if (Date.now() < acceptAfterRef.current) return;
+      const trimmed = heard.trim();
+      if (!trimmed) return;
+      const line = lineRef.current;
+      const next = matchedPrefixCount(line, trimmed);
+      if (next > spokenRef.current) {
+        spokenRef.current = next;
+        setSpokenCount(next);
+        lastSpeechAtRef.current = Date.now();
+        setHearing(true);
+        setQuiet(false);
+        maybeFireLineComplete(next, line);
+      } else if (next > 0) {
+        lastSpeechAtRef.current = Date.now();
+        setHearing(true);
+        setQuiet(false);
+        maybeFireLineComplete(next, line);
+      }
+    },
+    [maybeFireLineComplete]
+  );
 
   const beginRecognition = useCallback(() => {
     ExpoSpeechRecognitionModule.start({
@@ -162,18 +198,29 @@ export function useSmartDictaphone(currentLine: string) {
     // Throttle — unthrottled setState froze the waveform + UI on device.
     const now = Date.now();
     if (now - lastMeterAtRef.current < 120) return;
+    const dt = lastMeterAtRef.current
+      ? Math.min(now - lastMeterAtRef.current, 250)
+      : 0;
     lastMeterAtRef.current = now;
     setMetering(event.value);
-    // Apple volume is roughly -2…2; require a real beat before "hearing".
+    if (event.value > peakVolumeRef.current) {
+      peakVolumeRef.current = event.value;
+    }
+    // Apple volume is roughly -2…2. Higher speech floor → quiet sooner → auto-advance.
     if (event.value > 0.35) {
       lastSpeechAtRef.current = now;
       setQuiet(false);
+      if (speechTickAtRef.current > 0) {
+        speechMsRef.current += dt;
+      }
+      speechTickAtRef.current = now;
     } else if (
       lastSpeechAtRef.current > 0 &&
-      now - lastSpeechAtRef.current > 700
+      now - lastSpeechAtRef.current > 320
     ) {
       setQuiet(true);
       setHearing(false);
+      speechTickAtRef.current = 0;
     }
   });
 
@@ -256,7 +303,9 @@ export function useSmartDictaphone(currentLine: string) {
     // recording if the user denies Speech Recognition.
     const mic = await requestRecordingPermissionsAsync();
     if (!mic.granted) {
-      setError('Microphone permission is required to clone your voice.');
+      setError(
+        'Microphone access is off. Turn it on in Settings → Future Self to record your voice.'
+      );
       return { mic: false, speech: false };
     }
 
@@ -347,6 +396,10 @@ export function useSmartDictaphone(currentLine: string) {
 
       durationStartedAtRef.current = Date.now();
       acceptAfterRef.current = Date.now() + 200;
+      peakVolumeRef.current = -2;
+      speechMsRef.current = 0;
+      speechTickAtRef.current = 0;
+      lineCompleteFiredRef.current = false;
       setStatus('recording');
     } catch (e) {
       keepListeningRef.current = false;
@@ -354,6 +407,20 @@ export function useSmartDictaphone(currentLine: string) {
       setStatus('idle');
     }
   }, [beginRecognition, requestPermission, startAvRecording]);
+
+  const getQualityStats = useCallback((): RecordingQualityStats => {
+    const durationSec = durationStartedAtRef.current
+      ? Math.max(
+          0,
+          Math.floor((Date.now() - durationStartedAtRef.current) / 1000)
+        )
+      : Math.floor(durationMs / 1000);
+    return {
+      durationSec,
+      peakVolume: peakVolumeRef.current,
+      speechMs: speechMsRef.current,
+    };
+  }, [durationMs]);
 
   const stop = useCallback(async () => {
     keepListeningRef.current = false;
@@ -449,5 +516,6 @@ export function useSmartDictaphone(currentLine: string) {
     requestPermission,
     start,
     stop,
+    getQualityStats,
   };
 }

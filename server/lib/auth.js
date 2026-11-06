@@ -7,12 +7,16 @@ const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
 const APPLE_CLIENT_ID = (
   process.env.APPLE_CLIENT_ID ||
   process.env.APPLE_BUNDLE_ID ||
-  'com.anonymous.future-self-alarm'
+  'com.futureself.alarm'
 ).trim();
 const IS_PROD = process.env.NODE_ENV === 'production';
 const TOKEN_TTL = process.env.APP_JWT_TTL || '90d';
 
-/** Auth required when JWT_SECRET is set (recommended in production). */
+if (IS_PROD && !JWT_SECRET) {
+  throw new Error('JWT_SECRET must be configured in production');
+}
+
+/** Local development may run without auth; production must have a signing key. */
 function authEnforced() {
   return Boolean(JWT_SECRET);
 }
@@ -34,6 +38,7 @@ function verifyAppToken(token) {
   try {
     const payload = jwt.verify(token, JWT_SECRET, {
       issuer: 'future-self-alarm',
+      algorithms: ['HS256'],
     });
     const sub = typeof payload?.sub === 'string' ? payload.sub : '';
     return sub || null;
@@ -116,13 +121,22 @@ async function loginWithApple(input) {
   };
 }
 
+// Only app-owned profile fields may cross the API boundary in either direction.
+function publicProfile(profile) {
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return {};
+  const fields = ['version', 'answers', 'onboardingComplete', 'voiceId', 'isDemoVoice', 'mood', 'mix'];
+  return Object.fromEntries(fields
+    .filter((key) => Object.prototype.hasOwnProperty.call(profile, key))
+    .map((key) => [key, profile[key]]));
+}
+
 function publicUser(user) {
   if (!user) return null;
   return {
     id: user.id,
     email: user.email,
     voiceId: user.voiceId,
-    profile: user.profile || {},
+    profile: publicProfile(user.profile),
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -160,8 +174,14 @@ async function requireAuth(req, res, next) {
   if (!sub) {
     return res.status(401).json({ error: 'Session expired. Sign in again.' });
   }
-  const user = await getUser(sub);
+  let user;
+  try {
+    user = await getUser(sub);
+  } catch {
+    return res.status(503).json({ error: 'Account service unavailable. Try again.' });
+  }
   if (!user) {
+    // A stale token must never recreate an account that was deleted.
     return res.status(401).json({ error: 'Account not found. Sign in again.' });
   }
   req.userId = sub;
@@ -175,5 +195,7 @@ module.exports = {
   loginAsGuest,
   requireAuth,
   publicUser,
+  publicProfile,
+  verifyAppToken,
   APPLE_CLIENT_ID,
 };

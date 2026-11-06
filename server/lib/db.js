@@ -66,6 +66,14 @@ async function initDb() {
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        CREATE TABLE IF NOT EXISTS contact_messages (
+          id TEXT PRIMARY KEY,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          name TEXT NOT NULL,
+          email TEXT NOT NULL,
+          topic TEXT,
+          message TEXT NOT NULL
+        );
       `);
       ready = true;
       console.log('DB: Postgres ready');
@@ -239,6 +247,56 @@ async function deleteUser(id) {
   return mapPg(result.rows[0]);
 }
 
+/**
+ * Contact form rows. Postgres when available (Railway disk is wiped on every
+ * deploy); file store only for local dev.
+ * @param {{ id: string, createdAt: string, name: string, email: string, topic: string, message: string }} row
+ */
+async function insertContactMessage(row) {
+  await initDb();
+  if (!pool) {
+    const dir = path.dirname(FILE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, 'contact-messages.jsonl'),
+      `${JSON.stringify(row)}\n`,
+      'utf8'
+    );
+    return row;
+  }
+  await pool.query(
+    `INSERT INTO contact_messages (id, created_at, name, email, topic, message)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [row.id, row.createdAt, row.name, row.email, row.topic, row.message]
+  );
+  return row;
+}
+
+/**
+ * Guest sessions older than `olderThanMs` (onboarding abandoned or replaced by
+ * Sign in with Apple before voice adoption existed).
+ * @returns {Promise<UserRow[]>}
+ */
+async function listStaleGuests(olderThanMs, limit = 200) {
+  await initDb();
+  const cutoff = new Date(Date.now() - olderThanMs);
+  if (!pool) {
+    return Object.values(readFileStore().users)
+      .filter(
+        (u) =>
+          String(u.id).startsWith('guest_') &&
+          new Date(u.updatedAt || u.createdAt) < cutoff
+      )
+      .slice(0, limit);
+  }
+  const result = await pool.query(
+    `SELECT * FROM users WHERE id LIKE 'guest\\_%' AND updated_at < $1
+     ORDER BY updated_at ASC LIMIT $2`,
+    [cutoff.toISOString(), limit]
+  );
+  return result.rows.map(mapPg);
+}
+
 function dbMode() {
   return DATABASE_URL ? 'postgres' : 'file';
 }
@@ -249,5 +307,7 @@ module.exports = {
   getUser,
   updateUser,
   deleteUser,
+  insertContactMessage,
+  listStaleGuests,
   dbMode,
 };
