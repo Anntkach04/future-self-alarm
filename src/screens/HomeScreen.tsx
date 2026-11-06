@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     ...headingClipFix,
   },
   moodHint: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   emptyAlarms: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
     color: colors.textMuted,
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   alarmPreparing: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
     marginTop: 4,
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   alarmTime: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 56,
+    lineHeight: 52,
     color: colors.text,
     fontVariant: ['tabular-nums'],
     flexShrink: 0,

@@ -16,7 +16,7 @@ export function HardMorningsScreen({ navigation }: Props) {
       selected={answers.hardMornings}
       onToggle={toggleHardMorning}
       onAddCustom={addHardMorning}
-      addPlaceholder="Write your personal morning mantra..."
+      addPlaceholder="Write your personal morning mantra…"
       onSubmit={() => navigation.navigate('VoiceStyle')}
     />
   );

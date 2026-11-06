@@ -97,7 +97,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 36,
     lineHeight: 44,
-    letterSpacing: 0.2,
     marginBottom: 12,
     alignSelf: 'stretch',
     ...noFakeBold,
@@ -105,14 +104,10 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     textAlign: 'left',
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     color: colors.text,
     fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: 0.37,
+    lineHeight: 24,
     alignSelf: 'stretch',
-    ...(Platform.OS === 'web'
-      ? ({ fontWeight: '300', fontSynthesis: 'none' } as object)
-      : { fontWeight: '300' as const }),
   },
 });

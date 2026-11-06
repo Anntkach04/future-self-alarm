@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { mutedColorForLabel } from '../theme';
-import { fonts, noFakeLight } from '../theme';
+import { fonts } from '../theme';
 import { colors } from '../theme';
 import { uiLabel } from '../utils/labels';
 
@@ -58,16 +58,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   pillText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    ...noFakeLight,
   },
   empty: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textMuted,
     marginBottom: 8,
-    ...noFakeLight,
   },
 });

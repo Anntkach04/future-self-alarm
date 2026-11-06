@@ -87,7 +87,7 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
         ]}
       >
         <View style={styles.copy}>
-          <Text maxFontSizeMultiplier={1.2} style={styles.title}>{"you're in"}</Text>
+          <Text maxFontSizeMultiplier={1.2} style={styles.title}>{"you’re in"}</Text>
           <Text maxFontSizeMultiplier={1.5} style={styles.sub}>
             Tomorrow starts with your own voice. Nice work.
           </Text>
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 54,
+    lineHeight: 52,
     color: colors.text,
     textAlign: 'center',
     ...noFakeBold,

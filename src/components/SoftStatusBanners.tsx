@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderColor: '#8FBDB7',
   },
   text: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.text,

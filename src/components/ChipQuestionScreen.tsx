@@ -20,7 +20,6 @@ import {
   headingClipFix,
   mutedColorForLabel,
   noFakeBold,
-  noFakeLight,
   spacing,
 } from '../theme';
 const ROW_GAP = 2;
@@ -236,8 +235,8 @@ const styles = StyleSheet.create({
   question: {
     fontFamily: fonts.headingRegular,
     color: colors.text,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     textAlign: 'left',
     marginBottom: 12,
     alignSelf: 'stretch',
@@ -245,16 +244,12 @@ const styles = StyleSheet.create({
     ...headingClipFix,
   },
   subtitle: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     color: colors.text,
     fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: 0.2,
+    lineHeight: 24,
     alignSelf: 'stretch',
     textAlign: 'left',
-    ...(Platform.OS === 'web'
-      ? ({ fontWeight: '300', fontSynthesis: 'none' } as object)
-      : { fontWeight: '300' as const }),
   },
   addTop: {
     alignItems: 'flex-start',
@@ -280,13 +275,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addInput: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     color: colors.text,
     width: '100%',
     padding: 0,
     borderWidth: 0,
-    ...noFakeLight,
     ...(Platform.OS === 'web'
       ? ({
           outlineStyle: 'none',
@@ -298,7 +292,7 @@ const styles = StyleSheet.create({
   helper: {
     marginTop: 12,
     paddingHorizontal: 0,
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,

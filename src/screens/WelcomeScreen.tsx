@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   buildMark: {
     marginTop: 4,
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 11,
     color: '#1A1A1A66',
     textAlign: 'center',

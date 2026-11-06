@@ -10,7 +10,7 @@ import { RootStackParamList } from '../navigation/types';
 import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
 import { LoadingLabel } from '../components/LoadingLabel';
 import { cloneOnboardingVoice } from '../services/cloneOnboardingVoice';
-import { colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
+import { colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceCloning'>;
 
@@ -101,21 +101,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quiet: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     color: colors.textMuted,
     textAlign: 'center',
-    ...noFakeLight,
   },
   eta: {
     marginTop: 10,
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
     textAlign: 'center',
     opacity: 0.85,
-    ...noFakeLight,
   },
   content: {
     flex: 1,
@@ -125,6 +123,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     textAlign: 'center',
     ...noFakeBold,
@@ -153,10 +152,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   linkText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.textMuted,
     textDecorationLine: 'underline',
-    ...noFakeLight,
   },
 });

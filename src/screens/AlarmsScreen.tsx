@@ -94,6 +94,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingRegular,
     fontWeight: '400',
     fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
   },
   list: {
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingRegular,
     fontWeight: '400',
     fontSize: 40,
+    lineHeight: 44,
     color: colors.text,
     fontVariant: ['tabular-nums'],
   },

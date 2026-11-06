@@ -8,7 +8,7 @@ import { BubbleEnter } from '../components/BubbleEnter';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, noFakeBold, noFakeLight, radii, spacing } from '../theme';
+import { colors, fonts, noFakeBold, radii, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceReview'>;
 
@@ -85,25 +85,23 @@ const styles = StyleSheet.create({
     paddingTop: 72,
   },
   kicker: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
     opacity: 0.6,
-    ...noFakeLight,
   },
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 36,
-    lineHeight: 42,
+    lineHeight: 44,
     color: colors.text,
     ...noFakeBold,
   },
   body: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,
-    ...noFakeLight,
   },
   playBtn: {
     alignSelf: 'flex-start',
@@ -127,10 +125,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   linkText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     color: colors.text,
     opacity: 0.7,
-    ...noFakeLight,
   },
 });

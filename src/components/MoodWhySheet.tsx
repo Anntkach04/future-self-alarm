@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
   },
   moodName: {
     fontFamily: fonts.headingRegular,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 8,
     ...noFakeBold,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   moodPurpose: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   offline: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,

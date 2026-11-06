@@ -208,6 +208,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 24,
     ...noFakeBold,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   voiceHint: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   dangerBody: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,

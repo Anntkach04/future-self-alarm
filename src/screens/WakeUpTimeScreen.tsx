@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     ...headingClipFix,
   },
   subtitle: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 22,
     color: colors.text,
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   helper: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,

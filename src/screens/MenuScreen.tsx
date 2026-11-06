@@ -118,7 +118,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 44,
+    fontSize: 40,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 32,
     ...noFakeBold,
@@ -133,7 +134,8 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontFamily: fonts.headingRegular,
-    fontSize: 26,
+    fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     ...noFakeBold,
   },
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   resetText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textMuted,
     textDecorationLine: 'underline',
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   supportText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.textMuted,
     textDecorationLine: 'underline',
@@ -167,7 +169,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   thanksKicker: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
     marginBottom: 6,

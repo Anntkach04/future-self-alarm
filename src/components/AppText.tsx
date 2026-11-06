@@ -11,8 +11,8 @@ const variantStyle = StyleSheet.create({
   hero: {
     fontFamily: fonts.headingRegular,
     fontWeight: '400',
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
   },
   title: {
@@ -29,11 +29,10 @@ const variantStyle = StyleSheet.create({
     color: colors.text,
   },
   bodyStrong: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,
-    fontWeight: '300',
   },
   muted: {
     fontFamily: fonts.body,
@@ -42,11 +41,10 @@ const variantStyle = StyleSheet.create({
     color: colors.textMuted,
   },
   label: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
-    fontWeight: '300',
   },
 });
 

@@ -42,13 +42,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   link: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
     textDecorationLine: 'underline',
   },
   dot: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
   },

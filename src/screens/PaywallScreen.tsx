@@ -23,7 +23,7 @@ import {
   type MonthlyPlanDetails,
 } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   body: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,
@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
   planName: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     ...noFakeBold,
   },
@@ -287,18 +288,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   benefit: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
     color: colors.text,
   },
   disclosure: {
     marginTop: 8,
-    fontFamily: fonts.bodyLight,
-    fontSize: 12,
+    fontFamily: fonts.body,
+    fontSize: 13,
     lineHeight: 18,
     color: colors.text,
-    opacity: 0.7,
+    opacity: 0.8,
   },
   legal: {
     marginTop: 16,
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
   },
   note: {
     marginTop: 12,
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textMuted,
@@ -327,11 +328,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   restoreText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
     opacity: 0.55,
     textDecorationLine: 'underline',
-    ...noFakeLight,
   },
 });

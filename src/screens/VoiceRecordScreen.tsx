@@ -33,12 +33,12 @@ import {
 import { playAllSetSound } from '../services/uiSounds';
 import { ensureAiConsent } from '../services/aiConsent';
 import * as Haptics from 'expo-haptics';
-import { accents, colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
 const COMPLETE_COLOR = accents.gold;
-/** Brief hold on "You're all set", then leave. Animation is cosmetic only. */
+/** Brief hold on "You’re all set", then leave. Animation is cosmetic only. */
 const SUCCESS_HOLD_MS = 2800;
 
 export function VoiceRecordScreen({ navigation }: Props) {
@@ -227,7 +227,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
       setVoiceSample(result.uri, result.durationSec);
       setComplete(true);
       playCompleteEnter();
-      // Sound plays later — only when clone finishes → "you're all set".
+      // Sound plays later — only when clone finishes → "you’re all set".
       void startClone(result.uri);
       return;
     }
@@ -415,7 +415,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
   leaveToVoicePreviewRef.current = leaveToVoicePreview;
 
   /**
-   * "You're all set" → leave after a short hold.
+   * "You’re all set" → leave after a short hold.
    * CRITICAL: deps are ONLY complete/cloneReady/cloneError. Putting
    * `navigation` (or leave callbacks) here cleared the timers every
    * re-render and left people stuck on gold forever.
@@ -695,7 +695,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 {cloneError
                   ? 'Almost'
                   : cloneReady
-                    ? "You're all set"
+                    ? "You’re all set"
                     : 'Cloning your voice'}
               </Text>
               {cloneError ? (
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   skipText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
     textDecorationLine: 'underline',
@@ -776,17 +776,15 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 50,
-    letterSpacing: 0.37,
+    lineHeight: 52,
     color: colors.text,
     marginBottom: 12,
     ...noFakeBold,
   },
   subtitle: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: 0.2,
+    lineHeight: 24,
     color: colors.textMuted,
     marginBottom: 12,
     alignSelf: 'stretch',
@@ -806,7 +804,7 @@ const styles = StyleSheet.create({
     backgroundColor: accents.coral,
   },
   progressLabel: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
     marginBottom: 12,
@@ -844,7 +842,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   coach: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     textAlign: 'center',
     fontSize: 14,
     lineHeight: 20,
@@ -883,7 +881,7 @@ const styles = StyleSheet.create({
   },
   cloneEta: {
     marginTop: 8,
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
@@ -904,14 +902,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   goldLinkText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.text,
     textDecorationLine: 'underline',
-    ...noFakeLight,
   },
   completeError: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',

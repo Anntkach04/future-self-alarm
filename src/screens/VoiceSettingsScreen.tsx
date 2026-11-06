@@ -93,12 +93,13 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: spacing.sm,
     ...noFakeBold,
   },
   body: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
     color: colors.textMuted,

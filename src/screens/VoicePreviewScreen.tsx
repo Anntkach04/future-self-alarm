@@ -19,7 +19,7 @@ import { ensureGuestSession } from '../services/apiAuth';
 import { savePreviewAudio } from '../services/audioPreview';
 import { synthesizeSpeech } from '../services/elevenlabs';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold, noFakeLight, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoicePreview'>;
 
@@ -279,8 +279,8 @@ const styles = StyleSheet.create({
   },
   subheading: {
     fontFamily: fonts.headingRegular,
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
     textAlign: 'center',
     ...noFakeBold,
@@ -316,10 +316,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   linkText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     color: colors.text,
     opacity: 0.7,
-    ...noFakeLight,
   },
 });

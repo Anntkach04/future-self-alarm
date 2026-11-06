@@ -90,7 +90,7 @@ export function AlarmWakeBanner() {
           future you{'\n'}is here
         </Text>
         <Text style={styles.body} maxFontSizeMultiplier={1.4}>
-          Your voice is playing. Tap I&apos;m up when you&apos;re awake, or
+          Your voice is playing. Tap I’m up when you’re awake, or
           snooze for 10 minutes — your regular schedule stays on.
         </Text>
 
@@ -112,7 +112,7 @@ export function AlarmWakeBanner() {
             style={styles.primary}
           >
             <Text style={styles.primaryText} maxFontSizeMultiplier={1.3}>
-              i&apos;m up
+              i’m up
             </Text>
           </Pressable>
         </View>
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.inset,
   },
   kicker: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     color: NIGHT.muted,
     marginBottom: 12,

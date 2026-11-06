@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   body: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,

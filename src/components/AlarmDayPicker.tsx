@@ -5,7 +5,7 @@ import {
   WEEKDAYS,
   WEEKENDS,
 } from '../context/AlarmsContext';
-import { colors, fonts, noFakeBold, noFakeLight, radii } from '../theme';
+import { colors, fonts, noFakeBold, radii } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
@@ -102,10 +102,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   presetText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.text,
-    ...noFakeLight,
   },
   presetTextOn: {
     color: colors.bg,
@@ -130,10 +129,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   dayText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    ...noFakeLight,
   },
   dayTextOn: {
     color: colors.bg,

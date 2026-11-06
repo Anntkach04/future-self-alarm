@@ -184,14 +184,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 16,
     lineHeight: 20,
     flexShrink: 0,
     ...(Platform.OS === 'web'
       ? ({ whiteSpace: 'nowrap' } as object)
       : null),
-    ...noFakeLight,
   },
   plus: {
     fontFamily: fonts.bodyLight,
@@ -200,10 +199,9 @@ const styles = StyleSheet.create({
     ...noFakeLight,
   },
   caption: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     opacity: 0.7,
     marginTop: 2,
-    ...noFakeLight,
   },
 });

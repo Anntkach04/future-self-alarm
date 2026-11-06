@@ -305,7 +305,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingRegular,
     fontSize: 36,
     lineHeight: 44,
-    letterSpacing: 0.374,
     color: '#1A1A1A',
     textAlign: 'left',
     ...noFakeBold,
@@ -356,7 +355,7 @@ const styles = StyleSheet.create({
   },
   buildMark: {
     marginTop: 10,
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 11,
     color: '#1A1A1A66',
     textAlign: 'center',
