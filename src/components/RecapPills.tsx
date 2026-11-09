@@ -6,6 +6,8 @@ import { uiLabel } from '../utils/labels';
 
 type Props = {
   items: string[];
+  /** Keep original casing (names). Habit/goal chips stay lowercase. */
+  keepCase?: boolean;
   /** Optional fixed colors per item (from onboarding options). */
   colors?: string[];
   onPress?: () => void;
@@ -13,7 +15,7 @@ type Props = {
   emptyLabel?: string;
 };
 
-export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-' }: Props) {
+export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-', keepCase = false }: Props) {
   if (!items.length) {
     return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>{emptyLabel}</Text>;
   }
@@ -31,7 +33,7 @@ export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-
             },
           ]}
         >
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pillText}>{uiLabel(item)}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pillText}>{keepCase ? item.trim() : uiLabel(item)}</Text>
         </View>
       ))}
     </View>

@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderWidth: 2,
     borderColor: colors.stroke,
-    borderRadius: 36,
+    borderRadius: 999,
     backgroundColor: colors.inputBg,
     overflow: 'hidden',
   },

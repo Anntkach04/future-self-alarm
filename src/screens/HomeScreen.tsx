@@ -121,7 +121,7 @@ export function HomeScreen({ navigation }: Props) {
           />
         </View>
 
-        <View style={styles.block}>
+        <View style={[styles.block, !hasAlarms && styles.blockEmpty]}>
           {allPaused ? (
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedBanner}>
               All alarms are off. Turn one on if you want Future You to wake
@@ -178,16 +178,20 @@ export function HomeScreen({ navigation }: Props) {
             ))
           ) : (
             <View style={styles.alarmRow}>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.emptyTitle}>
+                Set your first wake
+              </Text>
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.emptyAlarms}>
-                No wake set yet. Add an alarm so Future You can call you in the
-                morning.
+                Future You will call you by name tomorrow morning.
               </Text>
             </View>
           )}
           <View style={styles.alarmActions}>
             <TextArrowButton
               label={hasAlarms ? 'add alarm' : 'set wake time'}
-              color={accents.coral}
+              color={hasAlarms ? accents.coral : colors.text}
+              textColor={hasAlarms ? undefined : colors.bg}
+              style={hasAlarms ? undefined : styles.emptyCta}
               onPress={() => navigation.navigate('CreateAlarm')}
             />
           </View>
@@ -282,7 +286,7 @@ const styles = StyleSheet.create({
   mood: {
     flex: 1,
     aspectRatio: 1,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 8,
     justifyContent: 'flex-end',
     overflow: 'visible',
@@ -319,11 +323,30 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 14,
   },
+  /** No alarm yet: the block becomes the screen's hero. */
+  blockEmpty: {
+    borderWidth: 0,
+    backgroundColor: accents.gold,
+    padding: 22,
+  },
+  emptyTitle: {
+    fontFamily: fonts.headingRegular,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.text,
+    marginBottom: 6,
+    ...noFakeBold,
+  },
   emptyAlarms: {
     fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
-    color: colors.textMuted,
+    color: colors.text,
+  },
+  emptyCta: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 52,
   },
   alarmRow: {
     paddingVertical: 8,

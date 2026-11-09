@@ -39,9 +39,10 @@ type SectionProps = {
   items: string[];
   itemColors?: string[];
   onPress: () => void;
+  keepCase?: boolean;
 };
 
-function Section({ title, items, itemColors, onPress }: SectionProps) {
+function Section({ title, items, itemColors, onPress, keepCase }: SectionProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -52,6 +53,7 @@ function Section({ title, items, itemColors, onPress }: SectionProps) {
       <RecapPills
         items={items}
         colors={itemColors}
+        keepCase={keepCase}
         emptyLabel="Tap to add. It makes your morning message more personal."
       />
     </Pressable>
@@ -147,6 +149,7 @@ export function EditProfileScreen({ navigation }: Props) {
         <View style={styles.block}>
           <Section
             title="name"
+            keepCase
             items={answers.name ? [answers.name] : []}
             onPress={() => navigation.navigate('EditProfileName')}
           />
