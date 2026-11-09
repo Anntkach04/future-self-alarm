@@ -54,7 +54,11 @@ const FALLBACK_ALIGN: Array<CloudChip['align']> = [
   'flex-end',
 ];
 
-const FALLBACK_NUDGE = [0, -6, 32, -18, 12, 4];
+/**
+ * One rhythm for every chip screen (matches the voice-tone layout):
+ * left/right alternate, the same small inward nudges, the same row gap.
+ */
+const FALLBACK_NUDGE = [0, 0, 24, -12, 8, 0];
 
 function toAlign(
   value: BubbleOption['align'] | undefined,
@@ -97,8 +101,9 @@ export function ChipQuestionScreen({
   const cloudChips = useMemo(() => {
     const items: CloudChip[] = options.map((item, index) => ({
       key: item.label,
-      align: toAlign(item.align, index),
-      nudge: item.nudge ?? FALLBACK_NUDGE[index % FALLBACK_NUDGE.length]!,
+      // Per-option align/nudge ignored on purpose: identical spacing everywhere.
+      align: toAlign(undefined, index),
+      nudge: FALLBACK_NUDGE[index % FALLBACK_NUDGE.length]!,
       node: (
         <BubbleChip
           label={item.label}
