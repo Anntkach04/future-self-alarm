@@ -1,19 +1,23 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { mutedColorForLabel } from '../theme';
-import { fonts, noFakeLight } from '../theme';
+import { fonts } from '../theme';
 import { colors } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
   items: string[];
+  /** Keep original casing (names). Habit/goal chips stay lowercase. */
+  keepCase?: boolean;
   /** Optional fixed colors per item (from onboarding options). */
   colors?: string[];
   onPress?: () => void;
+  /** Shown when there are no items (default "-"). */
+  emptyLabel?: string;
 };
 
-export function RecapPills({ items, colors: itemColors, onPress }: Props) {
+export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-', keepCase = false }: Props) {
   if (!items.length) {
-    return <Text style={styles.empty}>-</Text>;
+    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>{emptyLabel}</Text>;
   }
 
   const content = (
@@ -29,7 +33,7 @@ export function RecapPills({ items, colors: itemColors, onPress }: Props) {
             },
           ]}
         >
-          <Text style={styles.pillText}>{uiLabel(item)}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pillText}>{keepCase ? item.trim() : uiLabel(item)}</Text>
         </View>
       ))}
     </View>
@@ -58,16 +62,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   pillText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    ...noFakeLight,
   },
   empty: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textMuted,
     marginBottom: 8,
-    ...noFakeLight,
   },
 });

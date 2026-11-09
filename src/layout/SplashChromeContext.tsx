@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 
 export const WELCOME_BLUE = '#BADFFF';
 
@@ -10,10 +16,13 @@ type SplashChromeValue = {
 const SplashChromeContext = createContext<SplashChromeValue | null>(null);
 
 export function SplashChromeProvider({ children }: { children: React.ReactNode }) {
-  const [splashActive, setSplashActive] = useState(false);
+  const [splashActive, setSplashActiveState] = useState(false);
+  const setSplashActive = useCallback((active: boolean) => {
+    setSplashActiveState(active);
+  }, []);
   const value = useMemo(
     () => ({ splashActive, setSplashActive }),
-    [splashActive]
+    [splashActive, setSplashActive]
   );
   return (
     <SplashChromeContext.Provider value={value}>

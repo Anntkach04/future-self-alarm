@@ -21,7 +21,7 @@ export function WaitingView({
   return (
     <View style={[styles.root, { backgroundColor }, style]}>
       <LogoSpinner />
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {message ? <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.message}>{message}</Text> : null}
       {children}
     </View>
   );

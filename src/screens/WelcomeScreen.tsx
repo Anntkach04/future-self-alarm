@@ -9,9 +9,12 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LogoSpinner } from '../components/LogoSpinner';
+import { BUILD_MARK } from '../config/build';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useSplashChrome } from '../layout/SplashChromeContext';
 import { RootStackParamList } from '../navigation/types';
-import { fonts, noFakeBold } from '../theme';
+import { colors, fonts, noFakeBold } from '../theme';
+import { markIntroSplashFinished, resetIntroSplashGate } from './introSplashGate';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
@@ -20,16 +23,21 @@ const HOLD_MS = 2200;
 const RETRACT_MS = 1000;
 
 /**
- * Splash → blue pill retracts upward (Figma frames 3→15) → hand off to Intro.
+ * Splash on every cold start → Home (done) or Intro (onboarding).
  * At start blue is a full rectangle (no cream peeking at rounded corners).
  */
 export function WelcomeScreen({ navigation }: Props) {
   const { setSplashActive } = useSplashChrome();
+  const { onboardingComplete } = useOnboarding();
+  const onboardingCompleteRef = useRef(onboardingComplete);
+  onboardingCompleteRef.current = onboardingComplete;
   const [fullH, setFullH] = useState(0);
   const [fullW, setFullW] = useState(0);
   const blueHeight = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
-  const textScale = useRef(new Animated.Value(1)).current;
+  /** BubbleEnter twin — opacity stays 1; spring from below + scale. */
+  const enterY = useRef(new Animated.Value(16)).current;
+  const enterScale = useRef(new Animated.Value(0.92)).current;
   const started = useRef(false);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -43,10 +51,37 @@ export function WelcomeScreen({ navigation }: Props) {
   useEffect(() => {
     if (!fullH || started.current) return;
     started.current = true;
+    // Fresh cold start — allow Intro splash gate to be marked after we leave.
+    resetIntroSplashGate();
     setSplashActive(true);
     const chromeTimer = setTimeout(() => setSplashActive(false), HOLD_MS);
 
-    const pillRadius = Math.max(fullW * 0.55, 180);
+    enterY.setValue(16);
+    enterScale.setValue(0.92);
+    const enter = Animated.parallel([
+      Animated.spring(enterY, {
+        toValue: 0,
+        friction: 7,
+        tension: 90,
+        useNativeDriver: true,
+      }),
+      Animated.spring(enterScale, {
+        toValue: 1,
+        friction: 5.2,
+        tension: 128,
+        useNativeDriver: true,
+      }),
+    ]);
+    enter.start(({ finished }) => {
+      if (finished) {
+        enterY.setValue(0);
+        enterScale.setValue(1);
+      }
+    });
+    const enterFailsafe = setTimeout(() => {
+      enterY.setValue(0);
+      enterScale.setValue(1);
+    }, 520);
 
     const anim = Animated.sequence([
       Animated.delay(HOLD_MS),
@@ -57,7 +92,7 @@ export function WelcomeScreen({ navigation }: Props) {
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(textScale, {
+        Animated.timing(enterScale, {
           toValue: 0.92,
           duration: 280,
           useNativeDriver: true,
@@ -72,14 +107,30 @@ export function WelcomeScreen({ navigation }: Props) {
     ]);
 
     anim.start(({ finished }) => {
-      if (finished) navigation.replace('Intro');
+      if (!finished) return;
+      // Welcome already played — don't double blue sheet on Intro.
+      markIntroSplashFinished();
+      navigation.replace(
+        onboardingCompleteRef.current ? 'Home' : 'Intro'
+      );
     });
 
     return () => {
       clearTimeout(chromeTimer);
+      clearTimeout(enterFailsafe);
+      enter.stop();
       anim.stop();
     };
-  }, [blueHeight, fullH, fullW, navigation, setSplashActive, textOpacity, textScale]);
+  }, [
+    blueHeight,
+    enterScale,
+    enterY,
+    fullH,
+    fullW,
+    navigation,
+    setSplashActive,
+    textOpacity,
+  ]);
 
   useEffect(() => {
     return () => setSplashActive(false);
@@ -109,19 +160,23 @@ export function WelcomeScreen({ navigation }: Props) {
           },
         ]}
         >
-          <View style={styles.textWrap}>
-            <LogoSpinner />
-            <Animated.View
-              style={{
+          <Animated.View
+            style={[
+              styles.textWrap,
+              {
                 opacity: textOpacity,
-                transform: [{ scale: textScale }],
-              }}
-            >
-              <Text style={[styles.title, { opacity: 0.7 }]}>
-                Welcome to the{'\n'}future self alarm
-              </Text>
-            </Animated.View>
-          </View>
+                transform: [{ translateY: enterY }, { scale: enterScale }],
+              },
+            ]}
+          >
+            <LogoSpinner />
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.title, { opacity: 0.7 }]}>
+              Welcome to the{'\n'}future self alarm
+            </Text>
+            {__DEV__ ? (
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buildMark}>{BUILD_MARK}</Text>
+            ) : null}
+          </Animated.View>
         </Animated.View>
     </View>
   );
@@ -134,7 +189,7 @@ const styles = StyleSheet.create({
   },
   cream: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#FFFAEE',
+    backgroundColor: colors.bg,
   },
   bluePill: {
     position: 'absolute',
@@ -158,5 +213,12 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: '#1A1A1A',
     ...noFakeBold,
+  },
+  buildMark: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: '#1A1A1A66',
+    textAlign: 'center',
   },
 });

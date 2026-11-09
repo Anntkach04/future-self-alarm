@@ -43,6 +43,11 @@ export const accents = {
   sand: '#D8C29E',
   mist: '#ADDEFF',
   ink: '#1A1A1A',
+  /** Delete / destructive actions only — never a normal CTA. */
+  danger: '#FF5A4E',
+  /** Tonal buttons: one shade deeper than the card they sit on, ink label. */
+  goldDeep: '#F2AE3D',
+  mistDeep: '#7FC6F4',
 } as const;
 
 /** Soft chips / bubbles — Figma muted + extras that fit cream UI */
@@ -125,8 +130,10 @@ export const spacing = {
   lg: 24,
   xl: 32,
   xxl: 48,
-  /** Minimum margin on every screen edge */
-  inset: 40,
+  /** Side margin on every screen (one value app-wide). */
+  inset: 28,
+  /** Gap between the safe area and the first element (back / menu). */
+  screenTop: 12,
   /** Extra top gap on mobile web — Safari chrome reports 0 safe-area. */
   webTop: Platform.OS === 'web' ? 20 : 0,
 };

@@ -24,13 +24,15 @@ export function MoodMoreScreen({}: Props) {
         contentContainerStyle={styles.scroll}
       >
         <BackButton style={styles.back} />
-        <Text style={styles.title}>How are you feeling today?</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>How are you feeling today?</Text>
         <View style={styles.grid}>
           {MORE_MOODS.map((mood) => {
             const selected = today?.moodId === mood.id;
             return (
               <Pressable
                 key={mood.id}
+                accessibilityRole="button"
+                accessibilityLabel={`I feel ${mood.label}`}
                 onPress={() => setSheetMood(mood)}
                 style={[
                   styles.mood,
@@ -38,7 +40,7 @@ export function MoodMoreScreen({}: Props) {
                   selected && styles.moodSelected,
                 ]}
               >
-                <Text style={styles.label}>{mood.label}</Text>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.label}>{mood.label}</Text>
               </Pressable>
             );
           })}
@@ -71,8 +73,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 36,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 24,
     ...noFakeBold,
@@ -92,7 +94,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   moodSelected: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.text,
   },
   label: {

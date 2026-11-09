@@ -1,12 +1,13 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import { Platform } from 'react-native';
 import { getApiUrl } from './elevenlabs';
 
 const PREVIEW_MAX_MS = 30_000;
 
-let sound: Audio.Sound | null = null;
+let player: AudioPlayer | null = null;
 let playingId: string | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;
+let finishSub: { remove: () => void } | null = null;
 
 function clearStopTimer() {
   if (stopTimer) {
@@ -17,30 +18,32 @@ function clearStopTimer() {
 
 export async function stopMusicBedPreview() {
   clearStopTimer();
-  if (!sound) {
+  finishSub?.remove();
+  finishSub = null;
+  if (!player) {
     playingId = null;
     return;
   }
   try {
-    await sound.stopAsync();
-    await sound.unloadAsync();
+    player.pause();
+    player.remove();
   } catch {
     /* ignore */
   }
-  sound = null;
+  player = null;
   playingId = null;
 }
 
-async function createSound(uri: string) {
-  await Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-    shouldDuckAndroid: true,
+async function createPlayer(uri: string) {
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: false,
+    interruptionMode: 'duckOthers',
   });
-  return Audio.Sound.createAsync(
-    { uri },
-    { shouldPlay: true, isLooping: false, volume: 0.55 }
-  );
+  const next = createAudioPlayer({ uri });
+  next.volume = 0.55;
+  next.play();
+  return next;
 }
 
 export async function toggleMusicBedPreview(bedId: string) {
@@ -51,10 +54,9 @@ export async function toggleMusicBedPreview(bedId: string) {
   await stopMusicBedPreview();
   const url = `${getApiUrl()}/api/beds/${encodeURIComponent(bedId)}/preview`;
 
-  let next: Audio.Sound;
+  let next: AudioPlayer;
   try {
-    const created = await createSound(url);
-    next = created.sound;
+    next = await createPlayer(url);
   } catch (first) {
     if (Platform.OS === 'web') {
       const response = await fetch(url);
@@ -65,22 +67,21 @@ export async function toggleMusicBedPreview(bedId: string) {
       }
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
-      const created = await createSound(objectUrl);
-      next = created.sound;
+      next = await createPlayer(objectUrl);
     } else {
       throw first;
     }
   }
 
-  sound = next;
+  player = next;
   playingId = bedId;
 
   stopTimer = setTimeout(() => {
     void stopMusicBedPreview();
   }, PREVIEW_MAX_MS);
 
-  next.setOnPlaybackStatusUpdate((status) => {
-    if (status.isLoaded && status.didJustFinish) {
+  finishSub = next.addListener('playbackStatusUpdate', (status) => {
+    if (status.didJustFinish) {
       void stopMusicBedPreview();
     }
   });

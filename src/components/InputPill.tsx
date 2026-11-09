@@ -7,7 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ForwardArrow } from './ForwardArrow';
-import { accents, colors, fonts, noFakeLight } from '../theme';
+import { accents, colors, fonts } from '../theme';
 
 type Props = {
   value: string;
@@ -37,7 +37,7 @@ export function InputPill({
 
   return (
     <View style={[styles.pill, style]}>
-      <TextInput
+      <TextInput maxFontSizeMultiplier={1.5}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -55,6 +55,8 @@ export function InputPill({
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Continue"
+        accessibilityState={{ disabled: !canSubmit }}
         onPress={onSubmit}
         disabled={!canSubmit}
         hitSlop={0}
@@ -81,13 +83,12 @@ export function InputPill({
 const styles = StyleSheet.create({
   pill: {
     position: 'relative',
-    alignSelf: 'center',
-    width: 333,
-    maxWidth: '100%',
+    alignSelf: 'stretch',
+    width: '100%',
     height: 60,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.stroke,
-    borderRadius: 36,
+    borderRadius: 999,
     backgroundColor: colors.inputBg,
     overflow: 'hidden',
   },
@@ -97,10 +98,9 @@ const styles = StyleSheet.create({
     paddingRight: 72,
     borderWidth: 0,
     backgroundColor: 'transparent',
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 17,
     color: colors.text,
-    ...noFakeLight,
     ...(Platform.OS === 'web'
       ? ({
           outlineStyle: 'none',

@@ -7,6 +7,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
+import { getDefaultPremadeVoiceId } from '../services/defaultVoice';
 import { APP_STORAGE_KEYS } from '../services/resetApp';
 import { WEEKDAYS } from './AlarmsContext';
 
@@ -16,7 +18,7 @@ export type OnboardingAnswers = {
   name: string;
   morningFeelings: string[];
   futureSelf: string[];
-  alreadyProud: string[];
+  morningHabits: string[];
   hardMornings: string[];
   voiceStyle: string | null;
   messageLength: string | null;
@@ -45,8 +47,8 @@ type OnboardingContextValue = {
   addMorningFeeling: (value: string) => void;
   toggleFutureSelf: (value: string) => void;
   addFutureSelf: (value: string) => void;
-  toggleAlreadyProud: (value: string) => void;
-  addAlreadyProud: (value: string) => void;
+  toggleMorningHabit: (value: string) => void;
+  addMorningHabit: (value: string) => void;
   toggleHardMorning: (value: string) => void;
   addHardMorning: (value: string) => void;
   setVoiceStyle: (value: string) => void;
@@ -60,17 +62,24 @@ type OnboardingContextValue = {
   clearVoice: () => void;
   markOnboardingComplete: () => void;
   resetOnboarding: () => Promise<void>;
+  /** Restore answers + voiceId from server (sample audio stays local). */
+  hydrateFromCloud: (input: {
+    answers: Partial<OnboardingAnswers>;
+    voiceId?: string | null;
+    isDemoVoice?: boolean;
+    onboardingComplete?: boolean;
+  }) => void;
 };
 
 const defaultAnswers: OnboardingAnswers = {
   name: '',
   morningFeelings: [],
   futureSelf: [],
-  alreadyProud: [],
+  morningHabits: [],
   hardMornings: [],
   voiceStyle: null,
   messageLength: 'About 30 seconds',
-  musicBedId: 'bali-morning',
+    musicBedId: 'soft-calm',
   wakeHour: 7,
   wakeMinute: 0,
   wakeDays: [...WEEKDAYS],
@@ -105,6 +114,10 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let cancelled = false;
+    const fallback = setTimeout(() => {
+      if (!cancelled) setReady(true);
+    }, 2000);
+
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -116,7 +129,30 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
             onboardingComplete?: boolean;
           };
           if (parsed.answers) {
-            setAnswers({ ...defaultAnswers, ...parsed.answers });
+            const rawAnswers = parsed.answers as OnboardingAnswers & {
+              alreadyProud?: string[];
+            };
+            const next = { ...defaultAnswers, ...rawAnswers };
+            // Migrated away from “already proud” → morning habits.
+            if (
+              (!next.morningHabits || next.morningHabits.length === 0) &&
+              Array.isArray(rawAnswers.alreadyProud)
+            ) {
+              next.morningHabits = [];
+            }
+            delete (next as { alreadyProud?: string[] }).alreadyProud;
+            // bali bed removed — never keep it as the active under-voice track
+            if (
+              next.musicBedId === 'bali-morning' ||
+              next.musicBedId === 'bali' ||
+              next.musicBedId === 'yoga-air' ||
+              next.musicBedId === 'soft-massage' ||
+              next.musicBedId === 'light-water' ||
+              next.musicBedId === 'warm-earth'
+            ) {
+              next.musicBedId = 'soft-calm';
+            }
+            setAnswers(next);
           }
           if (parsed.voice) {
             setVoice({ ...defaultVoice, ...parsed.voice });
@@ -129,10 +165,21 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         if (!cancelled) setReady(true);
       }
     })();
+
     return () => {
       cancelled = true;
+      clearTimeout(fallback);
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready || !TEMP_ELEVENLABS_TTS_ONLY || voice.voiceId) return;
+    setVoice((prev) => ({
+      ...prev,
+      voiceId: getDefaultPremadeVoiceId(),
+      isDemo: true,
+    }));
+  }, [ready, voice.voiceId]);
 
   useEffect(() => {
     if (!ready) return;
@@ -153,6 +200,30 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   }, []);
 
+  const hydrateFromCloud = useCallback(
+    (input: {
+      answers: Partial<OnboardingAnswers>;
+      voiceId?: string | null;
+      isDemoVoice?: boolean;
+      onboardingComplete?: boolean;
+    }) => {
+      setAnswers((prev) => ({ ...prev, ...input.answers }));
+      if (input.voiceId !== undefined) {
+        setVoice((prev) => ({
+          ...prev,
+          voiceId: input.voiceId ?? null,
+          isDemo: Boolean(input.isDemoVoice),
+          // Cloud does not store the sample file.
+          sampleUri: input.voiceId ? prev.sampleUri : null,
+        }));
+      }
+      if (input.onboardingComplete !== undefined) {
+        setOnboardingComplete(Boolean(input.onboardingComplete));
+      }
+    },
+    []
+  );
+
   const value = useMemo<OnboardingContextValue>(
     () => ({
       answers,
@@ -161,6 +232,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       onboardingComplete,
       markOnboardingComplete,
       resetOnboarding,
+      hydrateFromCloud,
       setName: (name) => setAnswers((prev) => ({ ...prev, name })),
       toggleMorningFeeling: (value) =>
         setAnswers((prev) => ({
@@ -182,15 +254,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
           ...prev,
           futureSelf: addToList(prev.futureSelf, value),
         })),
-      toggleAlreadyProud: (value) =>
+      toggleMorningHabit: (value) =>
         setAnswers((prev) => ({
           ...prev,
-          alreadyProud: toggleInList(prev.alreadyProud, value),
+          morningHabits: toggleInList(prev.morningHabits, value),
         })),
-      addAlreadyProud: (value) =>
+      addMorningHabit: (value) =>
         setAnswers((prev) => ({
           ...prev,
-          alreadyProud: addToList(prev.alreadyProud, value),
+          morningHabits: addToList(prev.morningHabits, value),
         })),
       toggleHardMorning: (value) =>
         setAnswers((prev) => ({
@@ -238,7 +310,15 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         })),
       clearVoice: () => setVoice(defaultVoice),
     }),
-    [answers, voice, ready, onboardingComplete, markOnboardingComplete, resetOnboarding]
+    [
+      answers,
+      voice,
+      ready,
+      onboardingComplete,
+      markOnboardingComplete,
+      resetOnboarding,
+      hydrateFromCloud,
+    ]
   );
 
   return (

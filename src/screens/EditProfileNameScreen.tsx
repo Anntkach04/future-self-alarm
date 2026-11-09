@@ -11,7 +11,7 @@ export function EditProfileNameScreen({ navigation }: Props) {
 
   return (
     <TextQuestionScreen
-      question={"What should\nFuture You\ncall you?"}
+      question={"What should Future\nYou call you?"}
       subtitle="This is how Future You will greet you in the morning."
       value={answers.name}
       onChangeText={setName}

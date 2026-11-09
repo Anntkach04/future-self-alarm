@@ -5,13 +5,25 @@ import {
   WEEKDAYS,
   WEEKENDS,
 } from '../context/AlarmsContext';
-import { colors, fonts, noFakeBold, noFakeLight, radii } from '../theme';
+import { colors, fonts, noFakeBold, radii } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
   days: number[];
   onChange: (days: number[]) => void;
 };
+
+/** Two letters so Tue/Thu and Sat/Sun are told apart; full names for VoiceOver. */
+const DAY_SHORT = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const;
+const DAY_FULL = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
 
 function sortedUnique(days: number[]) {
   return [...new Set(days)].sort((a, b) => a - b);
@@ -32,7 +44,7 @@ export function AlarmDayPicker({ days, onChange }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.section}>{uiLabel('Repeat')}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.section}>Repeat</Text>
       <View style={styles.presets}>
         {[
           { label: 'weekdays', value: WEEKDAYS },
@@ -43,10 +55,12 @@ export function AlarmDayPicker({ days, onChange }: Props) {
           return (
             <Pressable
               key={item.label}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
               onPress={() => onChange([...item.value])}
               style={[styles.preset, active && styles.presetOn]}
             >
-              <Text style={[styles.presetText, active && styles.presetTextOn]}>
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={[styles.presetText, active && styles.presetTextOn]}>
                 {item.label}
               </Text>
             </Pressable>
@@ -59,11 +73,14 @@ export function AlarmDayPicker({ days, onChange }: Props) {
           return (
             <Pressable
               key={`${label}-${index}`}
+              accessibilityRole="checkbox"
+              accessibilityLabel={DAY_FULL[index]}
+              accessibilityState={{ checked: on }}
               onPress={() => toggleDay(index)}
               style={[styles.day, on && styles.dayOn]}
             >
-              <Text style={[styles.dayText, on && styles.dayTextOn]}>
-                {label.toLowerCase()}
+              <Text maxFontSizeMultiplier={1.3} lineBreakStrategyIOS="push-out" style={[styles.dayText, on && styles.dayTextOn]}>
+                {DAY_SHORT[index]}
               </Text>
             </Pressable>
           );
@@ -91,7 +108,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   preset: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.text,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
@@ -102,10 +119,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   presetText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 15,
     color: colors.text,
-    ...noFakeLight,
   },
   presetTextOn: {
     color: colors.bg,
@@ -120,7 +136,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     maxWidth: 44,
     borderRadius: 22,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
@@ -130,10 +146,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   dayText: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    ...noFakeLight,
   },
   dayTextOn: {
     color: colors.bg,

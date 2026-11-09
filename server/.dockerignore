@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+*.md
+scripts
+.DS_Store
+assets/beds/_tmp
+assets/beds/README.md
