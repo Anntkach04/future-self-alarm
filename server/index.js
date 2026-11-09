@@ -49,6 +49,7 @@ const {
   withOwnedVoice,
 } = require('./lib/voiceAccess');
 const { rateLimit, HOUR, DAY } = require('./lib/rateLimit');
+const { requireEntitlement, entitlementEnforced } = require('./lib/entitlement');
 const { revokeRefreshToken } = require('./lib/appleRevoke');
 const { saveContactMessage } = require('./lib/contactMessages');
 
@@ -249,6 +250,7 @@ app.get('/api/health', (_req, res) => {
     ffmpeg,
     readyToGenerate: elevenLabs && openai,
     authRequired: authEnforced(),
+    subscriptionRequired: entitlementEnforced(),
     db: dbMode(),
     appleAudience: APPLE_CLIENT_ID,
     env: IS_PROD ? 'production' : 'development',
@@ -574,7 +576,7 @@ app.get('/api/beds/:id/preview', (req, res) => {
   return res.sendFile(file);
 });
 
-app.post('/api/alarm/generate', requireAuth, limitSpeech, async (req, res) => {
+app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, async (req, res) => {
   try {
     const { voiceId, answers, skipMix } = req.body || {};
     if (!voiceId) {
