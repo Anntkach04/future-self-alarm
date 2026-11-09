@@ -113,10 +113,12 @@ export function HomeScreen({ navigation }: Props) {
           })}
         </View>
         <View style={styles.moreRow}>
+          {/* A link, not another filled pill, so it never reads as a mood tile. */}
           <TextArrowButton
-            label="more"
-            color={accents.gold}
+            label="all moods"
+            color="transparent"
             textColor={colors.text}
+            style={styles.moreLink}
             onPress={() => navigation.navigate('MoodMore')}
           />
         </View>
@@ -303,8 +305,12 @@ const styles = StyleSheet.create({
   },
   moreRow: {
     alignItems: 'flex-end',
-    marginTop: 12,
-    marginBottom: 28,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  moreLink: {
+    alignSelf: 'flex-end',
+    paddingRight: 0,
   },
   block: {
     borderWidth: 1.5,

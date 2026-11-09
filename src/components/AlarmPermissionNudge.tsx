@@ -14,7 +14,8 @@ import {
   ensureAlarmKitReady,
   hasAlarmKitPermission,
 } from '../services/alarmScheduler';
-import { accents, colors, fonts, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { TextArrowButton } from './TextArrowButton';
 
 type Props = {
   placement?: 'bottom' | 'top';
@@ -84,17 +85,20 @@ export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
       ]}
     >
       <View style={styles.sheet}>
-        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
-          Turn on alarms so Future You can wake you.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
+        <View style={styles.copy}>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
+            One step left
+          </Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.text}>
+            Allow alarms so your voice can ring, even when the phone is locked.
+          </Text>
+        </View>
+        <TextArrowButton
+          label={busy ? '…' : 'allow alarms'}
+          color={colors.bg}
           onPress={() => void onAllow()}
-          style={styles.btn}
           disabled={busy}
-        >
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.btnText}>{busy ? '…' : 'Allow alarms'}</Text>
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -107,21 +111,27 @@ const styles = StyleSheet.create({
     right: spacing.inset,
     zIndex: 59,
   },
+  /** Soft sky card, no outline: reads as a friendly next step, not an error. */
   sheet: {
-    backgroundColor: colors.bg,
-    borderWidth: 1.5,
-    borderColor: colors.text,
+    backgroundColor: accents.mist,
     borderRadius: 24,
-    padding: 14,
-    gap: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 18,
+    gap: 14,
+  },
+  copy: {
+    gap: 4,
+  },
+  title: {
+    fontFamily: fonts.headingRegular,
+    fontSize: 22,
+    lineHeight: 28,
+    color: colors.text,
+    ...noFakeBold,
   },
   text: {
-    flex: 1,
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: colors.text,
   },
   btn: {
