@@ -74,6 +74,7 @@ export function NotificationSettingsScreen({}: Props) {
 
       <View style={styles.actions}>
         <TextArrowButton
+            wide
           label={notificationsReady ? 'open system settings' : 'allow alerts'}
           color={accents.coral}
           onPress={() => void refresh()}
@@ -101,11 +102,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   block: {
-    borderWidth: 1.5,
-    borderColor: colors.text,
     borderRadius: 24,
     padding: 18,
     gap: 10,
+    backgroundColor: colors.chip,
   },
   blockTitle: {
     fontFamily: fonts.headingRegular,

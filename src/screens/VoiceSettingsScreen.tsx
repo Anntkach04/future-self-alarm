@@ -25,6 +25,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
 
       <View style={styles.actions}>
         <TextArrowButton
+            wide
           label="re-record voice"
           color={accents.coral}
           onPress={() => navigation.navigate('VoiceRecord')}

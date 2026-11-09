@@ -54,7 +54,7 @@ function Section({ title, items, itemColors, onPress, keepCase }: SectionProps) 
         items={items}
         colors={itemColors}
         keepCase={keepCase}
-        emptyLabel="Tap to add. It makes your morning message more personal."
+        emptyLabel="tap to add"
       />
     </Pressable>
   );
@@ -225,11 +225,9 @@ const styles = StyleSheet.create({
     ...noFakeBold,
   },
   block: {
-    borderWidth: 1.5,
-    borderColor: colors.text,
     borderRadius: 24,
     padding: 18,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.chip,
     marginBottom: 32,
   },
   recapTitle: {
@@ -252,11 +250,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   danger: {
-    borderWidth: 1.5,
-    borderColor: colors.text,
     borderRadius: 24,
     padding: 18,
     marginBottom: 40,
+    backgroundColor: colors.chip,
   },
   dangerTitle: {
     fontFamily: fonts.headingRegular,

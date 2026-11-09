@@ -172,9 +172,8 @@ export function PaywallScreen({ navigation, route }: Props) {
         {trial
           ? `${plan?.trialDays === 7 ? 'One week' : `${plan?.trialDays} days`} free, then monthly`
           : 'Monthly'}{' '}
-        through your
-        Apple ID. Cancel anytime in
-        Settings → Apple ID → Subscriptions.
+        through Apple.
+        Cancel anytime in Settings.
       </Text>
 
       <Pressable
@@ -226,12 +225,14 @@ export function PaywallScreen({ navigation, route }: Props) {
         {priceMissing ? (
           <TextArrowButton
             label="try again"
+            wide
             color={accents.gold}
             onPress={() => void loadPlan()}
             disabled={busy}
           />
         ) : (
           <TextArrowButton
+            wide
             label={trial ? 'start free trial' : 'subscribe'}
             color={accents.gold}
             onPress={() => void startTrial()}
@@ -282,8 +283,6 @@ const styles = StyleSheet.create({
   },
   planCard: {
     marginTop: 20,
-    borderWidth: 1.5,
-    borderColor: colors.text,
     borderRadius: 24,
     padding: 18,
     gap: 8,

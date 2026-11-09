@@ -108,9 +108,7 @@ const styles = StyleSheet.create({
     zIndex: 60,
   },
   sheet: {
-    backgroundColor: colors.bg,
-    borderWidth: 1.5,
-    borderColor: colors.text,
+    backgroundColor: accents.mist,
     borderRadius: 24,
     padding: 14,
     gap: 12,

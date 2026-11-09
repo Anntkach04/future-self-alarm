@@ -116,9 +116,11 @@ export function SubscriptionScreen({}: Props) {
         {!status?.active ? (
           <>
             <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.planName}>Monthly</Text>
-            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
-              {plan?.headline ?? 'Monthly'}
-            </Text>
+            {plan?.headline ? (
+              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
+                {plan.headline}
+              </Text>
+            ) : null}
             {BENEFITS.map((line) => (
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={line} style={styles.benefit}>
                 · {line}
@@ -138,6 +140,7 @@ export function SubscriptionScreen({}: Props) {
 
       <View style={styles.actions}>
         <TextArrowButton
+            wide
           label={
             status?.active
               ? 'manage in apple'
@@ -189,12 +192,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   block: {
-    borderWidth: 1.5,
-    borderColor: colors.text,
     borderRadius: 24,
     padding: 18,
     gap: 6,
     marginBottom: spacing.md,
+    backgroundColor: colors.chip,
   },
   status: {
     fontFamily: fonts.headingRegular,
@@ -233,10 +235,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 'auto',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     paddingBottom: spacing.md,
   },
 });

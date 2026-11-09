@@ -302,6 +302,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
             />
           ) : null}
           <TextArrowButton
+            wide
             label={existing ? 'save' : 'done'}
             color={colors.fab}
             onPress={() => void persistAnd('home')}
@@ -367,12 +368,12 @@ const styles = StyleSheet.create({
     color: accents.coral,
     marginTop: 8,
   },
+  /** Main action on top (full width), delete underneath. */
   footer: {
     marginTop: 'auto',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'column-reverse',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     paddingBottom: 8,
   },
   footerSingle: {

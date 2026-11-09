@@ -15,7 +15,7 @@ import {
   type AppVersionStatus,
 } from '../services/appVersion';
 import { reconnectAppleSession } from '../services/sessionRefresh';
-import { colors, fonts, spacing } from '../theme';
+import { accents, colors, fonts, spacing } from '../theme';
 
 /**
  * Soft top banners: session reauth + optional App Store update.
@@ -140,9 +140,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   banner: {
-    backgroundColor: colors.bg,
-    borderWidth: 1.5,
-    borderColor: colors.text,
+    backgroundColor: accents.mist,
     borderRadius: 24,
     padding: 14,
     gap: 10,

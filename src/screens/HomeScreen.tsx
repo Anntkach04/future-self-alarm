@@ -313,10 +313,8 @@ const styles = StyleSheet.create({
     paddingRight: 0,
   },
   block: {
-    borderWidth: 1.5,
-    borderColor: colors.text,
     borderRadius: 24,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.chip,
     padding: 18,
     marginBottom: 20,
     overflow: 'hidden',
@@ -370,7 +368,7 @@ const styles = StyleSheet.create({
   },
   alarmRowBorder: {
     borderTopWidth: 1,
-    borderTopColor: colors.text,
+    borderTopColor: 'rgba(26, 26, 26, 0.12)',
     marginTop: 4,
     paddingTop: 12,
   },

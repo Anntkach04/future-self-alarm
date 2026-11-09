@@ -42,6 +42,7 @@ export function AlarmPermissionScreen({ navigation }: Props) {
 
       <View style={styles.actions}>
         <TextArrowButton
+            wide
           label="continue"
           color={accents.gold}
           onPress={() => void onContinue()}

@@ -14,6 +14,8 @@ type Props = {
   disabled?: boolean;
   /** Same pill style without the arrow (e.g. karaoke Continue). */
   hideArrow?: boolean;
+  /** The screen's main action: full width, taller, centered. */
+  wide?: boolean;
 };
 
 export function TextArrowButton({
@@ -24,6 +26,7 @@ export function TextArrowButton({
   style,
   disabled = false,
   hideArrow = false,
+  wide = false,
 }: Props) {
   return (
     <Pressable
@@ -33,6 +36,7 @@ export function TextArrowButton({
       style={({ pressed, hovered }: PressState) => [
         styles.btn,
         hideArrow && styles.btnNoArrow,
+        wide && styles.wide,
         { backgroundColor: color },
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
@@ -41,7 +45,7 @@ export function TextArrowButton({
     >
       {({ pressed, hovered }: PressState) => (
         <>
-          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.label, { color: textColor }]}>{uiLabel(label)}</Text>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.label, wide && styles.labelWide, { color: textColor }]}>{uiLabel(label)}</Text>
           {hideArrow ? null : (
             <ForwardArrow lifted={Boolean(pressed || hovered)} color={textColor} />
           )}
@@ -63,6 +67,15 @@ const styles = StyleSheet.create({
     // Apple minimum touch target.
     minHeight: 44,
     borderRadius: radii.button,
+  },
+  wide: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+  labelWide: {
+    fontSize: 19,
+    lineHeight: 23,
   },
   btnNoArrow: {
     paddingHorizontal: 18,
