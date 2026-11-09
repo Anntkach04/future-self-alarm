@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "deploymentTarget": "26.1",
-      "buildNumber": "76",
+      "buildNumber": "77",
       "appleTeamId": "87UHF725F4",
       "usesAppleSignIn": true,
       "entitlements": {
@@ -28,7 +28,8 @@
         },
         "UIBackgroundModes": [
           "audio"
-        ]
+        ],
+        "NSPhotoLibraryUsageDescription": "Future Self does not read your photos. This permission exists only because a system file library is included in the app."
       },
       "bundleIdentifier": "com.futureself.alarm",
       "privacyManifests": {
