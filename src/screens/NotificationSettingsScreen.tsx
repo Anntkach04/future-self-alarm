@@ -37,11 +37,11 @@ export function NotificationSettingsScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>notifications</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Notifications</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {notificationsReady
           ? 'Alerts are on.'
-          : 'Alerts are off. Allow them in Settings so mornings can ring.'}
+          : 'Alerts are off, so your mornings can’t ring yet.'}
       </Text>
 
       <View style={styles.block}>
@@ -76,7 +76,7 @@ export function NotificationSettingsScreen({}: Props) {
         <TextArrowButton
             wide
           label={notificationsReady ? 'open system settings' : 'allow alerts'}
-          color={accents.coral}
+          color={accents.lime}
           onPress={() => void refresh()}
         />
       </View>

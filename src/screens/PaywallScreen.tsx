@@ -173,7 +173,7 @@ export function PaywallScreen({ navigation, route }: Props) {
           ? `${plan?.trialDays === 7 ? 'One week' : `${plan?.trialDays} days`} free, then monthly`
           : 'Monthly'}{' '}
         through Apple.
-        Cancel anytime in Settings.
+        Cancel anytime.
       </Text>
 
       <Pressable
@@ -193,7 +193,7 @@ export function PaywallScreen({ navigation, route }: Props) {
             ? 'Loading price…'
             : priceMissing
               ? 'Price unavailable'
-              : (plan?.headline ?? 'Monthly')}
+              : (plan?.headline ?? '')}
         </Text>
         <View style={styles.benefits}>
           {BENEFITS.map((line) => (

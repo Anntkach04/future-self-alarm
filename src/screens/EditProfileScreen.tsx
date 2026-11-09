@@ -49,7 +49,7 @@ function Section({ title, items, itemColors, onPress, keepCase }: SectionProps) 
       accessibilityRole="button"
       accessibilityLabel={`${title}: ${items.length ? items.join(', ') : 'not set'}. Edit`}
     >
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{uiLabel(title)}</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{title.charAt(0).toUpperCase() + title.slice(1)}</Text>
       <RecapPills
         items={items}
         colors={itemColors}
@@ -145,7 +145,7 @@ export function EditProfileScreen({ navigation }: Props) {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{uiLabel('account')}</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Account</Text>
         <View style={styles.block}>
           <Section
             title="name"

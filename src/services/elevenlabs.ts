@@ -194,8 +194,12 @@ export type GeneratedAlarm = {
 function connectError(cause?: unknown, atBase?: string | null) {
   const reason = cause instanceof Error ? cause.message : '';
   const shown = atBase || getApiUrl();
+  // Users only see a plain message; server/dev details stay in logs.
+  console.warn('voice server unreachable', shown, reason);
   return new Error(
-    `Cannot reach the voice server at ${shown}. On the Mac run npm run server. Same Wi-Fi. On iPhone: Settings → Privacy → Local Network → Future Self Alarm → ON. Safari test: ${shown}/api/health${reason ? ` (${reason})` : ''}`
+    __DEV__
+      ? `Cannot reach the voice server at ${shown}. Run npm run server on the Mac (same Wi-Fi).${reason ? ` (${reason})` : ''}`
+      : 'Can’t reach Future Self right now. Check your connection and try again.'
   );
 }
 

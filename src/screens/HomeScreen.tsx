@@ -82,8 +82,7 @@ export function HomeScreen({ navigation }: Props) {
 
         {isPaused ? (
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedGlobal}>
-            Alarms paused{pauseUntil ? ` until ${formatDateKey(pauseUntil)}` : ''}. Resume in
-            Menu → Notifications when you’re back.
+            Alarms paused{pauseUntil ? ` until ${formatDateKey(pauseUntil)}` : ''}.
           </Text>
         ) : null}
 
@@ -191,8 +190,9 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.alarmActions}>
             <TextArrowButton
               label={hasAlarms ? 'add alarm' : 'set wake time'}
-              color={accents.coral}
-              style={hasAlarms ? undefined : styles.emptyCta}
+              wide
+              color={accents.primary}
+              textColor={accents.onPrimary}
               onPress={() => navigation.navigate('CreateAlarm')}
             />
           </View>

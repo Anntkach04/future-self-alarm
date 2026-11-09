@@ -46,7 +46,7 @@ function ask(): Promise<boolean> {
       'Your voice & AI services',
       'To create your wake-up voice, your recording is sent to ElevenLabs, which makes a voice clone of you. ' +
         'To write each morning’s message, your name, habits, goals and mood notes are sent to OpenAI. ' +
-        'We never sell your data or use it for ads. You can delete your voice anytime in Menu → Account.',
+        'We never sell your data or use it for ads. You can delete your voice anytime.',
       [
         ...(url
           ? [

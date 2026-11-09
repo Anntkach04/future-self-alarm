@@ -13,7 +13,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>voice</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Voice</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         Every alarm speaks in your cloned voice. Re-record anytime and your
         next alarm will use the new one.
@@ -27,7 +27,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
         <TextArrowButton
             wide
           label="re-record voice"
-          color={accents.coral}
+          color={colors.fab}
           onPress={() => navigation.navigate('VoiceRecord')}
         />
       </View>

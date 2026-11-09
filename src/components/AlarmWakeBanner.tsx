@@ -106,14 +106,14 @@ export function AlarmWakeBanner() {
         ]}
       >
         <Text style={styles.kicker} maxFontSizeMultiplier={1.4}>
-          good morning
+          Good morning
         </Text>
         <Text
           style={styles.title}
           maxFontSizeMultiplier={1.15}
           accessibilityRole="header"
         >
-          future you{'\n'}is here
+          Future you{'\n'}is here
         </Text>
         {script ? (
           <ScrollView style={styles.scriptBox} showsVerticalScrollIndicator={false}>

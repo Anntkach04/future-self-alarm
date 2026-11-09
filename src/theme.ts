@@ -45,6 +45,9 @@ export const accents = {
   ink: '#1A1A1A',
   /** Delete / destructive actions only — never a normal CTA. */
   danger: '#FF5A4E',
+  /** Main action on every screen (bright blue, cream label, AA-large contrast). */
+  primary: '#3D68F0',
+  onPrimary: '#FFFAEE',
 } as const;
 
 /** Soft chips / bubbles — Figma muted + extras that fit cream UI */

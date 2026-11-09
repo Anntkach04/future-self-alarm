@@ -226,7 +226,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
       <View style={styles.page}>
         <BackButton style={styles.back} />
         <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
-          {uiLabel(existing ? 'edit alarm' : 'set up alarm')}
+          {existing ? 'Edit alarm' : 'Set up alarm'}
         </Text>
 
         <View style={styles.timeZone}>
@@ -255,7 +255,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>snooze</Text>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>Snooze</Text>
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
               Rings again every 10 minutes until you tap I’m up
             </Text>
@@ -272,7 +272,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>vibrate</Text>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>Vibrate</Text>
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
               Buzz when your future self starts talking
             </Text>

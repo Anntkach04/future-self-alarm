@@ -213,7 +213,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
       <View style={styles.stage}>
         <View style={styles.centerBlock}>
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.heading}>Voice is ready</Text>
-          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.subheading}>this is you from the future</Text>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.subheading}>This is you from the future</Text>
           <View style={styles.scriptWrap}>
             <KaraokeScript
               text={line}

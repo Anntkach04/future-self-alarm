@@ -89,12 +89,12 @@ export function SubscriptionScreen({}: Props) {
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>subscription</Text>
+      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Subscription</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
         {plan?.trialDays
           ? `${plan.trialDays} days free, then monthly. `
-          : 'Billed monthly. '}
-        Managed by Apple. Cancel anytime in Settings → Apple ID → Subscriptions.
+          : 'Billed monthly through Apple. '}
+        Cancel anytime.
       </Text>
       <LegalLinks style={styles.legal} />
 

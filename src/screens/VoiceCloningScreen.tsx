@@ -59,7 +59,7 @@ export function VoiceCloningScreen({ navigation }: Props) {
       <View style={styles.page}>
         <BackButton />
         <BubbleEnter delay={40} fromY={14} style={styles.content}>
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>couldn’t clone yet</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Couldn’t clone yet</Text>
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error} numberOfLines={8}>
           {error}
         </Text>

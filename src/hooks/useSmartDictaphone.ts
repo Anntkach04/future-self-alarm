@@ -304,7 +304,7 @@ export function useSmartDictaphone(
     const mic = await requestRecordingPermissionsAsync();
     if (!mic.granted) {
       setError(
-        'Microphone access is off. Turn it on in Settings → Future Self to record your voice.'
+        'Microphone access is off. Allow it in Settings to record your voice.'
       );
       return { mic: false, speech: false };
     }

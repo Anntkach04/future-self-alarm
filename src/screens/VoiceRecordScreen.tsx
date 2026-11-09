@@ -571,7 +571,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
           {/* Title + subtitle in ONE enter so left edges stay aligned (scale was shifting subtitle). */}
           <BubbleEnter delay={0} fromY={16}>
             <View>
-              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{`read this\nout loud`}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{`Read this\nout loud`}</Text>
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.subtitle}>Find a quiet room.</Text>
               <View
                 style={styles.progressTrack}

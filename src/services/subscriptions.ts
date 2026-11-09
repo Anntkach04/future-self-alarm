@@ -157,7 +157,7 @@ export type MonthlyPlanDetails = {
   productId: string;
 };
 
-const RENEW_NOTE = 'Auto-renews until canceled in Apple ID Subscriptions.';
+const RENEW_NOTE = 'Auto-renews monthly until you cancel.';
 
 function introTrialDays(intro: {
   price: number;
