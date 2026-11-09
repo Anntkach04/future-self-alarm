@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   addInputUnderline: {
     width: '100%',
-    borderBottomWidth: 1.5,
+    borderBottomWidth: 1,
     borderBottomColor: colors.text,
     paddingVertical: 10,
     paddingHorizontal: 2,

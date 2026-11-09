@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   preset: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.text,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     maxWidth: 44,
     borderRadius: 22,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',

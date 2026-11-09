@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   moodSelected: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.text,
   },
   moodLabel: {

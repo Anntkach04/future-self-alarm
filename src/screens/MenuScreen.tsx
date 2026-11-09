@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   row: {
-    borderBottomWidth: 1.5,
+    borderBottomWidth: 1,
     borderBottomColor: colors.text,
     paddingVertical: 16,
   },

@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     width: '100%',
     height: 60,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.stroke,
     borderRadius: 999,
     backgroundColor: colors.inputBg,
