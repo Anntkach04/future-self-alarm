@@ -129,17 +129,37 @@ async function resolveMonthlyPackage() {
   const Purchases = (await import('react-native-purchases')).default;
   await configurePurchases();
   const offerings = await Purchases.getOfferings();
-  const packages = offerings.current?.availablePackages ?? [];
-  return (
-    packages.find(
-      (p) =>
-        p.product.identifier === MONTHLY_PRODUCT_ID ||
-        p.identifier === MONTHLY_PRODUCT_ID
-    ) ??
-    // Never fall back to an arbitrary package — the paywall copy says monthly.
-    packages.find((p) => p.packageType === 'MONTHLY') ??
-    null
+  // Current offering first; if none is marked current in RevenueCat, look
+  // through every offering so a dashboard slip doesn't hide the product.
+  const current = offerings.current?.availablePackages ?? [];
+  const all = Object.values(offerings.all ?? {}).flatMap(
+    (o) => o.availablePackages ?? []
   );
+  const pools = [current, all];
+  for (const packages of pools) {
+    const match =
+      packages.find(
+        (p) =>
+          p.product.identifier === MONTHLY_PRODUCT_ID ||
+          p.identifier === MONTHLY_PRODUCT_ID
+      ) ??
+      packages.find((p) => p.packageType === 'MONTHLY') ??
+      packages.find(
+        (p) => (p.product as { subscriptionPeriod?: string | null }).subscriptionPeriod === 'P1M'
+      ) ??
+      // The app sells exactly one plan: a lone package is that plan.
+      (packages.length === 1 ? packages[0] : undefined);
+    if (match) return match;
+  }
+  console.warn(
+    'RevenueCat: no monthly package',
+    JSON.stringify({
+      current: offerings.current?.identifier ?? null,
+      offerings: Object.keys(offerings.all ?? {}),
+      packages: all.map((p) => `${p.identifier}:${p.product.identifier}`),
+    })
+  );
+  return null;
 }
 
 export type MonthlyPlanDetails = {
