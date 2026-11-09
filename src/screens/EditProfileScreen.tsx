@@ -198,7 +198,7 @@ export function EditProfileScreen({ navigation }: Props) {
             <View style={styles.editRow}>
               <TextArrowButton
                 label="delete account"
-                color={accents.coral}
+                color={accents.danger}
                 onPress={confirmDeleteAccount}
               />
             </View>

@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 40,
     lineHeight: 44,
     color: colors.text,
+    marginTop: 8,
     marginBottom: 32,
     ...noFakeBold,
   },

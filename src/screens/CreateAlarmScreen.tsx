@@ -293,7 +293,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
           {existing ? (
             <TextArrowButton
               label="delete"
-              color={accents.coral}
+              color={accents.danger}
               onPress={() => {
                 removeAlarm(existing.id);
                 navigation.goBack();

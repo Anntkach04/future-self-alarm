@@ -43,6 +43,8 @@ export const accents = {
   sand: '#D8C29E',
   mist: '#ADDEFF',
   ink: '#1A1A1A',
+  /** Delete / destructive actions only — never a normal CTA. */
+  danger: '#FF5A4E',
 } as const;
 
 /** Soft chips / bubbles — Figma muted + extras that fit cream UI */

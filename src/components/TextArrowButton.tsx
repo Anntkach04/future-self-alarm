@@ -60,6 +60,8 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 12,
     paddingVertical: 8,
+    // Apple minimum touch target.
+    minHeight: 44,
     borderRadius: radii.button,
   },
   btnNoArrow: {
