@@ -189,8 +189,7 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.alarmActions}>
             <TextArrowButton
               label={hasAlarms ? 'add alarm' : 'set wake time'}
-              color={hasAlarms ? accents.coral : colors.text}
-              textColor={hasAlarms ? undefined : colors.bg}
+              color={accents.coral}
               style={hasAlarms ? undefined : styles.emptyCta}
               onPress={() => navigation.navigate('CreateAlarm')}
             />
