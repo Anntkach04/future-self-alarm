@@ -95,8 +95,7 @@ export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
         </View>
         <TextArrowButton
           label={busy ? '…' : 'allow alarms'}
-          color={accents.primary}
-          textColor={accents.onPrimary}
+          color={accents.mistDeep}
           onPress={() => void onAllow()}
           disabled={busy}
         />
