@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { BackButton } from '../components/BackButton';
+import { ForwardArrow } from '../components/ForwardArrow';
 import { RecapPills } from '../components/RecapPills';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -48,14 +49,16 @@ function Section({ title, items, itemColors, onPress, keepCase }: SectionProps) 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}: ${items.length ? items.join(', ') : 'not set'}. Edit`}
+      style={({ pressed }) => [styles.field, pressed && styles.fieldPressed]}
     >
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{title.charAt(0).toUpperCase() + title.slice(1)}</Text>
-      <RecapPills
-        items={items}
-        colors={itemColors}
-        keepCase={keepCase}
-        emptyLabel="tap to add"
-      />
+      {/* Whole row is the tap target; the arrow says "you can change this". */}
+      <View style={styles.fieldHeader}>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.recapTitle}>{title.charAt(0).toUpperCase() + title.slice(1)}</Text>
+        <ForwardArrow color={colors.text} />
+      </View>
+      {items.length ? (
+        <RecapPills items={items} colors={itemColors} keepCase={keepCase} />
+      ) : null}
     </Pressable>
   );
 }
@@ -177,16 +180,6 @@ export function EditProfileScreen({ navigation }: Props) {
             itemColors={answers.voiceStyle ? voiceColors : undefined}
             onPress={() => openField('voiceStyle')}
           />
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.voiceHint}>
-            Re-record anytime. Your next alarm will use the new clone.
-          </Text>
-          <View style={styles.editRow}>
-            <TextArrowButton
-              label="update voice"
-              color={accents.gold}
-              onPress={() => navigation.navigate('VoiceRecord')}
-            />
-          </View>
         </View>
 
         <View style={styles.danger}>
@@ -213,6 +206,19 @@ export function EditProfileScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  field: {
+    minHeight: 44,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  fieldPressed: {
+    opacity: 0.6,
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   back: {
     marginTop: 0,
   },
