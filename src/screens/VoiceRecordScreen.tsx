@@ -42,6 +42,8 @@ const COMPLETE_COLOR = accents.gold;
 const SUCCESS_HOLD_MS = 2800;
 /** Pause on a finished line before the next one appears. */
 const LINE_HOLD_MS = 1000;
+/** Bottom corner radius the gold sheet grows into while it retracts (Welcome). */
+const SHEET_RADIUS = Math.max(Dimensions.get('window').width * 0.55, 180);
 
 export function VoiceRecordScreen({ navigation }: Props) {
   const {
@@ -80,6 +82,14 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const goldPillOpacity = useRef(new Animated.Value(0)).current;
   const goldPillY = useRef(new Animated.Value(0)).current;
   const completeOpacity = useRef(new Animated.Value(0)).current;
+  /** Gold sheet height: full screen, then retracts upward like Welcome. */
+  const sheetFullH = Dimensions.get('screen').height;
+  const goldSheetH = useRef(new Animated.Value(sheetFullH)).current;
+  const sheetRadius = goldSheetH.interpolate({
+    inputRange: [0, sheetFullH * 0.4, sheetFullH],
+    outputRange: [SHEET_RADIUS, SHEET_RADIUS, 0],
+    extrapolate: 'clamp',
+  });
   /** Same enter motion as BubbleEnter (spring from below + scale). */
   const completeEnterY = useRef(new Animated.Value(16)).current;
   const completeEnterScale = useRef(new Animated.Value(0.92)).current;
@@ -143,6 +153,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
     completeEnterScale.stopAnimation();
     goldPillOpacity.setValue(0);
     goldPillY.setValue(0);
+    goldSheetH.stopAnimation();
+    goldSheetH.setValue(sheetFullH);
     readOpacity.setValue(1);
     completeOpacity.setValue(0);
     completeEnterY.setValue(16);
@@ -153,7 +165,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
     completeOpacity,
     goldPillOpacity,
     goldPillY,
+    goldSheetH,
     readOpacity,
+    sheetFullH,
   ]);
 
   /** BubbleEnter twin: spring from below + scale (opacity stays visible). */
@@ -409,26 +423,35 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const leaveToVoicePreview = useCallback(() => {
     if (leftRef.current) return;
     leftRef.current = true;
+    let gone = false;
     const go = () => {
+      if (gone) return;
+      gone = true;
       try {
         navigationRef.current.replace('VoicePreview');
       } catch {
         navigationRef.current.navigate('VoicePreview');
       }
     };
-    // Same exit as Welcome: the gold sheet slides up, then the next page.
-    const h = Dimensions.get('window').height;
-    const fallback = setTimeout(go, 1100);
-    Animated.timing(goldPillY, {
-      toValue: -h,
-      duration: 800,
-      easing: Easing.inOut(Easing.cubic),
+    // Same exit as Welcome: copy fades, the full-screen gold sheet retracts
+    // upward and its bottom corners round off, then the next page.
+    const fallback = setTimeout(go, 1300);
+    Animated.timing(completeOpacity, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.quad),
       useNativeDriver: true,
+    }).start();
+    Animated.timing(goldSheetH, {
+      toValue: 0,
+      duration: 900,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
     }).start(() => {
       clearTimeout(fallback);
       go();
     });
-  }, [goldPillY]);
+  }, [completeOpacity, goldSheetH]);
   const leaveToVoicePreviewRef = useRef(leaveToVoicePreview);
   leaveToVoicePreviewRef.current = leaveToVoicePreview;
 
@@ -686,8 +709,10 @@ export function VoiceRecordScreen({ navigation }: Props) {
         pointerEvents={complete ? 'auto' : 'none'}
         style={[
           styles.goldPill,
-          StyleSheet.absoluteFill,
           {
+            height: goldSheetH,
+            borderBottomLeftRadius: sheetRadius,
+            borderBottomRightRadius: sheetRadius,
             opacity: goldPillOpacity,
             transform: [{ translateY: goldPillY }],
           },

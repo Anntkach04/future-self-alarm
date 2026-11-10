@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RoundArrowButton } from '../components/RoundArrowButton';
 import { SoftConfetti } from '../components/SoftConfetti';
@@ -11,6 +11,9 @@ import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingCongrats'>;
 
 const GOLD = accents.gold;
+const FULL_H = Dimensions.get('screen').height;
+/** Bottom corner radius the sheet grows into while it retracts (Welcome). */
+const SHEET_RADIUS = Math.max(Dimensions.get('window').width * 0.55, 180);
 
 /**
  * Celebration after first alarm — centered copy, arrow to Home, more confetti.
@@ -21,11 +24,40 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
   const enterScale = useRef(new Animated.Value(0.92)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const left = useRef(false);
+  const sheetH = useRef(new Animated.Value(FULL_H)).current;
+  const radius = sheetH.interpolate({
+    inputRange: [0, FULL_H * 0.4, FULL_H],
+    outputRange: [SHEET_RADIUS, SHEET_RADIUS, 0],
+    extrapolate: 'clamp',
+  });
 
   const goHome = () => {
     if (left.current) return;
     left.current = true;
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    let gone = false;
+    const go = () => {
+      if (gone) return;
+      gone = true;
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    };
+    const fallback = setTimeout(go, 1300);
+    // Same exit as Welcome: copy fades, the gold sheet retracts upward and
+    // its bottom corners round off, then Home.
+    Animated.timing(opacity, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+    Animated.timing(sheetH, {
+      toValue: 0,
+      duration: 900,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
+    }).start(() => {
+      clearTimeout(fallback);
+      go();
+    });
   };
 
   useEffect(() => {
@@ -74,7 +106,20 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <SoftConfetti count={72} />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.sheet,
+          {
+            height: sheetH,
+            borderBottomLeftRadius: radius,
+            borderBottomRightRadius: radius,
+          },
+        ]}
+      />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity }]}>
+        <SoftConfetti count={72} />
+      </Animated.View>
       <Animated.View
         style={[
           styles.inner,
@@ -103,6 +148,13 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: colors.bg,
+  },
+  sheet: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: GOLD,
   },
   inner: {
