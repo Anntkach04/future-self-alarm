@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "deploymentTarget": "26.1",
-      "buildNumber": "77",
+      "buildNumber": "78",
       "appleTeamId": "87UHF725F4",
       "usesAppleSignIn": true,
       "entitlements": {
