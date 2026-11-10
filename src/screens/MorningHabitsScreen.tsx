@@ -18,7 +18,7 @@ export function MorningHabitsScreen({ navigation }: Props) {
       onToggle={toggleMorningHabit}
       onAddCustom={addMorningHabit}
       addPlaceholder="Your morning habit"
-      onSubmit={() => navigation.navigate('VoiceRecord')}
+      onSubmit={() => navigation.navigate('HardMornings')}
     />
   );
 }

@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     color: colors.text,
     marginBottom: spacing.lg,
   },
@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
   blockTitle: {
     fontFamily: fonts.headingRegular,
     fontSize: 22,
+    lineHeight: 28,
     color: colors.text,
     ...noFakeBold,
   },

@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 40,
     lineHeight: 44,
     color: colors.text,
     marginBottom: 24,

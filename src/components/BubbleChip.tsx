@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   caption: {
     fontFamily: fonts.body,
     fontSize: 13,
-    opacity: 0.7,
+    opacity: 0.8,
     marginTop: 2,
   },
 });

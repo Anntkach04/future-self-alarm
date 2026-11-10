@@ -19,8 +19,8 @@ import { markIntroSplashFinished, resetIntroSplashGate } from './introSplashGate
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
 const WELCOME_BLUE = '#BADFFF';
-const HOLD_MS = 2200;
-const RETRACT_MS = 1000;
+const HOLD_MS = 1900;
+const RETRACT_MS = 900;
 
 /**
  * Splash on every cold start → Home (done) or Intro (onboarding).
@@ -170,7 +170,7 @@ export function WelcomeScreen({ navigation }: Props) {
             ]}
           >
             <LogoSpinner />
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.title, { opacity: 0.7 }]}>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.title, { opacity: 0.8 }]}>
               Welcome to the{'\n'}future self alarm
             </Text>
             {__DEV__ ? (

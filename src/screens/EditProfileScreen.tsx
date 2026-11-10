@@ -238,7 +238,8 @@ const styles = StyleSheet.create({
   },
   recapTitle: {
     fontFamily: fonts.headingRegular,
-    fontSize: 20,
+    fontSize: 22,
+    lineHeight: 28,
     color: colors.text,
     marginTop: 8,
     marginBottom: 8,
@@ -264,6 +265,7 @@ const styles = StyleSheet.create({
   dangerTitle: {
     fontFamily: fonts.headingRegular,
     fontSize: 22,
+    lineHeight: 28,
     color: colors.text,
     marginBottom: 8,
     ...noFakeBold,

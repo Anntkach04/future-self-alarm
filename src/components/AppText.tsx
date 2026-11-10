@@ -11,7 +11,7 @@ const variantStyle = StyleSheet.create({
   hero: {
     fontFamily: fonts.headingRegular,
     fontWeight: '400',
-    fontSize: 36,
+    fontSize: 40,
     lineHeight: 44,
     color: colors.text,
   },

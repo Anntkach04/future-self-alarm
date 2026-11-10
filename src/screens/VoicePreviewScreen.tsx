@@ -6,7 +6,12 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { KaraokeScript, type KaraokeWord } from '../components/KaraokeScript';
+import {
+  KaraokeScript,
+  cleanScript,
+  estimateSpeechWords,
+  type KaraokeWord,
+} from '../components/KaraokeScript';
 import { LoadingLabel } from '../components/LoadingLabel';
 import { Screen } from '../components/Screen';
 import { RoundArrowButton } from '../components/RoundArrowButton';
@@ -34,18 +39,6 @@ function playableUri(uri: string) {
   return `file://${uri}`;
 }
 
-/** Even spacing when ElevenLabs alignment is missing — still looks like karaoke. */
-function estimateWords(text: string, durationSec: number): KaraokeWord[] {
-  const parts = text.split(/\s+/).filter(Boolean);
-  if (!parts.length) return [];
-  const dur = Math.max(durationSec, parts.length * 0.28);
-  const slot = dur / parts.length;
-  return parts.map((w, i) => ({
-    text: w,
-    start: i * slot,
-    end: (i + 1) * slot,
-  }));
-}
 
 export function VoicePreviewScreen({ navigation }: Props) {
   const { answers, voice, setPreview } = useOnboarding();
@@ -62,8 +55,10 @@ export function VoicePreviewScreen({ navigation }: Props) {
     words: KaraokeWord[] | null;
   } | null>(null);
   const line =
+    cleanScript(
     voice.previewText ||
-    buildAlarmScript(answers.name, null, answers.morningHabits);
+      buildAlarmScript(answers.name, null, answers.morningHabits)
+  );
 
   const detachPlayer = () => {
     statusSubRef.current?.remove();
@@ -85,9 +80,10 @@ export function VoicePreviewScreen({ navigation }: Props) {
       if (!voice.voiceId) return;
       try {
         await ensureGuestSession();
-        const text =
+        const text = cleanScript(
           voice.previewText ||
-          buildAlarmScript(answers.name, null, answers.morningHabits);
+            buildAlarmScript(answers.name, null, answers.morningHabits)
+        );
         const tts = await synthesizeSpeech({
           voiceId: voice.voiceId,
           text,
@@ -119,9 +115,10 @@ export function VoicePreviewScreen({ navigation }: Props) {
     }
     if (!voice.voiceId) return null;
     await ensureGuestSession();
-    const text =
+    const text = cleanScript(
       voice.previewText ||
-      buildAlarmScript(answers.name, null, answers.morningHabits);
+        buildAlarmScript(answers.name, null, answers.morningHabits)
+    );
     const tts = await synthesizeSpeech({
       voiceId: voice.voiceId,
       text,
@@ -168,7 +165,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
             (!ready.words || ready.words.length === 0) &&
             status.duration > 0.5
           ) {
-            const estimated = estimateWords(line, status.duration);
+            const estimated = estimateSpeechWords(line, status.duration);
             if (estimated.length) {
               setWords(estimated);
               previewCacheRef.current = {
@@ -274,12 +271,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     color: colors.text,
-    opacity: 0.65,
+    opacity: 0.8,
     textAlign: 'center',
   },
   subheading: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 40,
     lineHeight: 44,
     color: colors.text,
     textAlign: 'center',
@@ -319,6 +316,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 16,
     color: colors.text,
-    opacity: 0.7,
+    opacity: 0.8,
   },
 });

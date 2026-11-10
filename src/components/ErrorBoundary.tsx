@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#1A1A1A',
   },
   scroll: {

@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 15,
     color: '#1A1A1A',
-    opacity: 0.6,
+    opacity: 0.8,
     textDecorationLine: 'underline',
   },
   welcomeTitle: {
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     color: '#1A1A1A',
-    opacity: 0.7,
+    opacity: 0.8,
     paddingHorizontal: 40,
     ...noFakeBold,
   },

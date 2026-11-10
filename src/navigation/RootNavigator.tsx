@@ -8,7 +8,10 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { IntroCarouselScreen } from '../screens/IntroCarouselScreen';
 import { NameScreen } from '../screens/NameScreen';
+import { FutureSelfScreen } from '../screens/FutureSelfScreen';
 import { MorningHabitsScreen } from '../screens/MorningHabitsScreen';
+import { HardMorningsScreen } from '../screens/HardMorningsScreen';
+import { VoiceStyleScreen } from '../screens/VoiceStyleScreen';
 import { VoiceRecordScreen } from '../screens/VoiceRecordScreen';
 import { VoiceCloningScreen } from '../screens/VoiceCloningScreen';
 import { VoicePreviewScreen } from '../screens/VoicePreviewScreen';
@@ -68,7 +71,10 @@ export function RootNavigator() {
           options={{ animation: 'none' }}
         />
         <Stack.Screen name="Name" component={NameScreen} />
+        <Stack.Screen name="FutureSelf" component={FutureSelfScreen} />
         <Stack.Screen name="MorningHabits" component={MorningHabitsScreen} />
+        <Stack.Screen name="HardMornings" component={HardMorningsScreen} />
+        <Stack.Screen name="VoiceStyle" component={VoiceStyleScreen} />
         <Stack.Screen name="VoiceRecord" component={VoiceRecordScreen} />
         <Stack.Screen name="VoiceCloning" component={VoiceCloningScreen} />
         <Stack.Screen name="VoicePreview" component={VoicePreviewScreen} />

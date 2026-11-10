@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 40,
     lineHeight: 44,
     color: colors.text,
     marginBottom: 12,
@@ -351,7 +351,8 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontFamily: fonts.headingRegular,
-    fontSize: 20,
+    fontSize: 22,
+    lineHeight: 28,
     color: colors.text,
     ...noFakeBold,
   },

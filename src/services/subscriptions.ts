@@ -96,6 +96,17 @@ export async function getSubscriptionStatus(): Promise<SubStatus> {
     await configurePurchases();
     const info = await Purchases.getCustomerInfo();
     const ent = info.entitlements.active[ENTITLEMENT_ID];
+    // Product bought but not yet linked to the entitlement in RevenueCat:
+    // the user paid, so treat an active monthly subscription as access.
+    if (!ent && info.activeSubscriptions.includes(MONTHLY_PRODUCT_ID)) {
+      return {
+        active: true,
+        inTrial: false,
+        expiresAt: info.allExpirationDates?.[MONTHLY_PRODUCT_ID] ?? null,
+        productId: MONTHLY_PRODUCT_ID,
+        source: 'revenuecat',
+      };
+    }
     if (!ent) {
       return {
         active: false,
@@ -125,40 +136,86 @@ export async function getSubscriptionStatus(): Promise<SubStatus> {
   }
 }
 
-async function resolveMonthlyPackage() {
-  const Purchases = (await import('react-native-purchases')).default;
-  await configurePurchases();
-  const offerings = await Purchases.getOfferings();
-  // Current offering first; if none is marked current in RevenueCat, look
-  // through every offering so a dashboard slip doesn't hide the product.
-  const current = offerings.current?.availablePackages ?? [];
-  const all = Object.values(offerings.all ?? {}).flatMap(
-    (o) => o.availablePackages ?? []
-  );
-  const pools = [current, all];
-  for (const packages of pools) {
-    const match =
-      packages.find(
-        (p) =>
-          p.product.identifier === MONTHLY_PRODUCT_ID ||
-          p.identifier === MONTHLY_PRODUCT_ID
-      ) ??
-      packages.find((p) => p.packageType === 'MONTHLY') ??
-      packages.find(
-        (p) => (p.product as { subscriptionPeriod?: string | null }).subscriptionPeriod === 'P1M'
-      ) ??
-      // The app sells exactly one plan: a lone package is that plan.
-      (packages.length === 1 ? packages[0] : undefined);
-    if (match) return match;
+type PurchasesModule = typeof import('react-native-purchases').default;
+type RcPackage = import('react-native-purchases').PurchasesPackage;
+type RcProduct = import('react-native-purchases').PurchasesStoreProduct;
+
+/** What the paywall can buy: a RevenueCat package, or the raw StoreKit product. */
+type MonthlyPlan = { pkg: RcPackage | null; product: RcProduct };
+
+/** Why the price could not load (shown on the paywall so setup issues are visible). */
+let lastPlanProblem: string | null = null;
+export function planProblem() {
+  return lastPlanProblem;
+}
+
+function errorText(error: unknown) {
+  if (error && typeof error === 'object') {
+    const e = error as { code?: unknown; message?: unknown; underlyingErrorMessage?: unknown };
+    const parts = [e.code != null ? `code ${String(e.code)}` : '', String(e.message ?? ''), String(e.underlyingErrorMessage ?? '')]
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (parts.length) return parts.join(' · ');
   }
-  console.warn(
-    'RevenueCat: no monthly package',
-    JSON.stringify({
-      current: offerings.current?.identifier ?? null,
-      offerings: Object.keys(offerings.all ?? {}),
-      packages: all.map((p) => `${p.identifier}:${p.product.identifier}`),
-    })
+  return String(error);
+}
+
+function pickMonthly(packages: RcPackage[]) {
+  return (
+    packages.find(
+      (p) =>
+        p.product.identifier === MONTHLY_PRODUCT_ID ||
+        p.identifier === MONTHLY_PRODUCT_ID
+    ) ??
+    packages.find((p) => p.packageType === 'MONTHLY') ??
+    packages.find(
+      (p) => (p.product as { subscriptionPeriod?: string | null }).subscriptionPeriod === 'P1M'
+    ) ??
+    // The app sells exactly one plan: a lone package is that plan.
+    (packages.length === 1 ? packages[0] : undefined)
   );
+}
+
+/**
+ * RevenueCat offering first (current, then any). If the dashboard has no
+ * usable offering, ask StoreKit for the product directly so a RevenueCat
+ * setup slip never blocks a purchase that Apple can serve.
+ */
+async function resolveMonthlyPlan(Purchases: PurchasesModule): Promise<MonthlyPlan | null> {
+  await configurePurchases();
+  let offeringsProblem = '';
+  try {
+    const offerings = await Purchases.getOfferings();
+    const current = offerings.current?.availablePackages ?? [];
+    const all = Object.values(offerings.all ?? {}).flatMap(
+      (o) => o.availablePackages ?? []
+    );
+    for (const packages of [current, all]) {
+      const pkg = pickMonthly(packages);
+      if (pkg) {
+        lastPlanProblem = null;
+        return { pkg, product: pkg.product };
+      }
+    }
+    offeringsProblem = `RevenueCat offerings: ${Object.keys(offerings.all ?? {}).join(', ') || 'none'}`;
+  } catch (error) {
+    offeringsProblem = `RevenueCat: ${errorText(error)}`;
+  }
+  try {
+    const products = await Purchases.getProducts(
+      [MONTHLY_PRODUCT_ID],
+      Purchases.PRODUCT_CATEGORY.SUBSCRIPTION
+    );
+    const product = products.find((p) => p.identifier === MONTHLY_PRODUCT_ID) ?? products[0];
+    if (product) {
+      lastPlanProblem = null;
+      return { pkg: null, product };
+    }
+    lastPlanProblem = `${offeringsProblem}. App Store returned no product "${MONTHLY_PRODUCT_ID}".`;
+  } catch (error) {
+    lastPlanProblem = `${offeringsProblem}. App Store: ${errorText(error)}`;
+  }
+  console.warn('Monthly plan unavailable:', lastPlanProblem);
   return null;
 }
 
@@ -246,10 +303,10 @@ export async function getMonthlyPlanDetails(): Promise<MonthlyPlanDetails | null
   if (!iosApiKey()) return null;
   try {
     const Purchases = (await import('react-native-purchases')).default;
-    const pkg = await resolveMonthlyPackage();
-    const price = pkg?.product?.priceString ?? null;
-    const id = pkg?.product?.identifier ?? MONTHLY_PRODUCT_ID;
-    let trialDays = introTrialDays(pkg?.product?.introPrice);
+    const plan = await resolveMonthlyPlan(Purchases);
+    const price = plan?.product.priceString ?? null;
+    const id = plan?.product.identifier ?? MONTHLY_PRODUCT_ID;
+    let trialDays = introTrialDays(plan?.product.introPrice);
     if (trialDays) {
       // Apple: one intro offer per subscription group per Apple ID. Only
       // advertise the trial when StoreKit confirms this user can get it.
@@ -269,6 +326,7 @@ export async function getMonthlyPlanDetails(): Promise<MonthlyPlanDetails | null
       productId: id,
     };
   } catch (error) {
+    lastPlanProblem = errorText(error);
     console.warn('getMonthlyPlanDetails failed', error);
     return null;
   }
@@ -284,11 +342,12 @@ export async function startMonthlyWithTrial(): Promise<SubStatus> {
   }
   try {
     const Purchases = (await import('react-native-purchases')).default;
-    const pkg = await resolveMonthlyPackage();
-    if (!pkg) {
-      throw new Error('No subscription package configured in RevenueCat');
+    const plan = await resolveMonthlyPlan(Purchases);
+    if (!plan) {
+      throw new Error('The App Store did not return the monthly plan. Try again in a moment.');
     }
-    await Purchases.purchasePackage(pkg);
+    if (plan.pkg) await Purchases.purchasePackage(plan.pkg);
+    else await Purchases.purchaseStoreProduct(plan.product);
     return getSubscriptionStatus();
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

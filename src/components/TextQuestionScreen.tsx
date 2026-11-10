@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     fontFamily: fonts.headingRegular,
     color: colors.text,
-    fontSize: 36,
+    fontSize: 40,
     lineHeight: 44,
     marginBottom: 12,
     alignSelf: 'stretch',

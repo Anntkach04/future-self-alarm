@@ -123,7 +123,7 @@ export function SubscriptionScreen({}: Props) {
             ) : null}
             {BENEFITS.map((line) => (
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={line} style={styles.benefit}>
-                · {line}
+                {line}
               </Text>
             ))}
           </>
@@ -183,8 +183,8 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -208,7 +208,8 @@ const styles = StyleSheet.create({
   planName: {
     marginTop: 8,
     fontFamily: fonts.headingRegular,
-    fontSize: 22,
+    fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     ...noFakeBold,
   },
@@ -220,8 +221,8 @@ const styles = StyleSheet.create({
   },
   benefit: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: colors.text,
   },
   meta: {

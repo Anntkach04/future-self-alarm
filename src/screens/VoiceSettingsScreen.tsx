@@ -7,7 +7,12 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
-import { KaraokeScript, type KaraokeWord } from '../components/KaraokeScript';
+import {
+  KaraokeScript,
+  cleanScript,
+  estimateSpeechWords,
+  type KaraokeWord,
+} from '../components/KaraokeScript';
 import { LoadingLabel } from '../components/LoadingLabel';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -27,13 +32,6 @@ function playableUri(uri: string) {
   return `file://${uri}`;
 }
 
-/** Even spacing when word timings are missing — still reads as karaoke. */
-function estimateWords(text: string, durationSec: number): KaraokeWord[] {
-  const parts = text.split(/\s+/).filter(Boolean);
-  if (!parts.length) return [];
-  const slot = Math.max(durationSec, parts.length * 0.28) / parts.length;
-  return parts.map((w, i) => ({ text: w, start: i * slot, end: (i + 1) * slot }));
-}
 
 /**
  * Listen to your cloned voice again, with the same word highlight as the
@@ -52,8 +50,10 @@ export function VoiceSettingsScreen({ navigation }: Props) {
   const cacheRef = useRef<{ uri: string; words: KaraokeWord[] | null } | null>(null);
 
   const line =
+    cleanScript(
     voice.previewText ||
-    buildAlarmScript(answers.name, null, answers.morningHabits);
+      buildAlarmScript(answers.name, null, answers.morningHabits)
+  );
 
   const detach = () => {
     subRef.current?.remove();
@@ -105,7 +105,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
       subRef.current = player.addListener('playbackStatusUpdate', (status) => {
         setCurrentTime(Number(status.currentTime) || 0);
         if (!ready.words?.length && status.duration > 0.5) {
-          const estimated = estimateWords(line, status.duration);
+          const estimated = estimateSpeechWords(line, status.duration);
           setWords(estimated);
           cacheRef.current = { uri: ready.uri, words: estimated };
         }

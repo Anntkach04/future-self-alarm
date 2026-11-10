@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { BackButton } from '../components/BackButton';
+import { FeatureList, type FeatureItem } from '../components/FeatureList';
 import { LegalLinks } from '../components/LegalLinks';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -18,6 +19,7 @@ import {
   configurePurchases,
   getMonthlyPlanDetails,
   hasPurchasesKey,
+  planProblem,
   restorePurchases,
   startMonthlyWithTrial,
   type MonthlyPlanDetails,
@@ -27,10 +29,10 @@ import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
-const BENEFITS = [
-  'Wake to your own cloned voice',
-  'Personalized morning scripts',
-  'Mood check-in shapes tomorrow',
+const BENEFITS: FeatureItem[] = [
+  { icon: 'voice', title: 'Your own voice', body: 'Wake up to future you, every morning.' },
+  { icon: 'heart', title: 'Written for you', body: 'A new message from your goals and habits.' },
+  { icon: 'alarm', title: 'Shaped by your mood', body: 'Today’s check-in changes tomorrow’s alarm.' },
 ];
 
 export function PaywallScreen({ navigation, route }: Props) {
@@ -176,6 +178,8 @@ export function PaywallScreen({ navigation, route }: Props) {
         Cancel anytime.
       </Text>
 
+      <FeatureList items={BENEFITS} color={accents.mist} />
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={trial ? 'Start free trial, monthly plan' : 'Subscribe, monthly plan'}
@@ -195,13 +199,6 @@ export function PaywallScreen({ navigation, route }: Props) {
               ? 'Price unavailable'
               : (plan?.headline ?? '')}
         </Text>
-        <View style={styles.benefits}>
-          {BENEFITS.map((line) => (
-            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={line} style={styles.benefit}>
-              · {line}
-            </Text>
-          ))}
-        </View>
         {plan?.disclosure ? (
           <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.disclosure}>{plan.disclosure}</Text>
         ) : null}
@@ -213,6 +210,11 @@ export function PaywallScreen({ navigation, route }: Props) {
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>
           We couldn’t load the price from the App Store. Check your connection
           and try again.
+        </Text>
+      ) : null}
+      {priceMissing && planProblem() ? (
+        <Text maxFontSizeMultiplier={1.5} style={styles.diag} selectable>
+          {planProblem()}
         </Text>
       ) : null}
       {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
@@ -280,9 +282,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,
+    marginBottom: spacing.lg,
+  },
+  diag: {
+    marginTop: 6,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textMuted,
   },
   planCard: {
-    marginTop: 20,
+    marginTop: 12,
     borderRadius: 24,
     padding: 18,
     gap: 8,
@@ -306,16 +316,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 17,
     lineHeight: 24,
-    color: colors.text,
-  },
-  benefits: {
-    marginTop: 6,
-    gap: 4,
-  },
-  benefit: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
     color: colors.text,
   },
   disclosure: {
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text,
-    opacity: 0.55,
+    opacity: 0.8,
     textDecorationLine: 'underline',
   },
 });

@@ -1,9 +1,10 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import * as AppleAuthenticationUI from 'expo-apple-authentication';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
-import { LegalLinks } from '../components/LegalLinks';
+import { FeatureList, type FeatureItem } from '../components/FeatureList';
+import { privacyPolicyUrl, termsOfUseUrl } from '../config/legal';
 import { Screen } from '../components/Screen';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
@@ -18,14 +19,14 @@ import {
 } from '../services/profileSync';
 import { configurePurchases } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
-import { colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
 const COPY = {
   save: {
     title: 'Keep your\nfuture voice',
-    body: 'Sign in with Apple so your voice and alarms are saved, even if you change phones.',
+    body: 'Save what you just made to your Apple ID. It stays with you on any iPhone.',
   },
   restore: {
     title: 'Welcome\nback',
@@ -37,11 +38,17 @@ const COPY = {
   },
 } as const;
 
-const SAVED_ITEMS = [
-  'Your cloned voice',
-  'Your alarms and wake-up messages',
-  'Your answers, so mornings stay personal',
+const SAVED_ITEMS: FeatureItem[] = [
+  { icon: 'voice', title: 'Your cloned voice', body: 'Ready for every alarm, on any iPhone.' },
+  { icon: 'alarm', title: 'Your alarms', body: 'Times, days and wake-up messages.' },
+  { icon: 'heart', title: 'Your answers', body: 'So every morning stays personal.' },
 ];
+
+const PRIVATE_ITEM: FeatureItem = {
+  icon: 'lock',
+  title: 'Private by design',
+  body: 'No password. We never sell your data.',
+};
 
 export function SignInScreen({ navigation, route }: Props) {
   const mode = route.params?.mode ?? 'restore';
@@ -230,44 +237,55 @@ export function SignInScreen({ navigation, route }: Props) {
     }
   };
 
+  const terms = termsOfUseUrl();
+  const privacy = privacyPolicyUrl();
+  const items = mode === 'resume' ? [SAVED_ITEMS[0], PRIVATE_ITEM] : [...SAVED_ITEMS];
+
   return (
     <Screen>
       <BackButton style={styles.back} />
       <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>{copy.title}</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>{copy.body}</Text>
-      {mode === 'save' ? (
-        <View style={styles.savedList}>
-          {SAVED_ITEMS.map((item) => (
-            <View key={item} style={styles.savedRow}>
-              <View style={styles.savedDot} />
-              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.savedText}>{item}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
 
-      {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
-      <LegalLinks style={styles.legal} />
+      <FeatureList items={items} color={accents.mist} />
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void signInWithApple()}
-          style={[styles.appleBtn, busy && styles.appleBtnDisabled]}
-          disabled={busy}
-        >
-          <View style={styles.appleBtnInner}>
-            <Svg width={18} height={22} viewBox="0 0 18 22" fill="none">
-              <Path
-                d="M14.7 11.6c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.7-1.3-.1-2.5.8-3.1.8-.6 0-1.6-.7-2.7-.7-1.4 0-2.7.8-3.4 2.1-1.5 2.5-.4 6.3 1 8.4.7 1 1.5 2.2 2.6 2.1 1 0 1.4-.7 2.7-.7s1.6.7 2.7.7c1.1 0 1.8-1 2.5-2 .8-1.1 1.1-2.2 1.1-2.3-.1 0-2.1-.8-2.2-3.5zM12.2 4.8c.6-.7 1-1.7.9-2.7-0.9.1-1.9.6-2.5 1.3-.6.6-1.1 1.7-1 2.6 1 .1 1.9-.4 2.6-1.2z"
-                fill="#fff"
-              />
-            </Svg>
-            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.appleBtnText}>
-              {busy ? 'Signing in…' : 'Sign in with Apple'}
-            </Text>
-          </View>
-        </Pressable>
+        {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
+        <View style={styles.appleWrap} pointerEvents={busy ? 'none' : 'auto'}>
+          <AppleAuthenticationUI.AppleAuthenticationButton
+            buttonType={
+              mode === 'save'
+                ? AppleAuthenticationUI.AppleAuthenticationButtonType.CONTINUE
+                : AppleAuthenticationUI.AppleAuthenticationButtonType.SIGN_IN
+            }
+            buttonStyle={AppleAuthenticationUI.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={26}
+            style={[styles.appleBtn, busy && styles.appleBtnBusy]}
+            onPress={() => void signInWithApple()}
+          />
+          {busy ? (
+            <View style={styles.appleSpinner} pointerEvents="none">
+              <ActivityIndicator color="#fff" />
+            </View>
+          ) : null}
+        </View>
+        {terms || privacy ? (
+          <Text maxFontSizeMultiplier={1.5} style={styles.legal}>
+            By continuing, you agree to our{' '}
+            {terms ? (
+              <Text accessibilityRole="link" style={styles.legalLink} onPress={() => void Linking.openURL(terms)}>
+                Terms of Use
+              </Text>
+            ) : null}
+            {terms && privacy ? ' and ' : ''}
+            {privacy ? (
+              <Text accessibilityRole="link" style={styles.legalLink} onPress={() => void Linking.openURL(privacy)}>
+                Privacy Policy
+              </Text>
+            ) : null}
+            .
+          </Text>
+        ) : null}
       </View>
     </Screen>
   );
@@ -289,63 +307,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.text,
-    marginBottom: spacing.xl,
-  },
-  savedList: {
-    gap: 14,
-    marginBottom: spacing.xl,
-  },
-  savedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  savedDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.text,
-  },
-  savedText: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 22,
-    color: colors.text,
+    marginBottom: spacing.lg,
   },
   error: {
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: '#C0392B',
-    marginBottom: spacing.md,
-  },
-  legal: {
-    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   actions: {
     marginTop: 'auto',
-    gap: 16,
+    gap: 14,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  appleWrap: {
+    width: '100%',
+    height: 52,
   },
   appleBtn: {
     width: '100%',
     height: 52,
-    borderRadius: 999,
-    backgroundColor: '#000',
+  },
+  appleBtnBusy: {
+    opacity: 0.6,
+  },
+  appleSpinner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  appleBtnDisabled: {
-    opacity: 0.55,
+  legal: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
-  appleBtnInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  appleBtnText: {
-    color: '#fff',
-    fontFamily: fonts.bodyMedium,
-    fontSize: 17,
+  legalLink: {
+    textDecorationLine: 'underline',
   },
 });

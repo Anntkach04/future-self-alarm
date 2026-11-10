@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: '#1A1A1A',
     textAlign: 'center',
-    opacity: 0.7,
+    opacity: 0.8,
     paddingHorizontal: 40,
     ...noFakeBold,
   },

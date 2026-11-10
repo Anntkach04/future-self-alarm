@@ -8,7 +8,10 @@ export type RootStackParamList = {
   Welcome: undefined;
   Intro: undefined;
   Name: undefined;
+  FutureSelf: undefined;
   MorningHabits: undefined;
+  HardMornings: undefined;
+  VoiceStyle: undefined;
   MessageLength: undefined;
   MusicBed: undefined;
   VoiceRecord: undefined;

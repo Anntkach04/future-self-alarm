@@ -6,9 +6,11 @@ export const fonts = {
   headingItalic: 'InstrumentSerif_400Regular_Italic',
   headingBold: 'InstrumentSerif_400Regular',
   bodyLight: 'Inter_300Light',
-  body: 'Inter_400Regular',
-  bodyMedium: 'Inter_500Medium',
-  bodySemiBold: 'Inter_600SemiBold',
+  /** Body copy is Light: Regular reads heavy on cream. */
+  body: 'Inter_300Light',
+  /** Emphasis (buttons, short labels): Regular, never Medium. */
+  bodyMedium: 'Inter_400Regular',
+  bodySemiBold: 'Inter_400Regular',
 } as const;
 
 /**
@@ -48,6 +50,8 @@ export const accents = {
   /** Tonal buttons: one shade deeper than the card they sit on, ink label. */
   goldDeep: '#F2AE3D',
   mistDeep: '#7FC6F4',
+  /** Soft lilac: progress bars. */
+  lilac: '#B9ADD9',
 } as const;
 
 /** Soft chips / bubbles — Figma muted + extras that fit cream UI */
@@ -104,8 +108,9 @@ export const inkStroke = 'rgba(26, 26, 26, 0.7)';
 export const colors = {
   bg: '#FFFAEE',
   text: accents.ink,
-  textMuted: '#7A7568',
-  textSoft: '#9A9488',
+  /** Secondary text: ink at 80%, never a separate gray. */
+  textMuted: 'rgba(26, 26, 26, 0.8)',
+  textSoft: 'rgba(26, 26, 26, 0.8)',
   border: inkStroke,
   chip: '#F3EBD3',
   chipSelected: accents.ink,

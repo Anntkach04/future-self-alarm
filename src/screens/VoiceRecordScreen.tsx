@@ -396,20 +396,29 @@ export function VoiceRecordScreen({ navigation }: Props) {
     return () => clearInterval(id);
   }, [complete, recording]);
 
+  const leftRef = useRef(false);
   const leaveToVoicePreview = useCallback(() => {
-    // Cosmetic slide — never blocks navigation.
+    if (leftRef.current) return;
+    leftRef.current = true;
+    const go = () => {
+      try {
+        navigationRef.current.replace('VoicePreview');
+      } catch {
+        navigationRef.current.navigate('VoicePreview');
+      }
+    };
+    // Same exit as Welcome: the gold sheet slides up, then the next page.
     const h = Dimensions.get('window').height;
+    const fallback = setTimeout(go, 1100);
     Animated.timing(goldPillY, {
       toValue: -h,
-      duration: 380,
+      duration: 800,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: true,
-    }).start();
-    try {
-      navigationRef.current.replace('VoicePreview');
-    } catch {
-      navigationRef.current.navigate('VoicePreview');
-    }
+    }).start(() => {
+      clearTimeout(fallback);
+      go();
+    });
   }, [goldPillY]);
   const leaveToVoicePreviewRef = useRef(leaveToVoicePreview);
   leaveToVoicePreviewRef.current = leaveToVoicePreview;
@@ -425,11 +434,13 @@ export function VoiceRecordScreen({ navigation }: Props) {
       successLeaveArmedRef.current = false;
       return;
     }
-    if (successLeaveArmedRef.current) return;
-    successLeaveArmedRef.current = true;
-
-    playBubbleSpring();
-    void playAllSetSound();
+    // Sound + spring once; the leave timers are set on every run so a
+    // re-run of this effect can never leave the user parked on gold.
+    if (!successLeaveArmedRef.current) {
+      successLeaveArmedRef.current = true;
+      playBubbleSpring();
+      void playAllSetSound();
+    }
 
     const go = () => leaveToVoicePreviewRef.current();
     const navAt = setTimeout(go, SUCCESS_HOLD_MS);
@@ -452,6 +463,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const rerecordFromComplete = async () => {
     if (!(await consentToRecord())) return;
     successLeaveArmedRef.current = false;
+    leftRef.current = false;
     setComplete(false);
     finishingRef.current = false;
     cloneStartedRef.current = false;
@@ -695,7 +707,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 {cloneError
                   ? 'Almost'
                   : cloneReady
-                    ? "You’re all set"
+                    ? 'Voice cloned'
                     : 'Cloning your voice'}
               </Text>
               {cloneError ? (
@@ -706,7 +718,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
                 </Text>
               ) : (
                 <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.cloneEta}>
-                  This usually takes about 1–2 minutes
+                  This usually takes a minute or two
                 </Text>
               )}
             </View>
@@ -775,8 +787,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 48,
-    lineHeight: 52,
+    fontSize: 40,
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 12,
     ...noFakeBold,
@@ -794,14 +806,14 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     height: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(26, 26, 26, 0.08)',
+    backgroundColor: 'rgba(185, 173, 217, 0.3)',
     overflow: 'hidden',
     marginBottom: 6,
   },
   progressFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: accents.coral,
+    backgroundColor: accents.lilac,
   },
   progressLabel: {
     fontFamily: fonts.body,
@@ -886,7 +898,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     color: colors.text,
-    opacity: 0.55,
+    opacity: 0.8,
     paddingHorizontal: 12,
   },
   completeFooter: {
