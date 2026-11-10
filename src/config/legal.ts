@@ -26,7 +26,7 @@ export function termsOfUseUrl() {
 export function contactUsUrl() {
   return (
     process.env.EXPO_PUBLIC_CONTACT_URL?.trim() ||
-    (apiOrigin() ? `${apiOrigin()}/contact` : '')
+    'https://marketing-site-red-delta.vercel.app/contact'
   );
 }
 

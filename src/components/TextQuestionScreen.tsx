@@ -4,12 +4,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from './BackButton';
 import { BubbleEnter } from './BubbleEnter';
-import { InputPill } from './InputPill';
+import { RoundArrowButton } from './RoundArrowButton';
 import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
 type Props = {
   question: string;
@@ -34,6 +35,7 @@ export function TextQuestionScreen({
   autoFocus = true,
   accentColor = accents.gold,
 }: Props) {
+  const canSubmit = value.trim().length > 0;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
@@ -56,17 +58,31 @@ export function TextQuestionScreen({
             </View>
           </BubbleEnter>
           <BubbleEnter delay={40} fromY={10}>
-            <InputPill
-              value={value}
-              onChangeText={onChangeText}
-              onSubmit={onSubmit}
-              placeholder={placeholder}
-              keyboardType={keyboardType}
-              autoFocus={autoFocus}
-              buttonColor={accentColor}
-            />
+            {/* Same underline field as the chip screens; name set in the serif. */}
+            <View style={styles.underline}>
+              <TextInput
+                maxFontSizeMultiplier={1.3}
+                value={value}
+                onChangeText={onChangeText}
+                onSubmitEditing={() => {
+                  if (canSubmit) onSubmit();
+                }}
+                placeholder={placeholder}
+                placeholderTextColor={colors.placeholder}
+                keyboardType={keyboardType}
+                autoFocus={autoFocus}
+                autoCorrect={false}
+                returnKeyType="next"
+                selectionColor={colors.text}
+                style={styles.input}
+                underlineColorAndroid="transparent"
+              />
+            </View>
           </BubbleEnter>
         </ScrollView>
+        <View style={styles.footer}>
+          <RoundArrowButton onPress={onSubmit} disabled={!canSubmit} color={accentColor} />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -89,7 +105,30 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     alignItems: 'stretch',
-    marginBottom: 28,
+    marginBottom: 20,
+  },
+  underline: {
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.text,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+  },
+  input: {
+    fontFamily: fonts.headingRegular,
+    fontSize: 30,
+    lineHeight: 36,
+    color: colors.text,
+    padding: 0,
+    borderWidth: 0,
+    ...noFakeBold,
+  },
+  footer: {
+    paddingHorizontal: spacing.inset,
+    paddingTop: 8,
+    paddingBottom: 4,
+    alignItems: 'flex-end',
+    backgroundColor: colors.bg,
   },
   question: {
     textAlign: 'left',

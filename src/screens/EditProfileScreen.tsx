@@ -49,6 +49,8 @@ function Section({ title, items, itemColors, onPress, keepCase }: SectionProps) 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}: ${items.length ? items.join(', ') : 'not set'}. Edit`}
+      // Delay the pressed tint so a scroll that starts on a row never dims it.
+      unstable_pressDelay={120}
       style={({ pressed }) => [styles.field, pressed && styles.fieldPressed]}
     >
       {/* Whole row is the tap target; the arrow says "you can change this". */}
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fieldPressed: {
-    opacity: 0.6,
+    opacity: 0.8,
   },
   fieldHeader: {
     flexDirection: 'row',

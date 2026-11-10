@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -9,7 +10,6 @@ import {
 } from 'react-native';
 import { BackButton } from '../components/BackButton';
 import { FeatureList, type FeatureItem } from '../components/FeatureList';
-import { LegalLinks } from '../components/LegalLinks';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAlarms } from '../context/AlarmsContext';
@@ -25,6 +25,7 @@ import {
   type MonthlyPlanDetails,
 } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
+import { privacyPolicyUrl, termsOfUseUrl } from '../config/legal';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
@@ -50,6 +51,8 @@ export function PaywallScreen({ navigation, route }: Props) {
       : `${plan?.trialDays ?? 0} days`;
 
   const [planLoading, setPlanLoading] = useState(true);
+  const terms = termsOfUseUrl();
+  const privacy = privacyPolicyUrl();
   const mounted = useRef(true);
   useEffect(() => () => {
     mounted.current = false;
@@ -204,8 +207,6 @@ export function PaywallScreen({ navigation, route }: Props) {
         ) : null}
       </Pressable>
 
-      <LegalLinks style={styles.legal} />
-
       {priceMissing ? (
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>
           We couldn’t load the price from the App Store. Check your connection
@@ -241,15 +242,33 @@ export function PaywallScreen({ navigation, route }: Props) {
             disabled={!canBuy}
           />
         )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Restore purchases"
-          onPress={() => void restore()}
-          disabled={busy}
-          style={styles.restoreLink}
-        >
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>Already subscribed? Restore</Text>
-        </Pressable>
+        {/* Restore + the legal links Apple requires (3.1.2), one quiet row. */}
+        <View style={styles.footRow}>
+          <Text
+            maxFontSizeMultiplier={1.4}
+            accessibilityRole="button"
+            onPress={busy ? undefined : () => void restore()}
+            style={styles.footLink}
+          >
+            Restore
+          </Text>
+          {terms ? (
+            <>
+              <Text maxFontSizeMultiplier={1.4} style={styles.footDot}>·</Text>
+              <Text maxFontSizeMultiplier={1.4} accessibilityRole="link" onPress={() => void Linking.openURL(terms)} style={styles.footLink}>
+                Terms of Use
+              </Text>
+            </>
+          ) : null}
+          {privacy ? (
+            <>
+              <Text maxFontSizeMultiplier={1.4} style={styles.footDot}>·</Text>
+              <Text maxFontSizeMultiplier={1.4} accessibilityRole="link" onPress={() => void Linking.openURL(privacy)} style={styles.footLink}>
+                Privacy Policy
+              </Text>
+            </>
+          ) : null}
+        </View>
         {gated ? (
           <Pressable
             accessibilityRole="button"
@@ -326,9 +345,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     opacity: 0.8,
   },
-  legal: {
-    marginTop: 16,
-  },
   error: {
     marginTop: 12,
     fontFamily: fonts.body,
@@ -344,9 +360,30 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 'auto',
-    gap: 14,
-    paddingBottom: spacing.md,
+    gap: 18,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
     alignItems: 'stretch',
+  },
+  footRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    columnGap: 8,
+  },
+  footLink: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
+    paddingVertical: 6,
+  },
+  footDot: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.textMuted,
   },
   restoreLink: {
     alignSelf: 'center',

@@ -40,6 +40,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 const COMPLETE_COLOR = accents.gold;
 /** Brief hold on "You’re all set", then leave. Animation is cosmetic only. */
 const SUCCESS_HOLD_MS = 2800;
+/** Pause on a finished line before the next one appears. */
+const LINE_HOLD_MS = 1000;
 
 export function VoiceRecordScreen({ navigation }: Props) {
   const {
@@ -64,6 +66,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
 
   const currentLine = lines[lineIndex] ?? '';
   const advanceLineRef = useRef<() => boolean>(() => false);
+  /** Line index whose auto-advance is already scheduled. */
+  const lineHoldRef = useRef(-1);
   // Do NOT advance from the STT callback — it fired on the first matches.
   // Interval below waits until the line is nearly red + a short quiet settle.
   const dictaphone = useSmartDictaphone(currentLine);
@@ -391,7 +395,12 @@ export function VoiceRecordScreen({ navigation }: Props) {
       const now = Date.now();
       if (now - lastSpokenAtRef.current < 1400) return;
       if (!quietLiveRef.current) return;
-      advanceLineRef.current();
+      // Hold the finished line for a beat so it reads as done, then move on.
+      if (lineHoldRef.current === idx) return;
+      lineHoldRef.current = idx;
+      setTimeout(() => {
+        if (lineIndexRef.current === idx) advanceLineRef.current();
+      }, LINE_HOLD_MS);
     }, 200);
     return () => clearInterval(id);
   }, [complete, recording]);
@@ -471,6 +480,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
     setCloneReady(false);
     resetCompleteVisuals();
     setLineIndex(0);
+    lineHoldRef.current = -1;
     doneLineRef.current = -1;
     advancingRef.current = false;
     lineOpacity.setValue(1);
@@ -507,6 +517,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
       setCloneError(null);
       resetCompleteVisuals();
       setLineIndex(0);
+      lineHoldRef.current = -1;
+    lineHoldRef.current = -1;
       doneLineRef.current = -1;
       lineOpacity.setValue(1);
       lineY.setValue(0);
@@ -521,6 +533,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
     finishingRef.current = false;
     resetCompleteVisuals();
     setLineIndex(0);
+    lineHoldRef.current = -1;
     doneLineRef.current = -1;
     lineOpacity.setValue(1);
     lineY.setValue(0);
