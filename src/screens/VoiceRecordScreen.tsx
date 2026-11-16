@@ -33,6 +33,7 @@ import {
 import { playAllSetSound } from '../services/uiSounds';
 import { ensureAiConsent } from '../services/aiConsent';
 import * as Haptics from 'expo-haptics';
+import { userFacingError } from '../services/userFacingError';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
@@ -133,7 +134,13 @@ export function VoiceRecordScreen({ navigation }: Props) {
         setCloneReady(true);
       } catch (e) {
         cloneStartedRef.current = false;
-        setCloneError(e instanceof Error ? e.message : 'Voice cloning failed');
+        const raw = e instanceof Error ? e.message : '';
+        // "sign in" errors keep their text: the arrow sends people to Sign in.
+        setCloneError(
+          /sign in/i.test(raw)
+            ? raw
+            : userFacingError(e, 'Voice cloning failed. Tap the arrow to try again.')
+        );
       } finally {
         setCloning(false);
       }

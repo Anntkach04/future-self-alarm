@@ -14,6 +14,10 @@ export function userFacingError(
   if (/voice_not_found|voice with voice_id|A voice with voice_id/i.test(text)) {
     return 'Your cloned voice is missing. Re-record your voice, then try again.';
   }
+  // ElevenLabs refused (billing, quota, rate limit): not the user's fault.
+  if (/TTS failed|Clone failed|quota_exceeded|payment_issue|payment_required|too_many_concurrent|rate.?limit/i.test(text)) {
+    return 'Our voice service is busy right now. Your recording is saved, so tap the arrow to try again in a few minutes.';
+  }
   if (/Network request failed|Failed to fetch|ECONNREFUSED|timed out|ETIMEDOUT|offline/i.test(text)) {
     return 'Cannot reach the voice server. Check Wi-Fi, then try again.';
   }
