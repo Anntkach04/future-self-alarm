@@ -717,6 +717,21 @@ export function VoiceRecordScreen({ navigation }: Props) {
         </Animated.View>
       </SafeAreaView>
 
+      {/*
+        Two layers on purpose: opacity/translate run on the native driver,
+        height/corners on the JS driver. Mixing both drivers on one view
+        crashed the app the moment "Voice cloned" was tapped.
+      */}
+      <Animated.View
+        pointerEvents={complete ? 'box-none' : 'none'}
+        style={[
+          styles.goldPillLayer,
+          {
+            opacity: goldPillOpacity,
+            transform: [{ translateY: goldPillY }],
+          },
+        ]}
+      >
       <Animated.View
         pointerEvents={complete ? 'auto' : 'none'}
         style={[
@@ -725,8 +740,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
             height: goldSheetH,
             borderBottomLeftRadius: sheetRadius,
             borderBottomRightRadius: sheetRadius,
-            opacity: goldPillOpacity,
-            transform: [{ translateY: goldPillY }],
           },
         ]}
       >
@@ -803,6 +816,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
             </View>
           </Animated.View>
         </Pressable>
+      </Animated.View>
       </Animated.View>
     </View>
   );
@@ -913,11 +927,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     paddingHorizontal: 16,
   },
-  goldPill: {
+  goldPillLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+  },
+  goldPill: {
     backgroundColor: COMPLETE_COLOR,
     overflow: 'hidden',
   },

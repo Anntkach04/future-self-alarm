@@ -22,7 +22,7 @@ import {
   noFakeBold,
   spacing, opticalLeft } from '../theme';
 /** 4/8 grid: the same gap between every chip row on every screen. */
-const ROW_GAP = spacing.xs;
+const ROW_GAP = spacing.xxs;
 
 type Props = {
   question: string;

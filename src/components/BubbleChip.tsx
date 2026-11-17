@@ -173,7 +173,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.chip,
     // Same density on every chip screen (goals / habits / tone / …).
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    // 12 + 24 + 12 = 48pt: compact, still above the 44pt tap minimum.
+    paddingVertical: 12,
     borderWidth: 0,
     alignSelf: 'flex-start',
     flexShrink: 0,
