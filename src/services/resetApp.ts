@@ -11,6 +11,8 @@ export const APP_STORAGE_KEYS = {
   storageSchema: 'fsa.storage_schema.v1',
   aiConsent: 'fsa.ai_consent.v2',
   aiConsentReasked: 'fsa.ai_consent.v2.reasked',
+  ringBank: 'fsa.ring_bank.v1',
+  wakePrepLegacy: 'fsa.wake_prep.v1',
 } as const;
 
 export async function cancelAllAlarmNotifications() {

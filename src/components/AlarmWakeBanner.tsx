@@ -33,7 +33,11 @@ const NIGHT = {
   ink: '#14161F',
 };
 
-type Ring = { alarmId: string; audioUri: string | null };
+type Ring = {
+  alarmId: string;
+  audioUri: string | null;
+  scriptText: string | null;
+};
 
 /**
  * In-app wake sheet when a Future Self alarm fires (notification path / after Kit).
@@ -50,7 +54,11 @@ export function AlarmWakeBanner() {
     return subscribeAlarmRing((next) => {
       setRing(
         next?.alarmId
-          ? { alarmId: next.alarmId, audioUri: next.audioUri ?? null }
+          ? {
+              alarmId: next.alarmId,
+              audioUri: next.audioUri ?? null,
+              scriptText: next.scriptText ?? null,
+            }
           : null
       );
     });
@@ -60,7 +68,8 @@ export function AlarmWakeBanner() {
 
   const alarm = alarms.find((a) => a.id === ring.alarmId);
   const audioUri = ring.audioUri ?? alarm?.audioUri ?? null;
-  const script = alarm?.scriptText?.trim() || '';
+  // This morning's own message when the ring carried one.
+  const script = (ring.scriptText ?? alarm?.scriptText ?? '').trim();
 
   // The lock-screen ring already played the message; replay is on request.
   const onPlay = () => {

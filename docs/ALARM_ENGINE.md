@@ -19,6 +19,20 @@ Apple: [UNNotificationSound](https://developer.apple.com/documentation/usernotif
 
 ---
 
+### A new message every morning (no need to open the app)
+
+iOS gives the app no guaranteed run at ring time, so messages are built ahead (`services/ringBank.ts`, `services/eveningRegen.ts`):
+
+- Whenever the app is open, the next **7 rings** of each alarm are stocked with their own text + MP3 + CAF. Steady state is still one generation per ring.
+- Each ring is its **own one-off AlarmKit alarm** (4 weeks ahead) with its own sound file. A weekly repeating alarm has one sound, so it said the same words every day.
+- Rings past the stocked week reuse the stocked messages in turn: the app can stay closed for weeks and the words still change. Past 4 weeks nothing is scheduled until the app is opened again.
+- Each build gets a **new CAF file name** (`fs_ring_*`), so the system can't replay a cached older sound.
+- Today's mood rebuilds only the next ring, inside the 10 h window before it.
+
+**Device test:** set a daily alarm, open the app once, wait for 7 `fs_ring_*.caf` files, then keep the app closed for 2–3 mornings → each morning's message is different.
+
+---
+
 ## 2. I'm up
 
 | Path | Behavior |

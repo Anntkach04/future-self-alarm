@@ -14,9 +14,9 @@ let regenInFlight = false;
 const CHECK_EVERY_MS = 15 * 60 * 1000;
 
 /**
- * Silent host: prepares the next ring's message inside its prepare window
+ * Silent host: keeps the next week of rings stocked with their own messages
  * (see services/eveningRegen.ts). Checks on launch, on every return to the
- * foreground, when today's mood changes, and periodically while open.
+ * foreground, when alarms or today's mood change, and periodically while open.
  */
 export function EveningRegenHost() {
   const { alarms, updateAlarm, ready } = useAlarms();
@@ -75,7 +75,18 @@ export function EveningRegenHost() {
       clearInterval(interval);
       sub.remove();
     };
-  }, [ready, voice.voiceId, voice.isDemo, isPaused, today?.moodLabel, today?.note]);
+  }, [
+    ready,
+    voice.voiceId,
+    voice.isDemo,
+    isPaused,
+    today?.moodLabel,
+    today?.note,
+    // Created / edited / toggled alarms need their week stocked.
+    alarms
+      .map((a) => `${a.id}:${a.hour}:${a.minute}:${a.days.join('')}:${a.enabled}`)
+      .join('|'),
+  ]);
 
   return null;
 }

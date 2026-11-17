@@ -3,15 +3,22 @@ import {
   setAudioModeAsync,
   type AudioPlayer,
 } from 'expo-audio';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { Alarm } from '../context/AlarmsContext';
 import {
-  alarmSoundBaseName,
   alarmSoundFileName,
   alarmSoundPath,
 } from './alarmSoundFile';
 import { librarySoundExists } from '../../modules/ios-library-sounds/src';
+import {
+  BANK_SIZE,
+  type RingMessage,
+  currentRingMessage,
+  ringMessageAt,
+  ringMessagesFor,
+} from './ringBank';
 
 /** Local copy — avoid require cycle with AlarmsContext. */
 const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
@@ -205,19 +212,25 @@ export function alarmKitUUID(alarmId: string) {
 
 type KitAction = 'dismiss' | 'snooze';
 
-/** AlarmKit launch payload: which button was pressed + our alarm id. */
-function kitPayload(action: KitAction, alarmId: string) {
-  return `${action}:${alarmId}`;
+/** AlarmKit launch payload: which button was pressed + our alarm id + ring. */
+function kitPayload(action: KitAction, alarmId: string, ringMs?: number) {
+  return ringMs ? `${action}:${alarmId}|${ringMs}` : `${action}:${alarmId}`;
 }
 
 function parseKitPayload(
   raw: unknown
-): { action: KitAction | 'legacy'; alarmId: string } | null {
+): { action: KitAction | 'legacy'; alarmId: string; ringMs: number | null } | null {
   if (typeof raw !== 'string' || !raw) return null;
-  const match = /^(dismiss|snooze):(.+)$/.exec(raw);
-  if (match) return { action: match[1] as KitAction, alarmId: match[2] };
+  const match = /^(dismiss|snooze):([^|]+)(?:\|(\d+))?$/.exec(raw);
+  if (match) {
+    return {
+      action: match[1] as KitAction,
+      alarmId: match[2],
+      ringMs: match[3] ? Number(match[3]) : null,
+    };
+  }
   // Alarms scheduled before b76 carried the bare id.
-  return { action: 'legacy', alarmId: raw };
+  return { action: 'legacy', alarmId: raw, ringMs: null };
 }
 
 /** Our days: 0=Mon…6=Sun → AlarmKit: 1=Sun…7=Sat */
@@ -233,12 +246,16 @@ function alarmDays(alarm: Alarm) {
   return alarm.days.length ? alarm.days : [...EVERY_DAY];
 }
 
-export function nextAlarmOccurrences(alarm: Alarm, count = SCHEDULE_AHEAD) {
+export function nextAlarmOccurrences(
+  alarm: Alarm,
+  count = SCHEDULE_AHEAD,
+  windowDays = 28
+) {
   const out: Date[] = [];
   const now = new Date();
   const days = alarmDays(alarm);
 
-  for (let offset = 0; offset < 28 && out.length < count; offset += 1) {
+  for (let offset = 0; offset <= windowDays && out.length < count; offset += 1) {
     const day = new Date(now);
     day.setDate(now.getDate() + offset);
     const alarmDay = jsDayToAlarmDay(day.getDay());
@@ -334,14 +351,38 @@ export async function hasAlarmKitPermission() {
   return false;
 }
 
+/** One AlarmKit alarm per ring (each with its own sound); ids kept here. */
+function kitIdsKey(alarmId: string) {
+  return `fsa.alarmkit_ids.v1.${alarmId}`;
+}
+
+async function readKitIds(alarmId: string): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(kitIdsKey(alarmId));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeKitIds(alarmId: string, ids: string[]) {
+  if (ids.length) {
+    await AsyncStorage.setItem(kitIdsKey(alarmId), JSON.stringify(ids)).catch(
+      () => {}
+    );
+  } else {
+    await AsyncStorage.removeItem(kitIdsKey(alarmId)).catch(() => {});
+  }
+}
+
 async function cancelAlarmKit(alarmId: string) {
   const kit = await loadAlarmKit();
   if (!kit) return;
-  try {
-    await kit.cancelAlarm(alarmKitUUID(alarmId));
-  } catch {
-    // ignore
-  }
+  // Legacy single repeating alarm (before per-ring messages) + every ring.
+  const ids = [alarmKitUUID(alarmId), ...(await readKitIds(alarmId))];
+  await Promise.all(ids.map((id) => kit.cancelAlarm(id).catch(() => false)));
+  await writeKitIds(alarmId, []);
 }
 
 export async function cancelScheduledAlarm(alarmId: string) {
@@ -382,6 +423,8 @@ async function scheduleOneWakeNotification(params: {
   body: string;
   sound: string | boolean;
   audioUri: string | null;
+  /** This ring's message, shown on the wake screen. */
+  scriptText?: string | null;
   snoozeEnabled: boolean;
   snoozeMinutes: number;
   vibrate?: boolean;
@@ -403,6 +446,7 @@ async function scheduleOneWakeNotification(params: {
         type: 'future-self-alarm',
         alarmId: params.alarmId,
         audioUri: params.audioUri || undefined,
+        scriptText: params.scriptText || undefined,
         snoozeEnabled: params.snoozeEnabled,
         snoozeMinutes: params.snoozeMinutes,
         vibrate: (params as { vibrate?: boolean }).vibrate !== false,
@@ -417,11 +461,67 @@ async function scheduleOneWakeNotification(params: {
   });
 }
 
-async function scheduleNotificationFallback(
+/** One upcoming ring: when, which sound, which message. */
+type RingPlan = {
+  date: Date;
+  sound: string;
+  audioUri: string | null;
+  text: string | null;
+  /** Plays the user's voice (not the bundled fallback tone). */
+  custom: boolean;
+};
+
+async function wakeSoundExists(fileName: string) {
+  if (Platform.OS === 'ios') return librarySoundExists(fileName);
+  const root = alarmSoundPath('x')?.replace(/[^/]+$/, '');
+  if (!root) return false;
+  const FileSystem = await import('expo-file-system/legacy');
+  const info = await FileSystem.getInfoAsync(`${root}${fileName}`);
+  return info.exists;
+}
+
+/**
+ * Each ring gets its own stocked message (ringBank). Rings past the stocked
+ * week reuse the stocked messages in turn, so the words keep changing even if
+ * the app is never opened. No stock → the alarm's base message / fallback tone.
+ */
+async function planRings(
   alarm: Alarm,
-  audioUri: string | null,
-  hasSystemSound: boolean
-) {
+  baseAudioUri: string | null,
+  hasBaseSound: boolean,
+  count: number,
+  windowDays = 28
+): Promise<RingPlan[]> {
+  const dates = nextAlarmOccurrences(alarm, count, windowDays);
+  const now = Date.now();
+  const stocked: RingMessage[] = [];
+  for (const m of await ringMessagesFor(alarm.id)) {
+    if (m.ring > now && (await wakeSoundExists(m.soundName))) stocked.push(m);
+  }
+  const baseSound = notificationSoundFor(alarm.id, hasBaseSound);
+  return dates.map((date, index) => {
+    const exact = stocked.find((m) => m.ring === date.getTime());
+    const m = exact ?? (stocked.length ? stocked[index % stocked.length] : null);
+    if (m) {
+      return {
+        date,
+        sound: Platform.OS === 'android' ? 'default' : m.soundName,
+        audioUri: m.mp3Uri,
+        text: m.text,
+        custom: true,
+      };
+    }
+    return {
+      date,
+      sound: baseSound,
+      audioUri: baseAudioUri,
+      text: alarm.scriptText ?? null,
+      custom: hasBaseSound,
+    };
+  });
+}
+
+async function scheduleNotificationFallback(alarm: Alarm, plan: RingPlan[]) {
   // Silent path: never pop the permission sheet mid-session (looks like a hang).
   const ok = await hasNotificationPermissions();
   if (!ok) {
@@ -431,9 +531,6 @@ async function scheduleNotificationFallback(
   }
 
   const budget = notificationBudget();
-  const times = nextAlarmOccurrences(alarm, budget.ahead);
-  const sound = notificationSoundFor(alarm.id, hasSystemSound);
-  const body = notificationBodyFor(alarm);
   const snoozeOn = alarm.snoozeEnabled !== false;
   const snoozeMin =
     typeof alarm.snoozeMinutes === 'number' && alarm.snoozeMinutes > 0
@@ -444,18 +541,19 @@ async function scheduleNotificationFallback(
   // Main wakes in parallel. Snooze chain only when explicitly enabled.
   // Last pre-scheduled wake: ask the user to open the app so the window
   // refills — otherwise wakes silently stop after `budget.ahead` days.
-  const lastIndex = times.length - 1;
-  const jobs: Promise<unknown>[] = times.map((date, index) =>
+  const lastIndex = plan.length - 1;
+  const jobs: Promise<unknown>[] = plan.map((ring, index) =>
     scheduleOneWakeNotification({
       identifier: notificationId(alarm.id, index),
-      date,
+      date: ring.date,
       alarmId: alarm.id,
       body:
-        index === lastIndex && times.length > 1
+        index === lastIndex && plan.length > 1
           ? 'Open Future Self today so your next alarms stay on.'
-          : body,
-      sound,
-      audioUri,
+          : notificationBodyFor(ring.text),
+      sound: ring.sound,
+      audioUri: ring.audioUri,
+      scriptText: ring.text,
       snoozeEnabled: snoozeOn,
       snoozeMinutes: snoozeMin,
       vibrate: vibrateOn,
@@ -463,18 +561,21 @@ async function scheduleNotificationFallback(
     })
   );
 
-  if (snoozeOn && times[0]) {
-    const nextWake = times[0];
+  const first = plan[0];
+  if (snoozeOn && first) {
     for (let step = 1; step <= budget.snooze; step += 1) {
-      const follow = new Date(nextWake.getTime() + step * snoozeMin * 60 * 1000);
+      const follow = new Date(
+        first.date.getTime() + step * snoozeMin * 60 * 1000
+      );
       jobs.push(
         scheduleOneWakeNotification({
           identifier: snoozeChainId(alarm.id, 0, step),
           date: follow,
           alarmId: alarm.id,
-          body,
-          sound,
-          audioUri,
+          body: notificationBodyFor(first.text),
+          sound: first.sound,
+          audioUri: first.audioUri,
+          scriptText: first.text,
           snoozeEnabled: true,
           snoozeMinutes: snoozeMin,
           vibrate: vibrateOn,
@@ -487,68 +588,80 @@ async function scheduleNotificationFallback(
   await Promise.all(jobs);
 }
 
-function notificationBodyFor(alarm: Alarm) {
-  const script = String(alarm.scriptText || '').replace(/\s+/g, ' ').trim();
+function notificationBodyFor(scriptText: string | null | undefined) {
+  const script = String(scriptText || '').replace(/\s+/g, ' ').trim();
   if (script.length > 40) {
     return script.length > 160 ? `${script.slice(0, 157).trim()}…` : script;
   }
   return 'Your morning voice is ready. Open when you’re up.';
 }
 
+/** AlarmKit rings scheduled ahead: one-off alarms, 4 weeks. */
+const KIT_AHEAD_DAYS = 28;
+
 async function scheduleWithAlarmKit(
   alarm: Alarm,
-  hasSystemSound: boolean
+  plan: RingPlan[]
 ): Promise<boolean> {
-  // Never schedule AlarmKit without a custom CAF — bare Kit plays the
+  // Never schedule AlarmKit without the user's voice — bare Kit plays the
   // default system tone instead of (or on top of) your voice.
-  if (!hasSystemSound) return false;
+  if (!plan.length || !plan.some((p) => p.custom)) return false;
 
   const kit = await loadAlarmKit();
   if (!kit) return false;
   const ready = await ensureAlarmKitReady();
   if (!ready) return false;
 
-  const id = alarmKitUUID(alarm.id);
-  const withExt = alarmSoundBaseName(alarm.id);
-  const withoutExt = withExt.replace(/\.caf$/i, '');
-  const weekdays = toAlarmKitWeekdays(alarmDays(alarm));
-  // Always offer Later → 10 min. Notification path also pre-schedules +10/+20…
+  // Always offer Later → 10 min.
   const snoozeMin =
     typeof alarm.snoozeMinutes === 'number' && alarm.snoozeMinutes > 0
       ? alarm.snoozeMinutes
       : 10;
   const snoozeSec = Math.max(60, snoozeMin * 60);
 
+  // One one-off alarm per ring instead of one weekly repeating alarm: a
+  // repeating alarm has ONE sound, so every morning said the same words.
+  const ids: string[] = [];
   try {
-    await kit.cancelAlarm(id).catch(() => undefined);
-
-    const trySchedule = async (name: string) =>
-      kit.scheduleRepeatingAlarm({
+    for (const ring of plan) {
+      const ringMs = ring.date.getTime();
+      const id = alarmKitUUID(`${alarm.id}@${ringMs}`);
+      const options = {
         id,
-        hour: alarm.hour,
-        minute: alarm.minute,
-        weekdays,
+        date: ring.date,
         title: 'Future You',
-        soundName: name,
         launchAppOnDismiss: true,
-        dismissPayload: kitPayload('dismiss', alarm.id),
+        dismissPayload: kitPayload('dismiss', alarm.id, ringMs),
         doSnoozeIntent: true,
         launchAppOnSnooze: true,
-        snoozePayload: kitPayload('snooze', alarm.id),
+        snoozePayload: kitPayload('snooze', alarm.id, ringMs),
         snoozeDuration: snoozeSec,
         tintColor: '#BADFFF',
         stopButtonLabel: "I'm up",
         snoozeButtonLabel: 'Snooze 10 min',
-      });
-
-    // Prefer AlarmKit = real system alarm UI with YOUR CAF (not a chat push).
-    if (await trySchedule(withExt)) return true;
-    if (withoutExt !== withExt && (await trySchedule(withoutExt))) return true;
-    return false;
+      };
+      await kit.cancelAlarm(id).catch(() => undefined);
+      let ok = await kit.scheduleAlarm({ ...options, soundName: ring.sound });
+      if (!ok && /\.caf$/i.test(ring.sound)) {
+        ok = await kit.scheduleAlarm({
+          ...options,
+          soundName: ring.sound.replace(/\.caf$/i, ''),
+        });
+      }
+      if (!ok) throw new Error('AlarmKit refused a ring');
+      ids.push(id);
+    }
   } catch (error) {
-    console.warn('AlarmKit schedule failed', error);
-    return false;
+    // Enough rings for the stocked week are on — keep them; the rest are
+    // added the next time the app is open.
+    if (ids.length < Math.min(BANK_SIZE, plan.length)) {
+      console.warn('AlarmKit schedule failed', error);
+      await Promise.all(ids.map((id) => kit.cancelAlarm(id).catch(() => false)));
+      return false;
+    }
   }
+  await writeKitIds(alarm.id, ids);
+  return true;
 }
 
 export type ScheduleWakeResult = {
@@ -572,7 +685,30 @@ export type ScheduleWakeResult = {
  * 2) Else time-sensitive local notification + CAF (or bundled fallback).
  * Never schedule Kit *and* a wake notification together (double sound).
  */
-export async function scheduleAlarmNotifications(
+/**
+ * One schedule at a time per alarm: each ring is its own AlarmKit alarm and
+ * the id list lives in storage, so two overlapping runs (foreground top-up +
+ * message stocking) could otherwise lose ids and leave a stray extra ring.
+ */
+const scheduleChains = new Map<string, Promise<unknown>>();
+
+export function scheduleAlarmNotifications(
+  alarm: Alarm,
+  audioUri: string | null
+): Promise<ScheduleWakeResult> {
+  const prev = scheduleChains.get(alarm.id) ?? Promise.resolve();
+  const run = prev
+    .catch(() => undefined)
+    .then(() => scheduleAlarmNotificationsNow(alarm, audioUri));
+  const tail = run.catch(() => undefined);
+  scheduleChains.set(alarm.id, tail);
+  void tail.then(() => {
+    if (scheduleChains.get(alarm.id) === tail) scheduleChains.delete(alarm.id);
+  });
+  return run;
+}
+
+async function scheduleAlarmNotificationsNow(
   alarm: Alarm,
   audioUri: string | null
 ): Promise<ScheduleWakeResult> {
@@ -589,23 +725,32 @@ export async function scheduleAlarmNotifications(
 
   await cancelScheduledAlarm(alarm.id);
 
-  // AlarmKit first = real system alarm UI (I'm up / Later). Custom voice CAF
-  // must be Apple ima4 in Library/Sounds (see server mix). Notification only
-  // if Kit unavailable / unauthorized.
-  if (hasSystemSound) {
-    const usedKit = await scheduleWithAlarmKit(alarm, true);
-    if (usedKit) {
-      // AlarmKit owns snooze and keeps ringing until Stop/Snooze. No
-      // notification chain here: it doubled the +10 min ring and kept firing
-      // after the system "I'm up".
-      return { hasCustomVoice: true, mode: 'alarmkit' };
-    }
+  // AlarmKit first = real system alarm UI (I'm up / Later). Notification
+  // only if Kit is unavailable / unauthorized.
+  const kitPlan = await planRings(
+    alarm,
+    audioUri,
+    hasSystemSound,
+    KIT_AHEAD_DAYS,
+    KIT_AHEAD_DAYS
+  );
+  if (await scheduleWithAlarmKit(alarm, kitPlan)) {
+    // AlarmKit owns snooze and keeps ringing until Stop/Snooze. No
+    // notification chain here: it doubled the +10 min ring and kept firing
+    // after the system "I'm up".
+    return { hasCustomVoice: true, mode: 'alarmkit' };
   }
 
-  // Notification path: play-once CAF + pre-scheduled +10/+20… until I’m up.
-  await scheduleNotificationFallback(alarm, audioUri, hasSystemSound);
+  // Notification path: play-once CAF + pre-scheduled +10/+20… until I'm up.
+  const plan = await planRings(
+    alarm,
+    audioUri,
+    hasSystemSound,
+    notificationBudget().ahead
+  );
+  await scheduleNotificationFallback(alarm, plan);
   return {
-    hasCustomVoice: hasSystemSound,
+    hasCustomVoice: plan.some((p) => p.custom),
     mode: 'notification',
   };
 }
@@ -720,6 +865,8 @@ async function handleAlarmNotification(
   const data = notification.request.content.data;
   if (!isFutureSelfAlarmData(data)) return;
   const uri = typeof data.audioUri === 'string' ? data.audioUri : null;
+  const rawText = (data as { scriptText?: unknown }).scriptText;
+  const scriptText = typeof rawText === 'string' ? rawText : null;
   const vibrate = (data as { vibrate?: boolean }).vibrate !== false;
   // Lock-screen / notification already played the CAF. Do NOT play the MP3
   // again — that felt like the same message repeating.
@@ -727,7 +874,7 @@ async function handleAlarmNotification(
   if (vibrate) {
     void pulseAlarmHaptics();
   }
-  emitRinging({ alarmId: data.alarmId, audioUri: uri });
+  emitRinging({ alarmId: data.alarmId, audioUri: uri, scriptText });
 }
 
 function triggerDateMs(
@@ -773,6 +920,23 @@ export async function scheduleSnooze(
     () => undefined
   );
   const fire = new Date(Date.now() + minutes * 60 * 1000);
+  // Snooze repeats THIS morning's message, not the alarm's base one.
+  const current = await currentRingMessage(alarmId);
+  if (current && (await wakeSoundExists(current.soundName))) {
+    await scheduleOneWakeNotification({
+      identifier: snoozeId(alarmId),
+      date: fire,
+      alarmId,
+      body: 'Still here. Your voice again.',
+      sound: Platform.OS === 'android' ? 'default' : current.soundName,
+      audioUri: current.mp3Uri,
+      scriptText: current.text,
+      snoozeEnabled: true,
+      snoozeMinutes: minutes,
+      kind: 'snooze',
+    });
+    return;
+  }
   const soundPath = alarmSoundPath(alarmId);
   let soundOk = hasSystemSound;
   if (Platform.OS === 'ios') {
@@ -869,7 +1033,12 @@ export async function dismissAlarm(alarmId: string) {
   emitRinging(null);
 }
 
-type RingingState = { alarmId: string; audioUri: string | null } | null;
+type RingingState = {
+  alarmId: string;
+  audioUri: string | null;
+  /** This ring's message (falls back to the alarm's base text when absent). */
+  scriptText?: string | null;
+} | null;
 type RingListener = (next: RingingState) => void;
 const ringListeners = new Set<RingListener>();
 
@@ -919,7 +1088,7 @@ export async function consumeAlarmKitLaunch(audioByAlarmId: Record<string, strin
     const payload = kit.getLaunchPayload();
     const parsed = parseKitPayload(payload?.payload);
     if (!parsed) return;
-    const { action, alarmId } = parsed;
+    const { action, alarmId, ringMs } = parsed;
     if (action === 'dismiss') {
       // System "I'm up" already stopped the alarm — just clear leftovers,
       // never show the ringing banner again.
@@ -931,6 +1100,15 @@ export async function consumeAlarmKitLaunch(audioByAlarmId: Record<string, strin
     if (action === 'snooze') {
       // Kit re-rings in snoozeDuration by itself.
       emitRinging(null);
+      return;
+    }
+    const message = ringMs ? await ringMessageAt(alarmId, ringMs) : null;
+    if (message) {
+      emitRinging({
+        alarmId,
+        audioUri: message.mp3Uri,
+        scriptText: message.text,
+      });
       return;
     }
     const uri = audioByAlarmId[alarmId] ?? null;

@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { markRingPrepared } from '../services/eveningRegen';
+import { adoptMessageForNextRing } from '../services/eveningRegen';
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 import { AlarmDayPicker } from '../components/AlarmDayPicker';
@@ -137,9 +137,11 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
             scriptText: text,
             voiceFailed: false,
           });
-          // Counts as this ring's message — the prep window won't rebuild it.
-          void markRingPrepared(
+          // Counts as the next ring's message (own wake sound) — stocking
+          // the rest of the week won't pay for this ring again.
+          await adoptMessageForNextRing(
             { id: alarmId, ...payload, audioUri: uri, scriptText: text },
+            { mp3Uri: uri, text },
             today ? { label: today.moodLabel, note: today.note } : null
           );
         }

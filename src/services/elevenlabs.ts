@@ -427,8 +427,12 @@ export async function generateMorningAlarm(params: {
   bedLevel?: number;
   /** When set, server speaks this text instead of generating a new script. */
   text?: string;
+  /** Day the message will be heard (messages are built days ahead). */
+  forDate?: Date;
 }): Promise<GeneratedAlarm> {
-  const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const weekday = (params.forDate ?? new Date()).toLocaleDateString('en-US', {
+    weekday: 'long',
+  });
   // Personal AI script only with the user's consent (App Review 5.1.2);
   // otherwise the server uses the fixed template.
   const { hasAiConsent } = await import('./aiConsent');
