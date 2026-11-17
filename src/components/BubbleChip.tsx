@@ -23,6 +23,8 @@ type Props = {
   plus?: boolean;
 };
 
+const FLOAT_MS = 2400;
+
 /** Visible immediately; spring + float are motion-only (opacity always 1). */
 export function BubbleChip({
   label = '',
@@ -76,13 +78,17 @@ export function BubbleChip({
         Animated.sequence([
           Animated.timing(float, {
             toValue: 1,
-            duration: 2400 + (startDelay % 400),
+            // Same period for every chip: rows bob together, so the gap
+            // between them never visibly changes.
+            duration: FLOAT_MS,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(float, {
             toValue: 0,
-            duration: 2400 + (startDelay % 400),
+            // Same period for every chip: rows bob together, so the gap
+            // between them never visibly changes.
+            duration: FLOAT_MS,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),

@@ -21,7 +21,8 @@ import {
   mutedColorForLabel,
   noFakeBold,
   spacing, opticalLeft } from '../theme';
-const ROW_GAP = 2;
+/** 4/8 grid: the same gap between every chip row on every screen. */
+const ROW_GAP = spacing.xs;
 
 type Props = {
   question: string;

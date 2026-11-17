@@ -108,16 +108,21 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const [consentDeclined, setConsentDeclined] = useState(false);
 
   /** Voice leaves the phone only after explicit consent (App Review 5.1.2). */
-  const consentToRecord = useCallback(async () => {
-    const ok = await ensureAiConsent();
+  const consentToRecord = useCallback(async (fromTap = false) => {
+    const ok = await ensureAiConsent({ fromTap });
     setConsentDeclined(!ok);
     return ok;
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      if (await consentToRecord()) dictaphone.requestPermission();
-    })();
+    // Wait for the push animation: an alert raised mid-transition can be
+    // dropped by iOS. The mic tap asks again anyway.
+    const t = setTimeout(() => {
+      void (async () => {
+        if (await consentToRecord()) dictaphone.requestPermission();
+      })();
+    }, 700);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -535,7 +540,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
   };
 
   const onMicPress = async () => {
-    if (dictaphone.status !== 'recording' && !(await consentToRecord())) {
+    if (dictaphone.status !== 'recording' && !(await consentToRecord(true))) {
       return;
     }
     if (complete) {
