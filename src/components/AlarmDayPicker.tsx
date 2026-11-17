@@ -104,14 +104,14 @@ const styles = StyleSheet.create({
   presets: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 24,
   },
   preset: {
     borderWidth: 1,
     borderColor: colors.text,
     borderRadius: radii.chip,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: 'transparent',
   },
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
   },
   dayTextOn: {

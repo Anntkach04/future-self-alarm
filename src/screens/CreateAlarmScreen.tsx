@@ -20,7 +20,7 @@ import {
 import { resolveVoiceId, isPremadeDemoVoiceId } from '../services/defaultVoice';
 import { checkVoiceApiHealth } from '../services/elevenlabs';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateAlarm'>;
@@ -327,9 +327,10 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 16,
     ...noFakeBold,
   },
   timeZone: {
@@ -343,7 +344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
@@ -361,13 +362,13 @@ const styles = StyleSheet.create({
   rowSub: {
     fontFamily: fonts.body,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 16,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 4,
   },
   error: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     color: accents.coral,
     marginTop: 8,
   },

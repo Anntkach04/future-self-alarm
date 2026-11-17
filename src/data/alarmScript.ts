@@ -4,7 +4,8 @@ export function buildAlarmScript(
   mood?: { label?: string } | string | null,
   habits?: string[] | null
 ) {
-  const who = name.trim() || 'friend';
+  // First name only: "Hey Anastasia", never "Hey Anastasia Tkach".
+  const who = name.trim().split(/\s+/)[0] || 'friend';
   const moodLabel =
     (typeof mood === 'string' ? mood : mood?.label || '').trim().toLowerCase();
   const habitList = Array.isArray(habits)

@@ -19,7 +19,7 @@ import {
   stopAlarmPlayback,
   subscribeAlarmRing,
 } from '../services/alarmScheduler';
-import { accents, fonts, noFakeBold, spacing } from '../theme';
+import { accents, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 /**
  * Wake screen is seen in a dark bedroom, eyes half-open — dark, warm, low
@@ -184,22 +184,23 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     color: NIGHT.muted,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 52,
+    ...opticalLeft(48),
+    lineHeight: 56,
     color: NIGHT.text,
-    marginBottom: 20,
+    marginBottom: 24,
     ...noFakeBold,
   },
   body: {
     fontFamily: fonts.bodyLight,
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 24,
     color: NIGHT.muted,
     maxWidth: 320,
   },
@@ -209,51 +210,51 @@ const styles = StyleSheet.create({
   },
   script: {
     fontFamily: fonts.body,
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 24,
     color: NIGHT.text,
   },
   replay: {
     alignSelf: 'flex-start',
-    marginTop: 20,
+    marginTop: 24,
     borderWidth: 1,
     borderColor: NIGHT.line,
     borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   replayText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 16,
+    fontSize: 17,
     color: NIGHT.text,
   },
   footer: {
     marginTop: 'auto',
-    gap: 12,
+    gap: 16,
   },
   secondary: {
     alignSelf: 'stretch',
     borderWidth: 1,
     borderColor: NIGHT.line,
     borderRadius: 999,
-    paddingVertical: 18,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   secondaryText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 18,
+    fontSize: 17,
     color: NIGHT.text,
   },
   primary: {
     alignSelf: 'stretch',
     backgroundColor: accents.lime,
     borderRadius: 999,
-    paddingVertical: 18,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   primaryText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 18,
+    fontSize: 17,
     color: NIGHT.ink,
   },
 });

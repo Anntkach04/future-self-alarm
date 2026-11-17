@@ -19,7 +19,7 @@ import {
 } from '../services/profileSync';
 import { configurePurchases } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
@@ -296,6 +296,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginTop: spacing.md,
@@ -304,21 +305,21 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
     marginBottom: spacing.lg,
   },
   error: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: '#C0392B',
     textAlign: 'center',
   },
   actions: {
     marginTop: 'auto',
-    gap: 14,
+    gap: 16,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
@@ -345,10 +346,10 @@ const styles = StyleSheet.create({
   legal: {
     fontFamily: fonts.body,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 16,
     color: colors.textMuted,
     textAlign: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   legalLink: {
     textDecorationLine: 'underline',

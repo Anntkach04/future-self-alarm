@@ -1,3 +1,4 @@
+const { looksLikeCrisis, CRISIS_REPLY } = require('./moodSafety');
 const fetch = require('node-fetch');
 const { buildScriptMessages } = require('./prompt');
 
@@ -94,6 +95,10 @@ async function generateMorningScript(answers) {
 }
 
 async function generateMoodAdvice({ mood, note, name }) {
+  // Free-text mood can carry a crisis: never answer it with a pep talk.
+  if (looksLikeCrisis(`${mood} ${note}`)) {
+    return { advice: CRISIS_REPLY, model: 'safety' };
+  }
   const apiKey = getOpenAiKey();
   if (!apiKey) {
     return {
@@ -118,7 +123,8 @@ async function generateMoodAdvice({ mood, note, name }) {
           content: [
             'You are the user\'s Future Self, their hype person, not their therapist.',
             'Write EXACTLY 2 short sentences. Hard limit: 30 words total.',
-            'Tone: pep talk, warm, confident, energetic, loving. Pump them up.',
+            'They describe how they feel in their own words.',
+            'Tone: warm, confident, loving. Lift them up; if what they wrote sounds painful, be gentle and steady rather than loud.',
             'Tell them they\'re strong, capable, amazing, already winning.',
             'Point to tomorrow as a fresh start where they will crush it.',
             'NEVER repeat or echo their negative words (no "bad person", "heavy", "mistakes", "imperfect").',

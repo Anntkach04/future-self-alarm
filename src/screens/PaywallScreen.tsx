@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
-  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { BackButton } from '../components/BackButton';
 import { FeatureList, type FeatureItem } from '../components/FeatureList';
+import { PlanPicker, TrialTimeline } from '../components/PlanPicker';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAlarms } from '../context/AlarmsContext';
@@ -17,16 +18,18 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import {
   configurePurchases,
-  getMonthlyPlanDetails,
+  getPlanOptions,
   hasPurchasesKey,
   planProblem,
+  purchasePlan,
   restorePurchases,
-  startMonthlyWithTrial,
-  type MonthlyPlanDetails,
+  type PlanKind,
+  type PlanOptions,
 } from '../services/subscriptions';
+import { canRemindTrialEnd, scheduleTrialEndReminder } from '../services/trialReminder';
 import { userFacingError } from '../services/userFacingError';
 import { privacyPolicyUrl, termsOfUseUrl } from '../config/legal';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing, opticalLeft, typeScale } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
@@ -43,12 +46,11 @@ export function PaywallScreen({ navigation, route }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const [plan, setPlan] = useState<MonthlyPlanDetails | null>(null);
+  const [options, setOptions] = useState<PlanOptions | null>(null);
+  const [selected, setSelected] = useState<PlanKind>('annual');
+  const [canRemind, setCanRemind] = useState(false);
+  const plan = options?.[selected] ?? null;
   const trial = Boolean(plan?.trialDays);
-  const trialLabel =
-    plan?.trialDays === 7
-      ? 'a week'
-      : `${plan?.trialDays ?? 0} days`;
 
   const [planLoading, setPlanLoading] = useState(true);
   const terms = termsOfUseUrl();
@@ -61,9 +63,13 @@ export function PaywallScreen({ navigation, route }: Props) {
   const loadPlan = async () => {
     setPlanLoading(true);
     await configurePurchases();
-    const next = await getMonthlyPlanDetails();
+    const next = await getPlanOptions();
+    const remind = await canRemindTrialEnd();
     if (!mounted.current) return;
-    setPlan(next);
+    setOptions(next);
+    setCanRemind(remind);
+    // Yearly first; fall back to whichever plan the store returned.
+    setSelected(next?.annual?.priceString ? 'annual' : 'monthly');
     setPlanLoading(false);
   };
 
@@ -104,7 +110,7 @@ export function PaywallScreen({ navigation, route }: Props) {
         return;
       }
       await configurePurchases();
-      const status = await startMonthlyWithTrial();
+      const status = await purchasePlan(selected);
       if (!status.active) {
         if (typeof __DEV__ !== 'undefined' && __DEV__) {
           after();
@@ -115,6 +121,7 @@ export function PaywallScreen({ navigation, route }: Props) {
         );
         return;
       }
+      if (status.inTrial) void scheduleTrialEndReminder(status.expiresAt);
       after();
     } catch (e) {
       const msg = userFacingError(e, 'Purchase failed');
@@ -163,66 +170,61 @@ export function PaywallScreen({ navigation, route }: Props) {
     }
   };
 
+  const ctaLabel = trial
+    ? plan?.trialDays === 7
+      ? 'start free week'
+      : 'start free trial'
+    : 'continue';
+
   return (
     <Screen>
       {gated ? null : <BackButton style={styles.back} />}
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
-        {gated
-          ? 'Keep waking up\nto future you'
-          : trial
-            ? `Try future self\nfree for ${trialLabel}`
-            : 'Wake up to\nfuture you'}
-      </Text>
-      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
-        {trial
-          ? `${plan?.trialDays === 7 ? 'One week' : `${plan?.trialDays} days`} free, then monthly`
-          : 'Monthly'}{' '}
-        through Apple.
-        Cancel anytime.
-      </Text>
-
-      <FeatureList items={BENEFITS} color={accents.mist} />
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={trial ? 'Start free trial, monthly plan' : 'Subscribe, monthly plan'}
-        onPress={() => void startTrial()}
-        disabled={!canBuy}
-        style={({ pressed }) => [
-          styles.planCard,
-          pressed && styles.planCardPressed,
-          busy && styles.planCardBusy,
-        ]}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.planName}>Monthly</Text>
-        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
-          {planLoading
-            ? 'Loading price…'
-            : priceMissing
-              ? 'Price unavailable'
-              : (plan?.headline ?? '')}
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>
+          {gated ? 'Keep waking up\nto future you' : 'Wake up to\nyour own voice'}
         </Text>
-        {plan?.disclosure ? (
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.disclosure}>{plan.disclosure}</Text>
-        ) : null}
-      </Pressable>
 
-      {priceMissing ? (
-        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>
-          We couldn’t load the price from the App Store. Check your connection
-          and try again.
-        </Text>
-      ) : null}
-      {priceMissing && planProblem() ? (
-        <Text maxFontSizeMultiplier={1.5} style={styles.diag} selectable>
-          {planProblem()}
-        </Text>
-      ) : null}
-      {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
-      {note ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.note}>{note}</Text> : null}
-      {busy ? (
-        <ActivityIndicator color={colors.text} style={{ marginTop: 12 }} />
-      ) : null}
+        <FeatureList items={BENEFITS} color={accents.mist} />
+
+        <View style={styles.plans}>
+          {planLoading ? (
+            <ActivityIndicator color={colors.text} />
+          ) : options && (options.annual?.priceString || options.monthly?.priceString) ? (
+            <PlanPicker
+              options={options}
+              selected={selected}
+              onSelect={setSelected}
+              disabled={busy}
+            />
+          ) : null}
+        </View>
+
+        {trial && plan?.trialDays ? (
+          <TrialTimeline
+            days={plan.trialDays}
+            priceString={plan.priceString}
+            reminder={canRemind}
+          />
+        ) : null}
+
+        {priceMissing ? (
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>
+            We couldn’t load the price from the App Store. Check your connection
+            and try again.
+          </Text>
+        ) : null}
+        {priceMissing && planProblem() ? (
+          <Text maxFontSizeMultiplier={1.5} style={styles.diag} selectable>
+            {planProblem()}
+          </Text>
+        ) : null}
+        {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
+        {note ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.note}>{note}</Text> : null}
+      </ScrollView>
 
       <View style={styles.actions}>
         {priceMissing ? (
@@ -236,12 +238,17 @@ export function PaywallScreen({ navigation, route }: Props) {
         ) : (
           <TextArrowButton
             wide
-            label={trial ? 'start free trial' : 'subscribe'}
+            label={busy ? 'one moment' : ctaLabel}
             color={accents.gold}
             onPress={() => void startTrial()}
             disabled={!canBuy}
           />
         )}
+        {plan?.disclosure ? (
+          <Text maxFontSizeMultiplier={1.4} style={styles.disclosure}>
+            {plan.disclosure} Cancel anytime in Settings.
+          </Text>
+        ) : null}
         {/* Restore + the legal links Apple requires (3.1.2), one quiet row. */}
         <View style={styles.footRow}>
           <Text
@@ -268,18 +275,20 @@ export function PaywallScreen({ navigation, route }: Props) {
               </Text>
             </>
           ) : null}
+          {gated ? (
+            <>
+              <Text maxFontSizeMultiplier={1.4} style={styles.footDot}>·</Text>
+              <Text
+                maxFontSizeMultiplier={1.4}
+                accessibilityRole="button"
+                onPress={busy ? undefined : () => navigation.navigate('EditProfile')}
+                style={styles.footLink}
+              >
+                Account
+              </Text>
+            </>
+          ) : null}
         </View>
-        {gated ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Manage account"
-            onPress={() => navigation.navigate('EditProfile')}
-            disabled={busy}
-            style={styles.restoreLink}
-          >
-            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.restoreText}>Manage account</Text>
-          </Pressable>
-        ) : null}
       </View>
     </Screen>
   );
@@ -287,113 +296,61 @@ export function PaywallScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   back: { marginTop: 0 },
+  scroll: { flex: 1, overflow: 'visible' },
+  scrollContent: { paddingBottom: spacing.lg, gap: spacing.lg },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 40,
-    lineHeight: 44,
+    ...typeScale.title1,
+    ...opticalLeft(40),
     color: colors.text,
     marginTop: spacing.md,
-    marginBottom: spacing.md,
     ...noFakeBold,
   },
-  body: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.text,
-    marginBottom: spacing.lg,
-  },
+  plans: { minHeight: 72, justifyContent: 'center', paddingTop: spacing.xs },
   diag: {
-    marginTop: 6,
     fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 16,
+    ...typeScale.footnote,
     color: colors.textMuted,
   },
-  planCard: {
-    marginTop: 12,
-    borderRadius: 24,
-    padding: 18,
-    gap: 8,
-    backgroundColor: accents.gold,
-  },
-  planCardPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.99 }],
-  },
-  planCardBusy: {
-    opacity: 0.7,
-  },
-  planName: {
-    fontFamily: fonts.headingRegular,
-    fontSize: 28,
-    lineHeight: 34,
-    color: colors.text,
-    ...noFakeBold,
-  },
-  planPrice: {
-    fontFamily: fonts.body,
-    fontSize: 17,
-    lineHeight: 24,
-    color: colors.text,
-  },
-  disclosure: {
-    marginTop: 8,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.text,
-    opacity: 0.8,
-  },
   error: {
-    marginTop: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: '#C0392B',
+    ...typeScale.subhead,
+    color: accents.danger,
   },
   note: {
-    marginTop: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
+    ...typeScale.subhead,
     color: colors.textMuted,
   },
   actions: {
-    marginTop: 'auto',
-    gap: 18,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
+    gap: spacing.xs,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     alignItems: 'stretch',
+  },
+  disclosure: {
+    fontFamily: fonts.body,
+    ...typeScale.footnote,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
   footRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    columnGap: 8,
+    columnGap: spacing.xs,
   },
   footLink: {
     fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
+    ...typeScale.footnote,
     color: colors.textMuted,
     textDecorationLine: 'underline',
-    paddingVertical: 6,
+    paddingVertical: spacing.xs,
   },
   footDot: {
     fontFamily: fonts.body,
-    fontSize: 13,
+    ...typeScale.footnote,
     color: colors.textMuted,
-  },
-  restoreLink: {
-    alignSelf: 'center',
-    paddingVertical: 8,
-  },
-  restoreText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text,
-    opacity: 0.8,
-    textDecorationLine: 'underline',
   },
 });

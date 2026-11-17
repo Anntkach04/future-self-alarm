@@ -3,19 +3,14 @@ import {
   setAudioModeAsync,
   type AudioPlayer,
 } from 'expo-audio';
+import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { BackButton } from '../components/BackButton';
-import {
-  KaraokeScript,
-  cleanScript,
-  estimateSpeechWords,
-  type KaraokeWord,
-} from '../components/KaraokeScript';
-import { LoadingLabel } from '../components/LoadingLabel';
+import { cleanScript } from '../components/KaraokeScript';
 import { Screen } from '../components/Screen';
-import { TextArrowButton } from '../components/TextArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { buildAlarmScript } from '../data/alarmScript';
 import { RootStackParamList } from '../navigation/types';
@@ -23,37 +18,55 @@ import { ensureGuestSession } from '../services/apiAuth';
 import { savePreviewAudio } from '../services/audioPreview';
 import { synthesizeSpeech } from '../services/elevenlabs';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import {
+  accents,
+  colors,
+  fonts,
+  noFakeBold,
+  opticalLeft,
+  radii,
+  spacing,
+  typeScale,
+} from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceSettings'>;
+
+const BAR_COUNT = 32;
+/** Fixed, voice-like bar profile (not random per render). */
+const BARS = Array.from({ length: BAR_COUNT }, (_, i) => {
+  const v = 0.35 + 0.65 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37));
+  return Math.round(8 + v * 24);
+});
 
 function playableUri(uri: string) {
   if (/^(file:|https?:|blob:)/.test(uri)) return uri;
   return `file://${uri}`;
 }
 
+function formatSeconds(total: number) {
+  const s = Math.max(0, Math.round(total));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
 
-/**
- * Listen to your cloned voice again, with the same word highlight as the
- * onboarding preview; re-record from here.
- */
+async function fileExists(uri: string | null) {
+  if (!uri) return false;
+  try {
+    return (await FileSystem.getInfoAsync(uri)).exists;
+  } catch {
+    return false;
+  }
+}
+
+/** Listen to your cloned voice; re-record from here. No message text. */
 export function VoiceSettingsScreen({ navigation }: Props) {
   const { answers, voice, setPreview } = useOnboarding();
   const [playing, setPlaying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
-  const [words, setWords] = useState<KaraokeWord[] | null>(null);
+  const [duration, setDuration] = useState(0);
   const playerRef = useRef<AudioPlayer | null>(null);
   const subRef = useRef<{ remove: () => void } | null>(null);
-  /** Audio + timings made on this screen (reused on replay, no extra cost). */
-  const cacheRef = useRef<{ uri: string; words: KaraokeWord[] | null } | null>(null);
-
-  const line =
-    cleanScript(
-    voice.previewText ||
-      buildAlarmScript(answers.name, null, answers.morningHabits)
-  );
 
   const detach = () => {
     subRef.current?.remove();
@@ -63,52 +76,49 @@ export function VoiceSettingsScreen({ navigation }: Props) {
   };
   useEffect(() => () => detach(), []);
 
-  /** Fresh TTS with word timings, once per visit. */
+  /** Reuse the saved sample; make one only if it's gone. */
   const ensureAudio = async () => {
-    if (cacheRef.current) return cacheRef.current;
+    if (await fileExists(voice.previewUri)) return voice.previewUri as string;
     if (!voice.voiceId) return null;
+    const line = cleanScript(
+      voice.previewText ||
+        buildAlarmScript(answers.name, null, answers.morningHabits)
+    );
     await ensureGuestSession();
-    const tts = await synthesizeSpeech({
-      voiceId: voice.voiceId,
-      text: line,
-      withTimestamps: true,
-    });
+    const tts = await synthesizeSpeech({ voiceId: voice.voiceId, text: line });
     const path = await savePreviewAudio(tts.base64);
     setPreview(path, line);
-    const timed =
-      Array.isArray(tts.words) && tts.words.length
-        ? (tts.words as KaraokeWord[])
-        : null;
-    setWords(timed);
-    cacheRef.current = { uri: path, words: timed };
-    return cacheRef.current;
+    return path;
+  };
+
+  const stop = () => {
+    playerRef.current?.pause();
+    detach();
+    setPlaying(false);
+    setCurrentTime(0);
   };
 
   const play = async () => {
-    if (busy || playing) return;
+    if (busy) return;
+    if (playing) {
+      stop();
+      return;
+    }
     setBusy(true);
     setError(null);
-    setCurrentTime(0);
     try {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      const ready = await ensureAudio();
-      if (!ready) {
+      const uri = await ensureAudio();
+      if (!uri) {
         setError('Record your voice first to hear it here.');
         return;
       }
       detach();
-      const player = createAudioPlayer(
-        { uri: playableUri(ready.uri) },
-        { updateInterval: 40 }
-      );
+      const player = createAudioPlayer({ uri: playableUri(uri) }, { updateInterval: 100 });
       playerRef.current = player;
       subRef.current = player.addListener('playbackStatusUpdate', (status) => {
         setCurrentTime(Number(status.currentTime) || 0);
-        if (!ready.words?.length && status.duration > 0.5) {
-          const estimated = estimateSpeechWords(line, status.duration);
-          setWords(estimated);
-          cacheRef.current = { uri: ready.uri, words: estimated };
-        }
+        if (status.duration > 0) setDuration(Number(status.duration));
         if (status.didJustFinish) {
           setPlaying(false);
           setCurrentTime(0);
@@ -124,41 +134,78 @@ export function VoiceSettingsScreen({ navigation }: Props) {
     }
   };
 
+  const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
+  const status = busy
+    ? 'Loading…'
+    : playing
+      ? `${formatSeconds(currentTime)} / ${formatSeconds(duration)}`
+      : duration > 0
+        ? formatSeconds(duration)
+        : 'Tap to listen';
+
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Voice</Text>
+      <Text maxFontSizeMultiplier={1.2} style={styles.title}>
+        Voice
+      </Text>
 
       <View style={styles.card}>
-        <KaraokeScript
-          text={line}
-          words={words}
-          currentTime={currentTime}
-          active={playing}
-        />
-        {error ? (
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text>
-        ) : null}
-        <View style={styles.playRow}>
-          {playing || busy ? (
-            <LoadingLabel text={playing ? 'Playing' : 'Loading'} style={styles.loading} />
-          ) : (
-            <TextArrowButton
-              label="play your voice"
-              color={accents.goldDeep}
-              onPress={() => void play()}
-            />
-          )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={playing ? 'Stop your voice' : 'Play your voice'}
+          onPress={() => void play()}
+          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
+        >
+          <Svg width={20} height={20} viewBox="0 0 20 20">
+            {playing ? (
+              <>
+                <Rect x={4} y={3} width={4} height={14} rx={1} fill={colors.text} />
+                <Rect x={12} y={3} width={4} height={14} rx={1} fill={colors.text} />
+              </>
+            ) : (
+              <Path d="M6 3.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L7.5 2.64A1 1 0 0 0 6 3.5Z" fill={colors.text} />
+            )}
+          </Svg>
+        </Pressable>
+        <View style={styles.trackColumn}>
+          <View style={styles.bars} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {BARS.map((h, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.bar,
+                  { height: h },
+                  i / BAR_COUNT < progress && styles.barPlayed,
+                ]}
+              />
+            ))}
+          </View>
+          <Text maxFontSizeMultiplier={1.3} style={styles.status}>
+            {status}
+          </Text>
         </View>
       </View>
 
+      <Text maxFontSizeMultiplier={1.4} style={styles.caption}>
+        This is the voice that wakes you up every morning.
+      </Text>
+      {error ? (
+        <Text maxFontSizeMultiplier={1.4} style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
+
       <View style={styles.actions}>
-        <TextArrowButton
-          wide
-          label="re-record voice"
-          color={colors.fab}
+        <Pressable
+          accessibilityRole="button"
           onPress={() => navigation.navigate('VoiceRecord')}
-        />
+          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+        >
+          <Text maxFontSizeMultiplier={1.3} style={styles.secondaryLabel}>
+            re-record voice
+          </Text>
+        </Pressable>
       </View>
     </Screen>
   );
@@ -168,36 +215,77 @@ const styles = StyleSheet.create({
   back: { marginTop: 0 },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 40,
-    lineHeight: 44,
+    ...typeScale.title1,
+    ...opticalLeft(40),
     color: colors.text,
-    marginTop: 8,
+    marginTop: spacing.xs,
     marginBottom: spacing.lg,
     ...noFakeBold,
   },
   card: {
-    backgroundColor: accents.gold,
-    borderRadius: 24,
-    padding: 22,
-    gap: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.chip,
+    borderRadius: radii.card,
+    borderCurve: 'continuous',
+    padding: spacing.lg,
   },
-  playRow: {
-    minHeight: 44,
+  playButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: accents.gold,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  loading: {
+  pressed: { transform: [{ scale: 0.97 }] },
+  trackColumn: { flex: 1, gap: spacing.xs },
+  bars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 32,
+  },
+  bar: {
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(26, 26, 26, 0.25)',
+  },
+  barPlayed: { backgroundColor: colors.text },
+  status: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    color: colors.text,
+    ...typeScale.footnote,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
+  caption: {
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.textMuted,
+    marginTop: spacing.md,
   },
   error: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.text,
+    ...typeScale.subhead,
+    color: accents.danger,
+    marginTop: spacing.xs,
   },
   actions: {
     marginTop: 'auto',
     paddingBottom: spacing.md,
+    alignItems: 'center',
+  },
+  secondary: {
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+  },
+  secondaryLabel: {
+    fontFamily: fonts.bodyMedium,
+    ...typeScale.body,
+    color: colors.text,
+    textDecorationLine: 'underline',
+    ...noFakeBold,
   },
 });

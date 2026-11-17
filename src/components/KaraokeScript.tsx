@@ -84,8 +84,8 @@ export function KaraokeScript({
 const styles = StyleSheet.create({
   body: {
     fontFamily: fonts.bodyLight,
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 24,
     color: colors.text,
     textAlign: 'center',
     ...noFakeLight,

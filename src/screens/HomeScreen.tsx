@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { formatDateKey } from '../utils/dates';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Image,
   Platform,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlarmPermissionNudge } from '../components/AlarmPermissionNudge';
-import { MoodWhySheet } from '../components/MoodWhySheet';
+import { MoodCheckInCard } from '../components/MoodCheckInCard';
 import { NotificationPermissionNudge } from '../components/NotificationPermissionNudge';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -23,12 +23,9 @@ import {
   useAlarms,
   type Alarm,
 } from '../context/AlarmsContext';
-import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
-import { BASE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
-import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
-import { uiLabel } from '../utils/labels';
+import { accents, colors, fonts, headingClipFix, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -47,9 +44,7 @@ function alarmSortKey(a: Pick<Alarm, 'hour' | 'minute'>) {
 export function HomeScreen({ navigation }: Props) {
   const { answers } = useOnboarding();
   const { alarms, toggleAlarm } = useAlarms();
-  const { today, saveCheckIn } = useMoodCheckIn();
   const { isPaused, pauseUntil } = useAppSettings();
-  const [sheetMood, setSheetMood] = useState<Mood | null>(null);
 
   const greeting = greetingForHour(new Date().getHours());
   const title = answers.name ? `${greeting}, ${answers.name}` : greeting;
@@ -86,41 +81,7 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
         ) : null}
 
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.feeling}>How are you feeling today?</Text>
-        <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.moodHint}>
-          This will shape tomorrow’s alarm.
-        </Text>
-        <View style={styles.moodRow}>
-          {BASE_MOODS.map((mood) => {
-            const selected = today?.moodId === mood.id;
-            return (
-              <Pressable
-                key={mood.id}
-                accessibilityRole="button"
-                accessibilityLabel={`I feel ${mood.label}`}
-                accessibilityState={{ selected }}
-                onPress={() => setSheetMood(mood)}
-                style={[
-                  styles.mood,
-                  { backgroundColor: mood.color },
-                  selected && styles.moodSelected,
-                ]}
-              >
-                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.moodLabel}>{uiLabel(mood.label)}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View style={styles.moreRow}>
-          {/* A link, not another filled pill, so it never reads as a mood tile. */}
-          <TextArrowButton
-            label="all moods"
-            color="transparent"
-            textColor={colors.text}
-            style={styles.moreLink}
-            onPress={() => navigation.navigate('MoodMore')}
-          />
-        </View>
+        <MoodCheckInCard name={answers.name} />
 
         <View style={[styles.block, !hasAlarms && styles.blockEmpty]}>
           {allPaused ? (
@@ -198,20 +159,6 @@ export function HomeScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      <MoodWhySheet
-        visible={Boolean(sheetMood)}
-        mood={sheetMood}
-        name={answers.name}
-        onClose={() => setSheetMood(null)}
-        onSaved={({ mood, note, advice }) =>
-          saveCheckIn({
-            moodId: mood.id,
-            moodLabel: mood.label,
-            note,
-            advice,
-          })
-        }
-      />
       {/*
         One permission card at a time. On iOS the wake runs through AlarmKit,
         so "Allow alarms" is the only ask; notification alerts are just the
@@ -248,101 +195,53 @@ const styles = StyleSheet.create({
   },
   hello: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
-    marginBottom: 20,
+    marginBottom: 24,
     ...noFakeBold,
     ...headingClipFix,
   },
   pausedGlobal: {
     fontFamily: fonts.body,
     fontSize: 15,
-    lineHeight: 22,
-    color: colors.text,
-    marginBottom: 20,
-  },
-  feeling: {
-    fontFamily: fonts.headingRegular,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.text,
-    marginTop: 4,
-    marginBottom: 6,
-    ...noFakeBold,
-    ...headingClipFix,
-  },
-  moodHint: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textMuted,
-    marginBottom: 14,
-  },
-  moodRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  mood: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 20,
-    padding: 8,
-    justifyContent: 'flex-end',
-    overflow: 'visible',
-  },
-  moodSelected: {
-    borderWidth: 1,
-    borderColor: colors.text,
-  },
-  moodLabel: {
-    fontFamily: fonts.headingRegular,
-    fontSize: 16,
     lineHeight: 20,
     color: colors.text,
-    ...noFakeBold,
-  },
-  moreRow: {
-    alignItems: 'flex-end',
-    marginTop: 4,
     marginBottom: 24,
-  },
-  moreLink: {
-    alignSelf: 'flex-end',
-    paddingRight: 0,
   },
   block: {
     borderRadius: 24,
     backgroundColor: colors.chip,
-    padding: 18,
-    marginBottom: 20,
+    padding: spacing.lg,
+    marginBottom: 24,
     overflow: 'hidden',
   },
   pausedBanner: {
     fontFamily: fonts.body,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
     color: colors.text,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   /** No alarm yet: the block becomes the screen's hero. */
   blockEmpty: {
     borderWidth: 0,
     backgroundColor: accents.gold,
-    padding: 22,
+    padding: 24,
   },
   emptyTitle: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 32,
     color: colors.text,
-    marginBottom: 6,
+    marginBottom: 8,
     ...noFakeBold,
   },
   emptyAlarms: {
     fontFamily: fonts.body,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
     color: colors.text,
   },
   emptyCta: {
@@ -362,14 +261,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 16,
     minHeight: 56,
   },
   alarmRowBorder: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(26, 26, 26, 0.12)',
     marginTop: 4,
-    paddingTop: 12,
+    paddingTop: 16,
   },
   alarmPreparing: {
     fontFamily: fonts.body,
@@ -382,21 +281,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 16,
-    gap: 12,
+    gap: 16,
   },
   alarmTime: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 52,
+    ...opticalLeft(48),
+    lineHeight: 56,
     color: colors.text,
-    fontVariant: ['tabular-nums'],
+    // Proportional figures: tabular ones pad "1" and push 11:00 right.
     flexShrink: 0,
     ...noFakeBold,
     ...headingClipFix,
   },
   alarmDays: {
     fontFamily: fonts.headingRegular,
-    fontSize: 18,
+    fontSize: 17,
     color: colors.text,
     marginTop: 4,
     ...noFakeBold,

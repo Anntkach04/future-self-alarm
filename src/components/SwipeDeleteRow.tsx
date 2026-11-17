@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingRight: 10,
+    paddingRight: 8,
   },
   deleteHit: {
     width: ACTION_W,

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { type Mood } from '../data/moods';
 import { fetchMoodAdvice } from '../services/moodAdvice';
-import { accents, colors, fonts, noFakeBold, radii, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, radii, spacing, opticalLeft } from '../theme';
 import { LoadingLabel } from './LoadingLabel';
 import { LogoSpinner } from './LogoSpinner';
 import { TextArrowButton } from './TextArrowButton';
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing.inset,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 40,
     minHeight: 280,
   },
@@ -155,11 +155,12 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.border,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   moodName: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginBottom: 8,
@@ -168,14 +169,14 @@ const styles = StyleSheet.create({
   question: {
     fontFamily: fonts.headingRegular,
     fontSize: 22,
-    lineHeight: 26,
+    lineHeight: 28,
     color: colors.text,
     marginBottom: 8,
     ...noFakeBold,
   },
   moodPurpose: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
     marginBottom: 16,
@@ -183,11 +184,11 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 88,
     fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 24,
     color: colors.text,
     padding: 0,
-    marginBottom: 20,
+    marginBottom: 24,
     ...noFakeBold,
     ...(Platform.OS === 'web'
       ? ({
@@ -206,14 +207,14 @@ const styles = StyleSheet.create({
   },
   loading: {
     fontFamily: fonts.headingRegular,
-    fontSize: 20,
+    fontSize: 22,
     color: colors.text,
     ...noFakeBold,
   },
   advice: {
     fontFamily: fonts.headingRegular,
     fontSize: 22,
-    lineHeight: 30,
+    lineHeight: 28,
     color: colors.text,
     marginBottom: 24,
     ...noFakeBold,
@@ -221,9 +222,9 @@ const styles = StyleSheet.create({
   offline: {
     fontFamily: fonts.body,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 16,
     color: colors.textMuted,
-    marginTop: -12,
-    marginBottom: 20,
+    marginTop: -16,
+    marginBottom: 24,
   },
 });

@@ -1,6 +1,7 @@
 /** Wake line — ~25–28s spoken (fits Apple custom alarm sound <30s). Sync with src/data/alarmScript.ts */
 function buildAlarmScript(name, mood, habits) {
-  const who = String(name || '').trim() || 'friend';
+  // First name only: "Hey Anastasia", never "Hey Anastasia Tkach".
+  const who = String(name || '').trim().split(/\s+/)[0] || 'friend';
   const moodLabel = String(mood?.label || mood || '').trim().toLowerCase();
   const habitList = Array.isArray(habits)
     ? habits.map((h) => String(h || '').trim()).filter(Boolean)

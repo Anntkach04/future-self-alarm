@@ -8,7 +8,7 @@ import { TextArrowButton } from '../components/TextArrowButton';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { RootStackParamList } from '../navigation/types';
 import { ensureNotificationPermissions } from '../services/alarmScheduler';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationSettings'>;
 
@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginBottom: spacing.sm,
@@ -96,15 +97,15 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
     marginBottom: spacing.lg,
   },
   block: {
     borderRadius: 24,
-    padding: 18,
-    gap: 10,
+    padding: 16,
+    gap: 8,
     backgroundColor: colors.chip,
   },
   blockTitle: {
@@ -116,14 +117,14 @@ const styles = StyleSheet.create({
   },
   blockBody: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
   },
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     marginTop: 4,
   },
   actions: {

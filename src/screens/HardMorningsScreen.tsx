@@ -11,8 +11,8 @@ export function HardMorningsScreen({ navigation }: Props) {
 
   return (
     <ChipQuestionScreen
-      question={"What helps on\nhard mornings?"}
-      subtitle="Future you will say it when you need it."
+      question={"What gets you\nout of bed?"}
+      subtitle="Future you will remind you of it."
       options={HARD_MORNING_OPTIONS}
       selected={answers.hardMornings}
       onToggle={toggleHardMorning}

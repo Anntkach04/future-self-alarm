@@ -45,12 +45,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1A1A1A',
     borderRadius: 999,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     marginBottom: 32,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 17,
     color: '#1A1A1A',
   },
   root: {
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFCF5',
     padding: 24,
     paddingTop: 72,
-    gap: 12,
+    gap: 16,
   },
   title: {
     fontSize: 22,
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   body: {
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: '#1A1A1A',
   },

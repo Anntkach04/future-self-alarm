@@ -48,12 +48,12 @@ const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
     addPlaceholder: 'Your morning habit',
   },
   hardMornings: {
-    question: 'What do hard\nmornings need?',
+    question: 'What gets you\nout of bed?',
     options: HARD_MORNING_OPTIONS,
     getSelected: (a) => a.hardMornings,
     onToggle: (ctx, value) => ctx.toggleHardMorning(value),
     onAddCustom: (ctx, value) => ctx.addHardMorning(value),
-    addPlaceholder: 'Your own line',
+    addPlaceholder: 'Your own words',
   },
   voiceStyle: {
     question: 'What tone should\nmornings have?',

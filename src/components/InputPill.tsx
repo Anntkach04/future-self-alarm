@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   input: {
     ...StyleSheet.absoluteFill,
-    paddingLeft: 20,
+    paddingLeft: 24,
     paddingRight: 72,
     borderWidth: 0,
     backgroundColor: 'transparent',

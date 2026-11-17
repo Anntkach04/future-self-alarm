@@ -61,8 +61,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 8,
-    paddingLeft: 14,
-    paddingRight: 12,
+    paddingLeft: 16,
+    paddingRight: 16,
     paddingVertical: 8,
     // Apple minimum touch target.
     minHeight: 44,
@@ -74,11 +74,11 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   labelWide: {
-    fontSize: 19,
-    lineHeight: 23,
+    fontSize: 22,
+    lineHeight: 28,
   },
   btnNoArrow: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
   pressed: {
     opacity: 0.88,
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.heading,
     fontSize: 17,
-    lineHeight: 21,
+    lineHeight: 24,
     ...noFakeBold,
   },
 });

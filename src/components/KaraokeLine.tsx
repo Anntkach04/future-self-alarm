@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: 4,
-    rowGap: 6,
+    rowGap: 8,
   },
   row: {
     flexDirection: 'row',
@@ -86,8 +86,8 @@ const styles = StyleSheet.create({
   },
   word: {
     fontFamily: fonts.headingRegular,
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 28,
+    lineHeight: 32,
     letterSpacing: 0.15,
     ...noFakeBold,
   },

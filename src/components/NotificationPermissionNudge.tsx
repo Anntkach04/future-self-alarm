@@ -110,27 +110,27 @@ const styles = StyleSheet.create({
   sheet: {
     backgroundColor: accents.mist,
     borderRadius: 24,
-    padding: 14,
-    gap: 12,
+    padding: 16,
+    gap: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
   text: {
     flex: 1,
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.text,
   },
   btn: {
     backgroundColor: accents.gold,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   btnText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
   },
 });

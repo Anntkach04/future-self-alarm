@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from './BackButton';
 import { BubbleEnter } from './BubbleEnter';
 import { RoundArrowButton } from './RoundArrowButton';
-import { accents, colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, headingClipFix, noFakeBold, spacing, opticalLeft } from '../theme';
 type Props = {
   question: string;
   subtitle?: string;
@@ -105,19 +105,19 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     alignItems: 'stretch',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   underline: {
     width: '100%',
     borderBottomWidth: 1,
     borderBottomColor: colors.text,
     paddingVertical: 8,
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
   },
   input: {
     fontFamily: fonts.headingRegular,
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 28,
+    lineHeight: 32,
     color: colors.text,
     padding: 0,
     borderWidth: 0,
@@ -135,8 +135,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingRegular,
     color: colors.text,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
-    marginBottom: 12,
+    marginBottom: 16,
     alignSelf: 'stretch',
     ...noFakeBold,
     ...headingClipFix,
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     fontFamily: fonts.body,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     alignSelf: 'stretch',
   },

@@ -34,7 +34,7 @@ import { playAllSetSound } from '../services/uiSounds';
 import { ensureAiConsent } from '../services/aiConsent';
 import * as Haptics from 'expo-haptics';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     top: 48,
     right: spacing.inset,
     zIndex: 5,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 4,
   },
   skipText: {
@@ -833,17 +833,18 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 16,
     ...noFakeBold,
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.textMuted,
-    marginBottom: 12,
+    marginBottom: 16,
     alignSelf: 'stretch',
     textAlign: 'left',
   },
@@ -853,7 +854,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(185, 173, 217, 0.3)',
     overflow: 'hidden',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
@@ -864,7 +865,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
-    marginBottom: 12,
+    marginBottom: 16,
     alignSelf: 'stretch',
   },
   stage: {
@@ -872,14 +873,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
-    paddingVertical: 12,
+    paddingVertical: 16,
     overflow: 'visible',
     minHeight: 72,
   },
   controls: {
     alignItems: 'center',
     gap: spacing.sm,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: spacing.sm,
   },
   hint: {
@@ -889,7 +890,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   nextLineBtn: {
-    marginTop: 12,
+    marginTop: 16,
     alignSelf: 'center',
   },
   error: {
@@ -901,11 +902,11 @@ const styles = StyleSheet.create({
   coach: {
     fontFamily: fonts.body,
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
     marginBottom: spacing.sm,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   goldPill: {
     position: 'absolute',
@@ -919,19 +920,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.inset,
     paddingTop: 80,
-    paddingBottom: 36,
+    paddingBottom: 40,
     justifyContent: 'space-between',
   },
   completeCopy: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: 24,
   },
   completeTitle: {
     fontFamily: fonts.headingRegular,
     fontSize: 48,
-    lineHeight: 52,
+    lineHeight: 56,
     textAlign: 'center',
     color: colors.text,
     ...noFakeBold,
@@ -939,12 +940,12 @@ const styles = StyleSheet.create({
   cloneEta: {
     marginTop: 8,
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     textAlign: 'center',
     color: colors.text,
     opacity: 0.8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   completeFooter: {
     alignItems: 'flex-end',
@@ -966,7 +967,7 @@ const styles = StyleSheet.create({
   },
   completeError: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     textAlign: 'center',
     color: colors.text,

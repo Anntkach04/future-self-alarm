@@ -49,16 +49,14 @@ export const MORNING_HABIT_OPTIONS: BubbleOption[] = [
   bubble('No phone for 20 min', '#B9ADD9', { align: 'right', nudge: -16 }),
 ];
 
+/** What gets you out of bed (stored as `hardMornings`, kept for old data). */
 export const HARD_MORNING_OPTIONS: BubbleOption[] = [
-  bubble('One step is enough.', '#B9F34A', { align: 'left', nudge: 0 }),
-  bubble("You're not behind.", '#D8C29E', { align: 'right', nudge: -8 }),
-  bubble('Today can feel lighter.', '#EDB28C', { align: 'left', nudge: 32 }),
-  bubble('Good things are coming.', '#FEC554', { align: 'right', nudge: 0 }),
-  bubble('Keep your promise to yourself.', '#8FBDB7', {
-    align: 'left',
-    nudge: 16,
-  }),
-  bubble('Soft mornings still count.', '#ADDEFF', {
+  bubble('Coffee or tea', '#EDB28C', { align: 'left', nudge: 0 }),
+  bubble('Music', '#ADDEFF', { align: 'right', nudge: -8 }),
+  bubble('Sunlight', '#FEC554', { align: 'left', nudge: 32 }),
+  bubble('A plan for the day', '#8FBDB7', { align: 'right', nudge: 0 }),
+  bubble('People I love', '#B9ADD9', { align: 'left', nudge: 16 }),
+  bubble('Something to look forward to', '#B9F34A', {
     align: 'right',
     nudge: -4,
   }),

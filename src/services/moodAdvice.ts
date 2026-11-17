@@ -1,9 +1,10 @@
 import { ensureAiConsent } from './aiConsent';
 import { authHeaders } from './apiAuth';
 import { getApiUrl } from './elevenlabs';
+import { CRISIS_REPLY, looksLikeCrisis } from './moodSafety';
 
 const FALLBACK =
-  "That’s not the real you. You’re strong, capable, and already winning. Rest up; tomorrow you’re going to crush it.";
+  'Thank you for telling me. Rest tonight. Tomorrow starts fresh, and I will be there when you wake up.';
 
 export type MoodAdviceResult = {
   text: string;
@@ -15,6 +16,9 @@ export async function fetchMoodAdvice(input: {
   note: string;
   name: string;
 }): Promise<MoodAdviceResult> {
+  if (looksLikeCrisis(`${input.mood} ${input.note}`)) {
+    return { text: CRISIS_REPLY, fromAi: false };
+  }
   // Mood notes go to OpenAI only with consent (App Review 5.1.2).
   if (!(await ensureAiConsent())) {
     return { text: FALLBACK, fromAi: false };

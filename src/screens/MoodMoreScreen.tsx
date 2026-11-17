@@ -8,7 +8,7 @@ import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { MORE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, headingClipFix, noFakeBold } from '../theme';
+import { colors, fonts, headingClipFix, noFakeBold, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MoodMore'>;
 
@@ -74,6 +74,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginBottom: 24,
@@ -83,13 +84,13 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   mood: {
     width: '47%',
     minHeight: 96,
     borderRadius: 20,
-    padding: 12,
+    padding: 16,
     justifyContent: 'flex-end',
     overflow: 'visible',
   },
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.headingRegular,
-    fontSize: 18,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
     ...noFakeBold,

@@ -53,22 +53,22 @@ const styles = StyleSheet.create({
   pills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
     marginBottom: 8,
   },
   pill: {
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   pillText: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
   },
   empty: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textMuted,
     marginBottom: 8,
   },

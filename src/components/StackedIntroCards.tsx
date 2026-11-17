@@ -373,8 +373,8 @@ const styles = StyleSheet.create({
     height: INTRO_CARD_SIZE,
     borderRadius: 24,
     borderWidth: 0,
-    paddingTop: 28,
-    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingHorizontal: 24,
     paddingBottom: 24,
     overflow: 'visible',
   },
@@ -385,8 +385,8 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.headingRegular,
-    fontSize: 27,
-    lineHeight: 31,
+    fontSize: 28,
+    lineHeight: 32,
     color: '#1A1A1A',
     width: 240,
     ...(Platform.OS === 'web'

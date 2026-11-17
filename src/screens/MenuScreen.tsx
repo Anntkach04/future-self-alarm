@@ -8,7 +8,7 @@ import { contactUsUrl, supportMailtoUrl } from '../config/legal';
 import { useAlarms } from '../context/AlarmsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, noFakeBold } from '../theme';
+import { colors, fonts, noFakeBold, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginTop: 8,
@@ -136,18 +137,18 @@ const styles = StyleSheet.create({
   rowText: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 32,
     color: colors.text,
     ...noFakeBold,
   },
   resetBtn: {
     marginTop: 24,
     alignSelf: 'flex-start',
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   resetText: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textMuted,
     textDecorationLine: 'underline',
   },
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   thanksLogo: {
     width: LOGO_W,

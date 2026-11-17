@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   itemText: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 32,
     color: colors.text,
     fontVariant: ['tabular-nums'],
     includeFontPadding: false,
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: colors.text,
     marginHorizontal: 4,
-    marginBottom: 2,
+    marginBottom: 4,
     ...noFakeBold,
   },
   selection: {
@@ -486,8 +486,8 @@ const styles = StyleSheet.create({
   },
   doneBtn: {
     marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 8,
     backgroundColor: colors.text,
     borderRadius: 999,
   },
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#C6C6C8',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
   accessoryBtn: {

@@ -13,7 +13,7 @@ import {
   ensureNotificationPermissions,
   hasNotificationPermissions,
 } from '../services/alarmScheduler';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlarmPermission'>;
 
@@ -120,6 +120,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginTop: spacing.md,
@@ -128,20 +129,20 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
     marginBottom: spacing.lg,
   },
   actions: {
     marginTop: 'auto',
-    gap: 12,
+    gap: 16,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
   note: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
     textAlign: 'center',

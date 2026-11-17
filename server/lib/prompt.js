@@ -1,3 +1,4 @@
+const { looksLikeCrisis } = require('./moodSafety');
 const LENGTH_GUIDE = {
   'About 30 seconds': {
     label: 'About 30 seconds',
@@ -57,7 +58,7 @@ function pickAngle(answers = {}) {
 }
 
 function buildScriptMessages(answers = {}) {
-  const name = String(answers.name || '').trim() || 'love';
+  const name = String(answers.name || '').trim().split(/\s+/)[0] || 'love';
   const length = lengthGuide(answers.messageLength);
   const weekday = answers.weekday || null;
   const angle = pickAngle(answers);
@@ -88,10 +89,12 @@ Voice of the script:
     `How they want to feel on waking: ${list(answers.morningFeelings)}`,
     `Main goals / who they are becoming: ${list(answers.futureSelf)}`,
     `Morning habits they want to keep: ${list(answers.morningHabits || answers.alreadyProud)}`,
-    `Line they need on a hard morning: ${list(answers.hardMornings)}`,
+    `What gets them out of bed (weave one in naturally): ${list(answers.hardMornings)}`,
     `Voice style: ${answers.voiceStyle || 'Casual voice message, warm, spontaneous, natural pauses'}`,
     answers.moodForTomorrow
-      ? `How they felt the day before this wake (shapes THIS wake only; reflect it gently, do not mention “mood check-in”): ${answers.moodForTomorrow}${answers.moodNoteForTomorrow ? `; note: ${answers.moodNoteForTomorrow}` : ''}`
+      ? looksLikeCrisis(`${answers.moodForTomorrow} ${answers.moodNoteForTomorrow || ''}`)
+        ? 'They had a very hard day. Be especially calm, soft and kind. Do not quote or name what they wrote. No urgency, no "come on".'
+        : `How they felt the day before this wake, in their own words (shapes THIS wake only; reflect it gently, never quote it back, do not mention “mood check-in”): ${answers.moodForTomorrow}${answers.moodNoteForTomorrow ? `; note: ${answers.moodNoteForTomorrow}` : ''}`
       : null,
     `Length: ${length.label}, ${length.words} (${length.seconds}).`,
     'Write a brand-new script now. Make it sound like them talking, not a template.',

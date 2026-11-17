@@ -115,8 +115,8 @@ const styles = StyleSheet.create({
   sheet: {
     backgroundColor: accents.mist,
     borderRadius: 24,
-    padding: 18,
-    gap: 14,
+    padding: 16,
+    gap: 16,
   },
   copy: {
     gap: 4,
@@ -131,18 +131,18 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: fonts.body,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
     color: colors.text,
   },
   btn: {
     backgroundColor: accents.sky,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   btnText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
   },
 });

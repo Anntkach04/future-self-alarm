@@ -141,14 +141,14 @@ export function FeatureList({ items, color }: Props) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
+    gap: 16,
+    paddingVertical: 16,
   },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
   title: {
     fontFamily: fonts.headingRegular,
@@ -186,13 +186,13 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: INK,
     opacity: 0.8,
   },
   action: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     minHeight: 34,
     borderRadius: 999,
     backgroundColor: INK,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.bg,
   },
 });

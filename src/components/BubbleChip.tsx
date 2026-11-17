@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.chip,
     // Same density on every chip screen (goals / habits / tone / …).
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderWidth: 0,
     alignSelf: 'flex-start',
     flexShrink: 0,
@@ -185,8 +185,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 17,
+    lineHeight: 24,
     flexShrink: 0,
     ...(Platform.OS === 'web'
       ? ({ whiteSpace: 'nowrap' } as object)
@@ -195,13 +195,13 @@ const styles = StyleSheet.create({
   plus: {
     fontFamily: fonts.bodyLight,
     fontSize: 28,
-    lineHeight: 30,
+    lineHeight: 32,
     ...noFakeLight,
   },
   caption: {
     fontFamily: fonts.body,
     fontSize: 13,
     opacity: 0.8,
-    marginTop: 2,
+    marginTop: 4,
   },
 });

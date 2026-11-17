@@ -128,20 +128,50 @@ export const colors = {
   fab: '#AEE1FF',
 };
 
+/**
+ * Spacing grid: multiples of 8; 4 only for tight pairs (icon + label).
+ * Allowed: 4, 8, 16, 24, 32, 40, 48, 56, 64.
+ */
 export const spacing = {
+  xxs: 4,
   xs: 8,
-  sm: 12,
+  sm: 16,
   md: 16,
   lg: 24,
   xl: 32,
   xxl: 48,
   /** Side margin on every screen (one value app-wide). */
-  inset: 28,
+  inset: 24,
   /** Gap between the safe area and the first element (back / menu). */
-  screenTop: 12,
+  screenTop: 16,
   /** Extra top gap on mobile web — Safari chrome reports 0 safe-area. */
   webTop: Platform.OS === 'web' ? 20 : 0,
 };
+
+/**
+ * Type scale — the only sizes in the app (size / line height):
+ * display 48/56 · title1 40/44 · title2 28/32 · title3 22/28 ·
+ * body 17/24 · subhead 15/20 · footnote 13/16.
+ * Serif (Instrument) for display/titles, Inter for the rest.
+ */
+export const typeScale = {
+  display: { fontSize: 48, lineHeight: 56 },
+  title1: { fontSize: 40, lineHeight: 44 },
+  title2: { fontSize: 28, lineHeight: 32 },
+  title3: { fontSize: 22, lineHeight: 28 },
+  body: { fontSize: 17, lineHeight: 24 },
+  subhead: { fontSize: 15, lineHeight: 20 },
+  footnote: { fontSize: 13, lineHeight: 16 },
+} as const;
+
+/**
+ * Instrument Serif glyphs carry ~3.5% of the size as built-in left space
+ * (0, G, S, d…), so big serif lines look indented next to Inter text at the
+ * same x. Pull them back by that amount so edges line up optically.
+ */
+export function opticalLeft(fontSize: number) {
+  return { marginLeft: -Math.round(fontSize * 0.035) };
+}
 
 /** Instrument Serif glyphs clip when line-height is tight or overflow is hidden. */
 export const headingClipFix =

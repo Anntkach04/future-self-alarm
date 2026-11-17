@@ -102,14 +102,14 @@ const styles = StyleSheet.create({
   },
   quiet: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.textMuted,
     textAlign: 'center',
   },
   eta: {
-    marginTop: 10,
+    marginTop: 8,
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
     textAlign: 'center',
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 32,
     color: colors.text,
     textAlign: 'center',
     ...noFakeBold,
@@ -132,13 +132,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#C0392B',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 16,
   },
   hint: {
     fontSize: 15,
     color: colors.textMuted,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: spacing.lg,
   },
   footer: {

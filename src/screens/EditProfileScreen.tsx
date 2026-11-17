@@ -29,7 +29,7 @@ import { deleteAccountOnServer } from '../services/apiAuth';
 import { clearPersistedAppData } from '../services/resetApp';
 import { logOutPurchases } from '../services/subscriptions';
 import { userFacingError } from '../services/userFacingError';
-import { accents, colors, fonts, noFakeBold } from '../theme';
+import { accents, colors, fonts, noFakeBold, opticalLeft } from '../theme';
 import { colorsForRecapSections } from '../utils/optionColors';
 import { uiLabel } from '../utils/labels';
 
@@ -171,7 +171,7 @@ export function EditProfileScreen({ navigation }: Props) {
             onPress={() => openField('morningHabits')}
           />
           <Section
-            title="hard mornings"
+            title="out of bed"
             items={answers.hardMornings}
             itemColors={hardMorningColors}
             onPress={() => openField('hardMornings')}
@@ -210,7 +210,7 @@ export function EditProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   field: {
     minHeight: 44,
-    paddingVertical: 10,
+    paddingVertical: 8,
     gap: 8,
   },
   fieldPressed: {
@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
     marginBottom: 24,
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
   },
   block: {
     borderRadius: 24,
-    padding: 18,
+    padding: 16,
     backgroundColor: colors.chip,
     marginBottom: 32,
   },
@@ -249,18 +250,18 @@ const styles = StyleSheet.create({
   },
   voiceHint: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
     marginTop: 16,
   },
   editRow: {
     alignItems: 'flex-end',
-    marginTop: 12,
+    marginTop: 16,
   },
   danger: {
     borderRadius: 24,
-    padding: 18,
+    padding: 16,
     marginBottom: 40,
     backgroundColor: colors.chip,
   },
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
   },
   dangerBody: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
   },

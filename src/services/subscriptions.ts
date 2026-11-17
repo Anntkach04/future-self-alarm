@@ -7,6 +7,8 @@ export const ENTITLEMENT_ID = 'future_self_alarm_pro';
 
 /** Preferred product id — match RevenueCat / App Store when linking. */
 export const MONTHLY_PRODUCT_ID = 'futureself_plus_monthly';
+/** Yearly plan, same subscription group and entitlement. */
+export const ANNUAL_PRODUCT_ID = 'futureself_plus_annual';
 
 export type SubStatus = {
   active: boolean;
@@ -97,13 +99,16 @@ export async function getSubscriptionStatus(): Promise<SubStatus> {
     const info = await Purchases.getCustomerInfo();
     const ent = info.entitlements.active[ENTITLEMENT_ID];
     // Product bought but not yet linked to the entitlement in RevenueCat:
-    // the user paid, so treat an active monthly subscription as access.
-    if (!ent && info.activeSubscriptions.includes(MONTHLY_PRODUCT_ID)) {
+    // the user paid, so treat an active plan as access.
+    const paidId = [MONTHLY_PRODUCT_ID, ANNUAL_PRODUCT_ID].find((id) =>
+      info.activeSubscriptions.includes(id)
+    );
+    if (!ent && paidId) {
       return {
         active: true,
         inTrial: false,
-        expiresAt: info.allExpirationDates?.[MONTHLY_PRODUCT_ID] ?? null,
-        productId: MONTHLY_PRODUCT_ID,
+        expiresAt: info.allExpirationDates?.[paidId] ?? null,
+        productId: paidId,
         source: 'revenuecat',
       };
     }
@@ -140,8 +145,11 @@ type PurchasesModule = typeof import('react-native-purchases').default;
 type RcPackage = import('react-native-purchases').PurchasesPackage;
 type RcProduct = import('react-native-purchases').PurchasesStoreProduct;
 
+export type PlanKind = 'monthly' | 'annual';
+
 /** What the paywall can buy: a RevenueCat package, or the raw StoreKit product. */
-type MonthlyPlan = { pkg: RcPackage | null; product: RcProduct };
+type StorePlan = { pkg: RcPackage | null; product: RcProduct };
+type StorePlans = Partial<Record<PlanKind, StorePlan>>;
 
 /** Why the price could not load (shown on the paywall so setup issues are visible). */
 let lastPlanProblem: string | null = null;
@@ -160,29 +168,35 @@ function errorText(error: unknown) {
   return String(error);
 }
 
-function pickMonthly(packages: RcPackage[]) {
+const PRODUCT_ID: Record<PlanKind, string> = {
+  monthly: MONTHLY_PRODUCT_ID,
+  annual: ANNUAL_PRODUCT_ID,
+};
+const PACKAGE_TYPE: Record<PlanKind, string> = { monthly: 'MONTHLY', annual: 'ANNUAL' };
+const PERIOD: Record<PlanKind, string> = { monthly: 'P1M', annual: 'P1Y' };
+
+function periodOf(p: RcProduct) {
+  return (p as { subscriptionPeriod?: string | null }).subscriptionPeriod ?? null;
+}
+
+function pickPackage(packages: RcPackage[], kind: PlanKind) {
   return (
     packages.find(
-      (p) =>
-        p.product.identifier === MONTHLY_PRODUCT_ID ||
-        p.identifier === MONTHLY_PRODUCT_ID
+      (p) => p.product.identifier === PRODUCT_ID[kind] || p.identifier === PRODUCT_ID[kind]
     ) ??
-    packages.find((p) => p.packageType === 'MONTHLY') ??
-    packages.find(
-      (p) => (p.product as { subscriptionPeriod?: string | null }).subscriptionPeriod === 'P1M'
-    ) ??
-    // The app sells exactly one plan: a lone package is that plan.
-    (packages.length === 1 ? packages[0] : undefined)
+    packages.find((p) => p.packageType === PACKAGE_TYPE[kind]) ??
+    packages.find((p) => periodOf(p.product) === PERIOD[kind])
   );
 }
 
 /**
  * RevenueCat offering first (current, then any). If the dashboard has no
- * usable offering, ask StoreKit for the product directly so a RevenueCat
+ * usable offering, ask StoreKit for the products directly so a RevenueCat
  * setup slip never blocks a purchase that Apple can serve.
  */
-async function resolveMonthlyPlan(Purchases: PurchasesModule): Promise<MonthlyPlan | null> {
+async function resolvePlans(Purchases: PurchasesModule): Promise<StorePlans> {
   await configurePurchases();
+  const plans: StorePlans = {};
   let offeringsProblem = '';
   try {
     const offerings = await Purchases.getOfferings();
@@ -190,51 +204,61 @@ async function resolveMonthlyPlan(Purchases: PurchasesModule): Promise<MonthlyPl
     const all = Object.values(offerings.all ?? {}).flatMap(
       (o) => o.availablePackages ?? []
     );
-    for (const packages of [current, all]) {
-      const pkg = pickMonthly(packages);
-      if (pkg) {
-        lastPlanProblem = null;
-        return { pkg, product: pkg.product };
-      }
+    for (const kind of ['monthly', 'annual'] as PlanKind[]) {
+      const pkg = pickPackage(current, kind) ?? pickPackage(all, kind);
+      if (pkg) plans[kind] = { pkg, product: pkg.product };
     }
-    offeringsProblem = `RevenueCat offerings: ${Object.keys(offerings.all ?? {}).join(', ') || 'none'}`;
+    if (!plans.monthly && !plans.annual) {
+      offeringsProblem = `RevenueCat offerings: ${Object.keys(offerings.all ?? {}).join(', ') || 'none'}`;
+    }
   } catch (error) {
     offeringsProblem = `RevenueCat: ${errorText(error)}`;
   }
-  try {
-    const products = await Purchases.getProducts(
-      [MONTHLY_PRODUCT_ID],
-      Purchases.PRODUCT_CATEGORY.SUBSCRIPTION
-    );
-    const product = products.find((p) => p.identifier === MONTHLY_PRODUCT_ID) ?? products[0];
-    if (product) {
-      lastPlanProblem = null;
-      return { pkg: null, product };
+  const missing = (['monthly', 'annual'] as PlanKind[]).filter((k) => !plans[k]);
+  if (missing.length) {
+    try {
+      const products = await Purchases.getProducts(
+        missing.map((k) => PRODUCT_ID[k]),
+        Purchases.PRODUCT_CATEGORY.SUBSCRIPTION
+      );
+      for (const kind of missing) {
+        const product = products.find((p) => p.identifier === PRODUCT_ID[kind]);
+        if (product) plans[kind] = { pkg: null, product };
+      }
+    } catch (error) {
+      offeringsProblem = `${offeringsProblem}. App Store: ${errorText(error)}`;
     }
-    lastPlanProblem = `${offeringsProblem}. App Store returned no product "${MONTHLY_PRODUCT_ID}".`;
-  } catch (error) {
-    lastPlanProblem = `${offeringsProblem}. App Store: ${errorText(error)}`;
   }
-  console.warn('Monthly plan unavailable:', lastPlanProblem);
-  return null;
+  lastPlanProblem =
+    plans.monthly || plans.annual
+      ? null
+      : `${offeringsProblem}. App Store returned no "${MONTHLY_PRODUCT_ID}" or "${ANNUAL_PRODUCT_ID}".`;
+  if (lastPlanProblem) console.warn('Plans unavailable:', lastPlanProblem);
+  return plans;
 }
 
-export type MonthlyPlanDetails = {
-  /** Localized price string from StoreKit, e.g. "$4.99" */
+export type PlanDetails = {
+  kind: PlanKind;
+  productId: string;
+  /** Localized StoreKit price, e.g. "$69.99" */
   priceString: string | null;
+  /** Annual only: localized price per month, e.g. "$5.83" */
+  perMonthString: string | null;
   /**
    * Free-trial length THIS Apple ID can still get, else null (no trial
    * offer, already used, or unknown). Never promise a trial we can't give.
    */
   trialDays: number | null;
-  /** Short price line, e.g. "7 days free, then $4.99/mo" or "$4.99/mo". */
-  headline: string;
   /** Full disclosure line for App Review 3.1.2(c) */
   disclosure: string;
-  productId: string;
 };
 
-const RENEW_NOTE = 'Auto-renews monthly until you cancel.';
+export type PlanOptions = {
+  monthly: PlanDetails | null;
+  annual: PlanDetails | null;
+  /** Annual vs 12 × monthly, whole percent; null if unknown. */
+  annualSavingsPercent: number | null;
+};
 
 function introTrialDays(intro: {
   price: number;
@@ -258,81 +282,86 @@ function introTrialDays(intro: {
   }
 }
 
-/** Plan copy from real StoreKit data; trial shown only when eligible. */
+/** Plan disclosure from real StoreKit data; trial named only when eligible. */
 export function describePlan(
+  kind: PlanKind,
   priceString: string | null,
   trialDays: number | null
-): Pick<MonthlyPlanDetails, 'headline' | 'disclosure'> {
-  const per = priceString ? `${priceString}/mo` : 'monthly';
+) {
+  const unit = kind === 'annual' ? 'year' : 'month';
+  const renew = `Auto-renews ${kind === 'annual' ? 'yearly' : 'monthly'} until you cancel.`;
+  const price = priceString ? `${priceString} per ${unit}` : `Billed ${kind === 'annual' ? 'yearly' : 'monthly'}`;
   if (trialDays) {
     const trial = `${trialDays} day${trialDays === 1 ? '' : 's'} free`;
-    return {
-      headline: `${trial}, then ${per}`,
-      disclosure: priceString
-        ? `${trial}, then ${priceString} per month. ${RENEW_NOTE}`
-        : `${trial}, then monthly. ${RENEW_NOTE}`,
-    };
+    return `${trial}, then ${price}. ${renew}`;
   }
+  return `${price}. ${renew}`;
+}
+
+function webPlans(): PlanOptions {
   return {
-    headline: priceString ? per : '',
-    disclosure: priceString
-      ? `${priceString} per month. ${RENEW_NOTE}`
-      : `Billed monthly. ${RENEW_NOTE}`,
+    monthly: { kind: 'monthly', productId: MONTHLY_PRODUCT_ID, priceString: '$9.99', perMonthString: null, trialDays: null, disclosure: describePlan('monthly', '$9.99', null) },
+    annual: { kind: 'annual', productId: ANNUAL_PRODUCT_ID, priceString: '$69.99', perMonthString: '$5.83', trialDays: 7, disclosure: describePlan('annual', '$69.99', 7) },
+    annualSavingsPercent: 42,
   };
 }
 
-/**
- * Localized StoreKit price line for paywall (Guideline 3.1.2(c)).
- * Returns null when RC/product not configured yet.
- */
-export async function getMonthlyPriceDisclosure(): Promise<string | null> {
-  const plan = await getMonthlyPlanDetails();
-  return plan?.disclosure ?? null;
-}
-
-/** Plan card data for Paywall / Subscription screens. */
-export async function getMonthlyPlanDetails(): Promise<MonthlyPlanDetails | null> {
-  if (Platform.OS === 'web') {
-    return {
-      priceString: null,
-      trialDays: 7,
-      ...describePlan(null, 7),
-      productId: MONTHLY_PRODUCT_ID,
-    };
-  }
+/** Both plans for the Paywall / Subscription screens. */
+export async function getPlanOptions(): Promise<PlanOptions | null> {
+  if (Platform.OS === 'web') return webPlans();
   if (!iosApiKey()) return null;
   try {
     const Purchases = (await import('react-native-purchases')).default;
-    const plan = await resolveMonthlyPlan(Purchases);
-    const price = plan?.product.priceString ?? null;
-    const id = plan?.product.identifier ?? MONTHLY_PRODUCT_ID;
-    let trialDays = introTrialDays(plan?.product.introPrice);
-    if (trialDays) {
+    const plans = await resolvePlans(Purchases);
+    const kinds = (['monthly', 'annual'] as PlanKind[]).filter((k) => plans[k]);
+    const ids = kinds.map((k) => plans[k]!.product.identifier);
+    let eligibility: Record<string, { status?: number }> = {};
+    try {
       // Apple: one intro offer per subscription group per Apple ID. Only
-      // advertise the trial when StoreKit confirms this user can get it.
-      try {
-        const map = await Purchases.checkTrialOrIntroductoryPriceEligibility([id]);
-        const status = map?.[id]?.status;
-        // 2 = INTRO_ELIGIBILITY_STATUS_ELIGIBLE
-        if (status !== 2) trialDays = null;
-      } catch {
-        trialDays = null;
-      }
+      // advertise a trial when StoreKit confirms this user can get it.
+      eligibility = (await Purchases.checkTrialOrIntroductoryPriceEligibility(ids)) as typeof eligibility;
+    } catch {
+      eligibility = {};
     }
+    const details = (kind: PlanKind): PlanDetails | null => {
+      const plan = plans[kind];
+      if (!plan) return null;
+      const p = plan.product;
+      let trialDays = introTrialDays(p.introPrice);
+      // 2 = INTRO_ELIGIBILITY_STATUS_ELIGIBLE
+      if (trialDays && eligibility[p.identifier]?.status !== 2) trialDays = null;
+      const priceString = p.priceString ?? null;
+      return {
+        kind,
+        productId: p.identifier,
+        priceString,
+        perMonthString: kind === 'annual' ? p.pricePerMonthString ?? null : null,
+        trialDays,
+        disclosure: describePlan(kind, priceString, trialDays),
+      };
+    };
+    const monthly = details('monthly');
+    const annual = details('annual');
+    const m = plans.monthly?.product;
+    const a = plans.annual?.product;
+    const annualSavingsPercent =
+      m && a && m.currencyCode === a.currencyCode && m.price > 0
+        ? Math.floor((1 - a.price / (m.price * 12)) * 100)
+        : null;
     return {
-      priceString: price,
-      trialDays,
-      ...describePlan(price, trialDays),
-      productId: id,
+      monthly,
+      annual,
+      annualSavingsPercent:
+        annualSavingsPercent != null && annualSavingsPercent > 0 ? annualSavingsPercent : null,
     };
   } catch (error) {
     lastPlanProblem = errorText(error);
-    console.warn('getMonthlyPlanDetails failed', error);
+    console.warn('getPlanOptions failed', error);
     return null;
   }
 }
 
-export async function startMonthlyWithTrial(): Promise<SubStatus> {
+export async function purchasePlan(kind: PlanKind): Promise<SubStatus> {
   if (Platform.OS === 'web') return { ...DEV_ACTIVE };
   if (!iosApiKey()) {
     if (allowDevUnlockWithoutKey()) return { ...DEV_ACTIVE };
@@ -342,9 +371,9 @@ export async function startMonthlyWithTrial(): Promise<SubStatus> {
   }
   try {
     const Purchases = (await import('react-native-purchases')).default;
-    const plan = await resolveMonthlyPlan(Purchases);
+    const plan = (await resolvePlans(Purchases))[kind];
     if (!plan) {
-      throw new Error('The App Store did not return the monthly plan. Try again in a moment.');
+      throw new Error(`The App Store did not return the ${kind} plan. Try again in a moment.`);
     }
     if (plan.pkg) await Purchases.purchasePackage(plan.pkg);
     else await Purchases.purchaseStoreProduct(plan.product);

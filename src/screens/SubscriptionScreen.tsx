@@ -1,42 +1,62 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
 import { LegalLinks } from '../components/LegalLinks';
 import { LoadingLabel } from '../components/LoadingLabel';
+import { PlanPicker, TrialTimeline } from '../components/PlanPicker';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { RootStackParamList } from '../navigation/types';
 import {
-  getMonthlyPlanDetails,
+  ANNUAL_PRODUCT_ID,
+  getPlanOptions,
   getSubscriptionStatus,
   hasPurchasesKey,
   openManageSubscriptions,
+  purchasePlan,
   restorePurchases,
-  startMonthlyWithTrial,
-  type MonthlyPlanDetails,
+  type PlanKind,
+  type PlanOptions,
   type SubStatus,
 } from '../services/subscriptions';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { canRemindTrialEnd, scheduleTrialEndReminder } from '../services/trialReminder';
+import {
+  accents,
+  colors,
+  fonts,
+  noFakeBold,
+  opticalLeft,
+  radii,
+  spacing,
+  typeScale,
+} from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Subscription'>;
 
-const BENEFITS = [
-  'Wake to your own cloned voice',
-  'Personalized morning scripts',
-  'Mood check-in shapes tomorrow',
-];
+function formatDate(iso: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 export function SubscriptionScreen({}: Props) {
   const [status, setStatus] = useState<SubStatus | null>(null);
-  const [plan, setPlan] = useState<MonthlyPlanDetails | null>(null);
+  const [options, setOptions] = useState<PlanOptions | null>(null);
+  const [selected, setSelected] = useState<PlanKind>('annual');
+  const [canRemind, setCanRemind] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
+  const plan = options?.[selected] ?? null;
 
   const loadPlan = async () => {
     setPlanLoading(true);
-    setPlan(await getMonthlyPlanDetails());
+    const next = await getPlanOptions();
+    setOptions(next);
+    setSelected(next?.annual?.priceString ? 'annual' : 'monthly');
+    setCanRemind(await canRemindTrialEnd());
     setPlanLoading(false);
   };
 
@@ -48,124 +68,133 @@ export function SubscriptionScreen({}: Props) {
   // Guideline 3.1.2: no purchase button without the StoreKit price.
   const priceMissing = hasPurchasesKey() && !planLoading && !plan?.priceString;
 
-  const start = async () => {
+  const run = async (fn: () => Promise<void>, fallback: string) => {
     setBusy(true);
     setError(null);
     try {
-      setStatus(await startMonthlyWithTrial());
+      await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Purchase failed');
+      setError(e instanceof Error ? e.message : fallback);
     } finally {
       setBusy(false);
     }
   };
 
-  const restore = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      setStatus(await restorePurchases());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Restore failed');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const start = () =>
+    run(async () => {
+      const next = await purchasePlan(selected);
+      setStatus(next);
+      if (next.inTrial) void scheduleTrialEndReminder(next.expiresAt);
+    }, 'Purchase failed');
+  const restore = () =>
+    run(async () => setStatus(await restorePurchases()), 'Restore failed');
+  const manage = () =>
+    run(() => openManageSubscriptions(), 'Could not open Apple subscriptions');
 
-  const manage = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await openManageSubscriptions();
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Could not open Apple subscriptions'
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
+  const active = Boolean(status?.active);
+  const planName =
+    status?.productId === ANNUAL_PRODUCT_ID ? 'Yearly plan' : 'Monthly plan';
+  const until = formatDate(status?.expiresAt ?? null);
 
   return (
     <Screen>
       <BackButton style={styles.back} />
-      <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Subscription</Text>
-      <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
-        {plan?.trialDays
-          ? `${plan.trialDays} days free, then monthly. `
-          : 'Billed monthly through Apple. '}
-        Cancel anytime.
-      </Text>
-      <LegalLinks style={styles.legal} />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text maxFontSizeMultiplier={1.2} style={styles.title}>
+          Subscription
+        </Text>
 
-      <View style={styles.block}>
         {!status ? (
-          <LoadingLabel text="Checking" style={styles.status} />
-        ) : (
-          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.status}>
-            {status.active
-              ? status.inTrial
-                ? 'Trial active'
-                : 'Member'
-              : 'Not subscribed'}
-          </Text>
-        )}
-        {status?.expiresAt ? (
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.meta}>Renews / ends {status.expiresAt}</Text>
-        ) : null}
-        {!status?.active ? (
-          <>
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.planName}>Monthly</Text>
-            {plan?.headline ? (
-              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.planPrice}>
-                {plan.headline}
+          <LoadingLabel text="Checking" style={styles.meta} />
+        ) : active ? (
+          <View style={styles.card}>
+            <Text maxFontSizeMultiplier={1.2} style={styles.status}>
+              {status.inTrial ? 'Free trial' : planName}
+            </Text>
+            {until ? (
+              <Text maxFontSizeMultiplier={1.4} style={styles.meta}>
+                {status.inTrial ? `Trial ends ${until}` : `Renews ${until}`}
               </Text>
             ) : null}
-            {BENEFITS.map((line) => (
-              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" key={line} style={styles.benefit}>
-                {line}
-              </Text>
-            ))}
+          </View>
+        ) : (
+          <>
+            <Text maxFontSizeMultiplier={1.4} style={styles.body}>
+              Your own voice every morning, with a new message shaped by
+              your mood.
+            </Text>
+            {planLoading ? (
+              <ActivityIndicator color={colors.text} />
+            ) : options && (options.annual?.priceString || options.monthly?.priceString) ? (
+              <PlanPicker
+                options={options}
+                selected={selected}
+                onSelect={setSelected}
+                disabled={busy}
+              />
+            ) : null}
+            {plan?.trialDays ? (
+              <TrialTimeline
+                days={plan.trialDays}
+                priceString={plan.priceString}
+                reminder={canRemind}
+              />
+            ) : null}
           </>
-        ) : null}
+        )}
+
         {!hasPurchasesKey() ? (
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.meta}>
-            {__DEV__ ? 'Dev unlock (no RevenueCat appl_ key yet)' : 'Subscriptions are unavailable right now.'}
+          <Text maxFontSizeMultiplier={1.4} style={styles.meta}>
+            {__DEV__
+              ? 'Dev unlock (no RevenueCat appl_ key yet)'
+              : 'Subscriptions are unavailable right now.'}
           </Text>
         ) : null}
-      </View>
-
-      {error ? <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.error}>{error}</Text> : null}
-      {busy ? <ActivityIndicator color={colors.text} /> : null}
+        {error ? (
+          <Text maxFontSizeMultiplier={1.4} style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
+      </ScrollView>
 
       <View style={styles.actions}>
         <TextArrowButton
-            wide
+          wide
           label={
-            status?.active
+            active
               ? 'manage in apple'
               : priceMissing
                 ? 'try again'
-                : plan?.trialDays
-                  ? 'start free trial'
-                  : 'subscribe'
+                : plan?.trialDays === 7
+                  ? 'start free week'
+                  : plan?.trialDays
+                    ? 'start free trial'
+                    : 'continue'
           }
           color={accents.gold}
-          onPress={() =>
-            void (status?.active
-              ? manage()
-              : priceMissing
-                ? loadPlan()
-                : start())
-          }
-          disabled={busy || (!status?.active && planLoading)}
+          onPress={() => void (active ? manage() : priceMissing ? loadPlan() : start())}
+          disabled={busy || (!active && planLoading)}
         />
-        <TextArrowButton
-          label="restore purchases"
-          color={colors.fab}
-          onPress={() => void restore()}
-          disabled={busy}
-        />
+        {!active && plan?.disclosure ? (
+          <Text maxFontSizeMultiplier={1.4} style={styles.disclosure}>
+            {plan.disclosure} Cancel anytime in Settings.
+          </Text>
+        ) : null}
+        <View style={styles.footRow}>
+          <Text
+            maxFontSizeMultiplier={1.4}
+            accessibilityRole="button"
+            onPress={busy ? undefined : () => void restore()}
+            style={styles.footLink}
+          >
+            Restore purchases
+          </Text>
+        </View>
+        <LegalLinks />
       </View>
     </Screen>
   );
@@ -173,71 +202,62 @@ export function SubscriptionScreen({}: Props) {
 
 const styles = StyleSheet.create({
   back: { marginTop: 0 },
+  scroll: { flex: 1, overflow: 'visible' },
+  scrollContent: { gap: spacing.lg, paddingBottom: spacing.lg },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 40,
-    lineHeight: 44,
+    ...typeScale.title1,
+    ...opticalLeft(40),
     color: colors.text,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
     ...noFakeBold,
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
+    ...typeScale.body,
     color: colors.text,
-    marginBottom: spacing.sm,
   },
-  legal: {
-    marginBottom: spacing.lg,
-  },
-  block: {
-    borderRadius: 24,
-    padding: 18,
-    gap: 6,
-    marginBottom: spacing.md,
+  card: {
+    borderRadius: radii.card,
+    borderCurve: 'continuous',
+    padding: spacing.lg,
+    gap: spacing.xs,
     backgroundColor: colors.chip,
   },
   status: {
     fontFamily: fonts.headingRegular,
-    fontSize: 28,
-    lineHeight: 34,
+    ...typeScale.title2,
     color: colors.text,
     ...noFakeBold,
-  },
-  planName: {
-    marginTop: 8,
-    fontFamily: fonts.headingRegular,
-    fontSize: 28,
-    lineHeight: 34,
-    color: colors.text,
-    ...noFakeBold,
-  },
-  planPrice: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 22,
-    color: colors.text,
-  },
-  benefit: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.text,
   },
   meta: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    ...typeScale.subhead,
     color: colors.textMuted,
   },
   error: {
-    color: '#C0392B',
-    marginBottom: 8,
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: accents.danger,
   },
   actions: {
-    marginTop: 'auto',
-    alignItems: 'center',
-    gap: 8,
+    gap: spacing.xs,
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
+    alignItems: 'stretch',
+  },
+  disclosure: {
+    fontFamily: fonts.body,
+    ...typeScale.footnote,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  footRow: { alignItems: 'center' },
+  footLink: {
+    fontFamily: fonts.body,
+    ...typeScale.footnote,
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
+    paddingVertical: spacing.xs,
   },
 });

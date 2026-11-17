@@ -22,7 +22,7 @@ import { BUILD_MARK } from '../config/build';
 import { INTRO_SLIDES } from '../data/onboardingOptions';
 import { RootStackParamList } from '../navigation/types';
 import { useSplashChrome } from '../layout/SplashChromeContext';
-import { colors, fonts, headingClipFix, noFakeBold, spacing } from '../theme';
+import { colors, fonts, headingClipFix, noFakeBold, spacing, opticalLeft } from '../theme';
 import {
   armIntroSplash,
   isIntroSplashFinished,
@@ -264,7 +264,7 @@ export function IntroCarouselScreen({ navigation }: Props) {
           <Animated.View
             style={{
               alignItems: 'center',
-              gap: 20,
+              gap: 24,
               opacity: textOpacity,
               transform: [{ translateY: enterY }, { scale: enterScale }],
             }}
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   /** Reserves 2 lines (all intro titles are 2 lines) so cards stay put. */
   headingBand: {
-    marginTop: 28,
+    marginTop: 24,
     marginBottom: 8,
     minHeight: 44 * 2,
     justifyContent: 'flex-start',
@@ -303,7 +303,8 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: fonts.headingRegular,
-    fontSize: 36,
+    fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     color: '#1A1A1A',
     textAlign: 'left',
@@ -346,17 +347,17 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     textAlign: 'center',
     fontFamily: fonts.headingRegular,
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 24,
     color: '#1A1A1A',
     opacity: 0.8,
     paddingHorizontal: 40,
     ...noFakeBold,
   },
   buildMark: {
-    marginTop: 10,
+    marginTop: 8,
     fontFamily: fonts.body,
-    fontSize: 11,
+    fontSize: 13,
     color: '#1A1A1A66',
     textAlign: 'center',
   },

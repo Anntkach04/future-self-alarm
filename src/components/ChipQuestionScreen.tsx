@@ -20,8 +20,7 @@ import {
   headingClipFix,
   mutedColorForLabel,
   noFakeBold,
-  spacing,
-} from '../theme';
+  spacing, opticalLeft } from '../theme';
 const ROW_GAP = 2;
 
 type Props = {
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
   },
   page: {
     paddingTop: spacing.webTop + spacing.screenTop,
-    paddingBottom: 12,
+    paddingBottom: 16,
     paddingHorizontal: spacing.inset,
     overflow: 'visible' as const,
   },
@@ -241,9 +240,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingRegular,
     color: colors.text,
     fontSize: 40,
+    ...opticalLeft(40),
     lineHeight: 44,
     textAlign: 'left',
-    marginBottom: 12,
+    marginBottom: 16,
     alignSelf: 'stretch',
     ...noFakeBold,
     ...headingClipFix,
@@ -251,14 +251,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: fonts.body,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     alignSelf: 'stretch',
     textAlign: 'left',
   },
   addTop: {
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 24,
     width: '100%',
   },
   chipWrap: {
@@ -275,13 +275,13 @@ const styles = StyleSheet.create({
     width: '100%',
     borderBottomWidth: 1,
     borderBottomColor: colors.text,
-    paddingVertical: 10,
-    paddingHorizontal: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     justifyContent: 'center',
   },
   addInput: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
     width: '100%',
     padding: 0,
@@ -295,10 +295,10 @@ const styles = StyleSheet.create({
       : null),
   },
   helper: {
-    marginTop: 12,
+    marginTop: 16,
     paddingHorizontal: 0,
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
   },

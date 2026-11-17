@@ -142,22 +142,22 @@ const styles = StyleSheet.create({
   banner: {
     backgroundColor: accents.mist,
     borderRadius: 24,
-    padding: 14,
-    gap: 10,
+    padding: 16,
+    gap: 8,
   },
   updateBanner: {
     borderColor: '#8FBDB7',
   },
   text: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.text,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 10,
+    gap: 8,
     alignItems: 'center',
   },
   btn: {
@@ -171,16 +171,16 @@ const styles = StyleSheet.create({
   },
   btnText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.bg,
   },
   btnGhost: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
   btnGhostText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textMuted,
   },
 });

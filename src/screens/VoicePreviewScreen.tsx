@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     alignItems: 'center',
-    gap: 18,
+    gap: 16,
   },
   heading: {
     fontFamily: fonts.bodyMedium,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   error: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 15,
     color: '#C0392B',
     textAlign: 'center',
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
     opacity: 0.8,
   },
