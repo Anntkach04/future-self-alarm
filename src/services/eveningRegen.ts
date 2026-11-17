@@ -29,6 +29,15 @@ export function moodKeyOf(mood: { label: string; note?: string } | null) {
   return mood ? `${mood.label}|${mood.note ?? ''}` : '';
 }
 
+/**
+ * What the built message depended on. Includes AI consent: a ring built with
+ * the fixed template must be rebuilt once the user agrees to personal scripts.
+ */
+async function prepKeyOf(mood: { label: string; note?: string } | null) {
+  const { hasAiConsent } = await import('./aiConsent');
+  return `${moodKeyOf(mood)}|ai:${(await hasAiConsent()) ? 1 : 0}`;
+}
+
 async function readState(): Promise<PrepState> {
   try {
     const raw = await AsyncStorage.getItem(STATE_KEY);
@@ -69,7 +78,7 @@ export async function markRingPrepared(
   state[alarm.id] = {
     ring,
     builds: prev?.ring === ring ? prev.builds + 1 : 1,
-    moodKey: moodKeyOf(mood),
+    moodKey: await prepKeyOf(mood),
   };
   await writeState(state);
 }
@@ -86,7 +95,7 @@ export async function maybeEveningRegen(params: {
   if (paused || !voiceId) return;
 
   const state = await readState();
-  const moodKey = moodKeyOf(mood);
+  const moodKey = await prepKeyOf(mood);
 
   // Drop records for alarms that no longer exist.
   for (const id of Object.keys(state)) {

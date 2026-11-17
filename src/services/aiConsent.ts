@@ -73,6 +73,27 @@ function ask(): Promise<boolean> {
   });
 }
 
+// Set once we've re-asked an existing user outside onboarding, so "Not now"
+// is not followed by the same alert on every launch.
+const REASKED_KEY = 'fsa.ai_consent.v2.reasked';
+
+/**
+ * Users who agreed to v1 (before the wake script used OpenAI) never see the
+ * v2 prompt again unless they re-record their voice — so every wake message
+ * silently became the fixed template ("says the same thing every morning").
+ * Ask them once, after onboarding. Resolves with the current consent.
+ */
+export async function askAiConsentOnceForExistingUser(): Promise<boolean> {
+  if (await hasAiConsent()) return true;
+  try {
+    if ((await AsyncStorage.getItem(REASKED_KEY)) === '1') return false;
+    await AsyncStorage.setItem(REASKED_KEY, '1');
+  } catch {
+    return false;
+  }
+  return ensureAiConsent();
+}
+
 /** Resolves true when the user has agreed (asks once if needed). */
 export async function ensureAiConsent(): Promise<boolean> {
   if (await hasAiConsent()) return true;

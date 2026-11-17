@@ -4,6 +4,7 @@ import { useAlarms } from '../context/AlarmsContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
+import { askAiConsentOnceForExistingUser } from '../services/aiConsent';
 import { maybeEveningRegen } from '../services/eveningRegen';
 import { resolveVoiceId } from '../services/defaultVoice';
 
@@ -43,14 +44,20 @@ export function EveningRegenHost() {
       if (regenInFlight) return;
       regenInFlight = true;
       const mood = todayRef.current;
-      void maybeEveningRegen({
-        alarms: alarmsRef.current,
-        voiceId,
-        answers: answersRef.current,
-        mood: mood ? { label: mood.moodLabel, note: mood.note } : null,
-        paused: pausedRef.current,
-        updateAlarm: updateAlarmRef.current,
-      })
+      // Existing users never saw consent v2, so every message was the fixed
+      // template. Ask once before building, so this ring is already personal.
+      void askAiConsentOnceForExistingUser()
+        .catch(() => false)
+        .then(() =>
+          maybeEveningRegen({
+            alarms: alarmsRef.current,
+            voiceId,
+            answers: answersRef.current,
+            mood: mood ? { label: mood.moodLabel, note: mood.note } : null,
+            paused: pausedRef.current,
+            updateAlarm: updateAlarmRef.current,
+          })
+        )
         .catch(() => {})
         .finally(() => {
           regenInFlight = false;

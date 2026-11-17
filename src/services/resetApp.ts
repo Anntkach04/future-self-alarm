@@ -10,6 +10,7 @@ export const APP_STORAGE_KEYS = {
   moodCheckIn: 'fsa.mood_checkin.v1',
   storageSchema: 'fsa.storage_schema.v1',
   aiConsent: 'fsa.ai_consent.v2',
+  aiConsentReasked: 'fsa.ai_consent.v2.reasked',
 } as const;
 
 export async function cancelAllAlarmNotifications() {
