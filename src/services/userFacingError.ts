@@ -20,7 +20,7 @@ export function userFacingError(
     return 'Our voice partner could not confirm this recording. Re-record in a quiet room, reading in your normal voice.';
   }
   // ElevenLabs refused (billing, quota, rate limit): not the user's fault.
-  if (/TTS failed|Clone failed|quota_exceeded|payment_issue|payment_required|too_many_concurrent|rate.?limit/i.test(text)) {
+  if (/TTS failed|Clone failed|service is busy|clone timed out|quota_exceeded|payment_issue|payment_required|too_many_concurrent|rate.?limit/i.test(text)) {
     return 'Our voice service is busy right now. Your recording is saved, so tap the arrow to try again in a few minutes.';
   }
   if (/Network request failed|Failed to fetch|ECONNREFUSED|timed out|ETIMEDOUT|offline/i.test(text)) {

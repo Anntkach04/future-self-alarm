@@ -301,18 +301,25 @@ export async function cloneVoiceFromUri(params: {
   const headers = await authHeaders();
 
   try {
-    const uploaded = await FileSystem.uploadAsync(
-      `${base}/api/voices/clone`,
-      params.uri,
-      {
+    // uploadAsync has no timeout of its own: during an ElevenLabs incident
+    // a clone sat for 5+ minutes. The server gives up at 90 s; stop
+    // waiting a little after that and say the service is busy.
+    const uploaded = await Promise.race([
+      FileSystem.uploadAsync(`${base}/api/voices/clone`, params.uri, {
         httpMethod: 'POST',
         uploadType: FileSystem.FileSystemUploadType.MULTIPART,
         fieldName: 'file',
         mimeType,
         parameters: { name },
         headers,
-      }
-    );
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Voice service is busy (clone timed out)')),
+          120_000
+        )
+      ),
+    ]);
     if (uploaded.status >= 200 && uploaded.status < 300) {
       const data = JSON.parse(uploaded.body || '{}') as CloneVoiceResult;
       if (!data.voiceId) {
@@ -337,7 +344,7 @@ export async function cloneVoiceFromUri(params: {
     // Hard failures (size / clone API) — don't retry as giant base64.
     if (
       error instanceof Error &&
-      /too long for clone|no voiceId|Voice clone failed/i.test(error.message)
+      /too long for clone|no voiceId|Voice clone failed|busy|timed out/i.test(error.message)
     ) {
       throw error;
     }

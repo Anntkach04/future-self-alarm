@@ -257,14 +257,32 @@ async function cloneVoice({
     });
   }
 
-  const response = await fetch(`${ELEVEN_BASE}/voices/add`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-      ...form.getHeaders(),
-    },
-    body: form,
-  });
+  // ElevenLabs' voice endpoints can hang during their incidents (a clone
+  // once waited 5+ minutes). Give up after 90 s with a clear "busy" error
+  // so the app can say so and let the person retry with the same take.
+  const abort = new AbortController();
+  const abortTimer = setTimeout(() => abort.abort(), 90_000);
+  let response;
+  try {
+    response = await fetch(`${ELEVEN_BASE}/voices/add`, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+        ...form.getHeaders(),
+      },
+      body: form,
+      signal: abort.signal,
+    });
+  } catch (error) {
+    if (abort.signal.aborted) {
+      const busy = new Error('Voice service is busy (clone timed out)');
+      busy.status = 503;
+      throw busy;
+    }
+    throw error;
+  } finally {
+    clearTimeout(abortTimer);
+  }
 
   const data = await response.json();
   if (!response.ok) {
@@ -277,8 +295,11 @@ async function cloneVoice({
   const voiceId = data.voice_id;
   let collectionId = null;
   if (voiceId) {
-    await applyVoiceSettings(voiceId).catch(() => undefined);
-    collectionId = await addVoiceToAppCollection(apiKey, voiceId).catch(
+    // Nice-to-haves: never let them hold the clone response hostage.
+    const capped = (p, ms) =>
+      Promise.race([p, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
+    await capped(applyVoiceSettings(voiceId), 10_000).catch(() => undefined);
+    collectionId = await capped(addVoiceToAppCollection(apiKey, voiceId), 10_000).catch(
       (err) => {
         console.warn(
           '[elevenlabs] collection attach skipped',
