@@ -14,6 +14,11 @@ export function userFacingError(
   if (/voice_not_found|voice with voice_id|A voice with voice_id/i.test(text)) {
     return 'Your cloned voice is missing. Re-record your voice, then try again.';
   }
+  // ElevenLabs' safety filter flagged the clone (it sometimes flags a
+  // real person's own voice). A fresh, natural recording usually passes.
+  if (/violate|requires verification|voice_verification|detected_unusual/i.test(text)) {
+    return 'Our voice partner could not confirm this recording. Re-record in a quiet room, reading in your normal voice.';
+  }
   // ElevenLabs refused (billing, quota, rate limit): not the user's fault.
   if (/TTS failed|Clone failed|quota_exceeded|payment_issue|payment_required|too_many_concurrent|rate.?limit/i.test(text)) {
     return 'Our voice service is busy right now. Your recording is saved, so tap the arrow to try again in a few minutes.';

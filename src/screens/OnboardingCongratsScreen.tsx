@@ -10,7 +10,8 @@ import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingCongrats'>;
 
-const GOLD = accents.gold;
+/** Lilac, not gold: the app already leans yellow (buttons, voice sheet). */
+const SHEET = accents.lilac;
 const FULL_H = Dimensions.get('screen').height;
 /** Bottom corner radius the sheet grows into while it retracts (Welcome). */
 const SHEET_RADIUS = Math.max(Dimensions.get('window').width * 0.55, 180);
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: GOLD,
+    backgroundColor: SHEET,
   },
   inner: {
     flex: 1,

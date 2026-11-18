@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { fetchMoodAdvice } from '../services/moodAdvice';
 import {
-  accents,
   colors,
   fonts,
   noFakeBold,
@@ -11,7 +10,7 @@ import {
   spacing,
   typeScale,
 } from '../theme';
-import { InputPill } from './InputPill';
+import { ForwardArrow } from './ForwardArrow';
 import { LoadingLabel } from './LoadingLabel';
 
 const MAX_CHARS = 160;
@@ -86,14 +85,33 @@ export function MoodCheckInCard({ name }: { name: string }) {
           <LoadingLabel text="Sitting with that" style={styles.loading} />
         </View>
       ) : (
-        <InputPill
-          value={text}
-          onChangeText={(v) => setText(v.slice(0, MAX_CHARS))}
-          onSubmit={() => void submit()}
-          placeholder="Tired, but hopeful…"
-          autoFocus={editing}
-          buttonColor={accents.gold}
-        />
+        // Same underline field as every onboarding question.
+        <View style={styles.field}>
+          <TextInput
+            maxFontSizeMultiplier={1.5}
+            value={text}
+            onChangeText={(v) => setText(v.slice(0, MAX_CHARS))}
+            onSubmitEditing={() => void submit()}
+            placeholder="Tired, but hopeful…"
+            placeholderTextColor={colors.placeholder}
+            returnKeyType="send"
+            autoFocus={editing}
+            selectionColor={colors.text}
+            underlineColorAndroid="transparent"
+            style={styles.input}
+          />
+          {text.trim() ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Send"
+              onPress={() => void submit()}
+              hitSlop={12}
+              style={styles.send}
+            >
+              <ForwardArrow color={colors.text} />
+            </Pressable>
+          ) : null}
+        </View>
       )}
     </View>
   );
@@ -103,17 +121,35 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.xl },
   title: {
     fontFamily: fonts.headingRegular,
-    ...typeScale.title2,
+    ...typeScale.title3,
     color: colors.text,
-    marginBottom: spacing.xs,
     ...noFakeBold,
   },
   hint: {
     fontFamily: fonts.body,
     ...typeScale.subhead,
     color: colors.textMuted,
-    marginBottom: spacing.md,
+    marginTop: spacing.xxs,
+    marginBottom: spacing.xs,
   },
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.text,
+    minHeight: 48,
+  },
+  input: {
+    flex: 1,
+    fontFamily: fonts.body,
+    ...typeScale.body,
+    color: colors.text,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 0,
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null),
+  },
+  send: { paddingVertical: spacing.xs },
   card: {
     backgroundColor: colors.chip,
     borderRadius: radii.card,

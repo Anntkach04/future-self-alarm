@@ -25,7 +25,17 @@ import {
 } from '../context/AlarmsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { accents, colors, fonts, headingClipFix, noFakeBold, spacing, opticalLeft } from '../theme';
+import {
+  accents,
+  colors,
+  fonts,
+  headingClipFix,
+  noFakeBold,
+  opticalLeft,
+  radii,
+  spacing,
+  typeScale,
+} from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -80,8 +90,6 @@ export function HomeScreen({ navigation }: Props) {
             Alarms paused{pauseUntil ? ` until ${formatDateKey(pauseUntil)}` : ''}.
           </Text>
         ) : null}
-
-        <MoodCheckInCard name={answers.name} />
 
         <View style={[styles.block, !hasAlarms && styles.blockEmpty]}>
           {allPaused ? (
@@ -148,15 +156,31 @@ export function HomeScreen({ navigation }: Props) {
               </Text>
             </View>
           )}
-          <View style={styles.alarmActions}>
-            <TextArrowButton
-              label={hasAlarms ? 'add alarm' : 'set wake time'}
-              wide
-              color={accents.goldDeep}
-              onPress={() => navigation.navigate('CreateAlarm')}
-            />
-          </View>
+          {hasAlarms ? null : (
+            <View style={styles.alarmActions}>
+              <TextArrowButton
+                label="set wake time"
+                wide
+                color={accents.gold}
+                onPress={() => navigation.navigate('CreateAlarm')}
+              />
+            </View>
+          )}
         </View>
+        {hasAlarms ? (
+          // Secondary action: quiet outline, the card already carries color.
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('CreateAlarm')}
+            style={({ pressed }) => [styles.addAlarm, pressed && styles.pressed]}
+          >
+            <Text maxFontSizeMultiplier={1.3} style={styles.addAlarmLabel}>
+              + add alarm
+            </Text>
+          </Pressable>
+        ) : null}
+
+        <MoodCheckInCard name={answers.name} />
       </ScrollView>
 
       {/*
@@ -181,12 +205,12 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: spacing.inset,
     paddingTop: spacing.webTop + spacing.screenTop,
-    paddingBottom: 48,
+    paddingBottom: spacing.xxl,
   },
   menuBtn: {
     width: 40,
     height: 40,
-    marginBottom: 8,
+    marginBottom: spacing.xs,
     justifyContent: 'center',
   },
   menuIcon: {
@@ -195,62 +219,51 @@ const styles = StyleSheet.create({
   },
   hello: {
     fontFamily: fonts.headingRegular,
-    fontSize: 40,
+    ...typeScale.title1,
     ...opticalLeft(40),
-    lineHeight: 44,
     color: colors.text,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
     ...noFakeBold,
     ...headingClipFix,
   },
   pausedGlobal: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 20,
+    ...typeScale.subhead,
     color: colors.text,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   block: {
-    borderRadius: 24,
+    borderRadius: radii.card,
+    borderCurve: 'continuous',
     backgroundColor: colors.chip,
-    padding: spacing.lg,
-    marginBottom: 24,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     overflow: 'hidden',
   },
   pausedBanner: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 20,
+    ...typeScale.subhead,
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   /** No alarm yet: the block becomes the screen's hero. */
   blockEmpty: {
-    borderWidth: 0,
-    backgroundColor: accents.gold,
-    padding: 24,
+    padding: spacing.lg,
   },
   emptyTitle: {
     fontFamily: fonts.headingRegular,
-    fontSize: 28,
-    lineHeight: 32,
+    ...typeScale.title2,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: spacing.xs,
     ...noFakeBold,
   },
   emptyAlarms: {
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 20,
-    color: colors.text,
-  },
-  emptyCta: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 52,
+    ...typeScale.subhead,
+    color: colors.textMuted,
   },
   alarmRow: {
-    paddingVertical: 8,
+    paddingVertical: spacing.xs,
   },
   alarmMain: {
     flex: 1,
@@ -261,45 +274,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: spacing.md,
     minHeight: 56,
   },
   alarmRowBorder: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(26, 26, 26, 0.12)',
-    marginTop: 4,
-    paddingTop: 16,
+    marginTop: spacing.xs,
+    paddingTop: spacing.md,
   },
   alarmPreparing: {
     fontFamily: fonts.body,
-    fontSize: 13,
+    ...typeScale.footnote,
     color: colors.textMuted,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   alarmActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 16,
+    marginTop: spacing.lg,
   },
+  addAlarm: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
+  },
+  addAlarmLabel: {
+    fontFamily: fonts.bodyMedium,
+    ...typeScale.body,
+    color: colors.text,
+    ...noFakeBold,
+  },
+  pressed: { opacity: 0.6 },
   alarmTime: {
     fontFamily: fonts.headingRegular,
-    fontSize: 48,
+    ...typeScale.display,
     ...opticalLeft(48),
-    lineHeight: 56,
     color: colors.text,
     // Proportional figures: tabular ones pad "1" and push 11:00 right.
     flexShrink: 0,
     ...noFakeBold,
     ...headingClipFix,
   },
+  /** Details in the body face: the serif belongs to the time alone. */
   alarmDays: {
-    fontFamily: fonts.headingRegular,
-    fontSize: 17,
-    color: colors.text,
-    marginTop: 4,
-    ...noFakeBold,
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.textMuted,
   },
   alarmDim: {
     opacity: 0.38,

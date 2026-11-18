@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 import { BackButton } from '../components/BackButton';
-import { FeatureList, type FeatureItem } from '../components/FeatureList';
+import { FeatureList } from '../components/FeatureList';
+import { PLAN_BENEFITS } from '../data/planBenefits';
 import { PlanPicker, TrialTimeline } from '../components/PlanPicker';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -33,11 +34,7 @@ import { accents, colors, fonts, noFakeBold, spacing, opticalLeft, typeScale } f
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
-const BENEFITS: FeatureItem[] = [
-  { icon: 'voice', title: 'Your own voice', body: 'Wake up to future you, every morning.' },
-  { icon: 'heart', title: 'Written for you', body: 'A new message from your goals and habits.' },
-  { icon: 'alarm', title: 'Shaped by your mood', body: 'Today’s check-in changes tomorrow’s alarm.' },
-];
+const BENEFITS = PLAN_BENEFITS;
 
 export function PaywallScreen({ navigation, route }: Props) {
   const gated = Boolean(route.params?.gated);

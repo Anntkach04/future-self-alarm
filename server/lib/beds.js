@@ -67,4 +67,12 @@ function findBedFile(bedId) {
   return bed ? bed.path : null;
 }
 
-module.exports = { BEDS, BEDS_DIR, listBeds, resolveBed, findBedFile, pickBedId };
+function findBirdsFile() {
+  for (const ext of ['mp3', 'm4a', 'wav']) {
+    const p = path.join(BEDS_DIR, `morning-birds.${ext}`);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+module.exports = { BEDS, BEDS_DIR, listBeds, resolveBed, findBedFile, findBirdsFile, pickBedId };

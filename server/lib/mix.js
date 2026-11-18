@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { findBedFile, listBeds, BEDS_DIR } = require('./beds');
+const { findBedFile, findBirdsFile, listBeds, BEDS_DIR } = require('./beds');
 
 /** Apple custom alarm / notification sound must be <30s. Keep MP3 = CAF. */
 const WAKE_MAX_SECONDS = 28;
@@ -266,15 +266,17 @@ function phoneVoiceAf(volumeExpr) {
  */
 function phoneHissMixGraph(durationSec = WAKE_MAX_SECONDS) {
   const d = Math.max(5, Number(durationSec) || WAKE_MAX_SECONDS).toFixed(2);
-  // −38 dB ≈ amplitude 0.0126 on anoisesrc
-  const hissAmp = (10 ** (-38 / 20)).toFixed(4);
+  // −52 dB: a hint of line texture, no audible hiss under the voice
+  // (−38 dB read as a loud "shhh" on a phone speaker).
+  const hissAmp = (10 ** (-52 / 20)).toFixed(4);
   return [
     '[0:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=1.0[voice]',
     [
       `anoisesrc=color=white:amplitude=${hissAmp}:duration=${d}:sample_rate=44100`,
       'aformat=sample_fmts=fltp:channel_layouts=mono',
       'highpass=f=300',
-      'lowpass=f=3000',
+      // Darker: the 2–3 kHz band is what reads as hiss.
+      'lowpass=f=1800',
       'volume=1.0',
     ].join(',') + '[hiss]',
     [
@@ -284,7 +286,7 @@ function phoneHissMixGraph(durationSec = WAKE_MAX_SECONDS) {
       'highpass=f=1200',
       'lowpass=f=4500',
       // Gate-ish: mostly quiet, tiny bursts (volume low overall)
-      'volume=0.07',
+      'volume=0.02',
       'apulsator=mode=sine:hz=0.35:amount=0.85',
     ].join(',') + '[crackle]',
     '[voice][hiss][crackle]amix=inputs=3:duration=longest:dropout_transition=0:normalize=0,aformat=channel_layouts=mono,alimiter=limit=0.95,atrim=0:' +
@@ -307,6 +309,10 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
   // Quiet calm pad under the call — never spa/bali-loud
   const bedVol = (0.025 + bedUi * 0.06).toFixed(3);
   const bedFile = findBedFile(bedId);
+  // Optional: drop assets/beds/morning-birds.(mp3|m4a) in and every wake
+  // message gets soft birdsong under the voice.
+  const birdsFile = findBirdsFile();
+  const birdsVol = (0.12 + bedUi * 0.18).toFixed(3);
 
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const voicePath = path.join(os.tmpdir(), `fs-voice-${stamp}.mp3`);
@@ -369,13 +375,24 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
       '+genpts',
       '-i',
       outPath,
+      '-stream_loop',
+      '-1',
       '-i',
       bedFile,
+      ...(birdsFile ? ['-stream_loop', '-1', '-i', birdsFile] : []),
       '-filter_complex',
       [
         '[0:a]aformat=sample_fmts=fltp:channel_layouts=mono[phone]',
         `[1:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${bedVol},highpass=f=180,lowpass=f=3800,afade=t=in:d=3[bed]`,
-        '[phone][bed]amix=inputs=2:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]',
+        ...(birdsFile
+          ? [
+              // Morning birds: wide band (chirps live at 2–8 kHz), quiet.
+              `[2:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${birdsVol},highpass=f=900,lowpass=f=9000,afade=t=in:d=2[birds]`,
+              '[phone][bed][birds]amix=inputs=3:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]',
+            ]
+          : [
+              '[phone][bed]amix=inputs=2:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]',
+            ]),
       ].join(';'),
       '-map',
       '[out]',
@@ -396,7 +413,7 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     return {
       buffer,
       mixed: true,
-      reason: 'nokia_hiss+bed',
+      reason: birdsFile ? 'nokia_hiss+bed+birds' : 'nokia_hiss+bed',
       bedFile: path.basename(bedFile),
       bedId: path.basename(bedFile, '.mp3'),
     };

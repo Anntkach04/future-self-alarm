@@ -38,7 +38,8 @@ import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../the
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
-const COMPLETE_COLOR = accents.gold;
+/** Sage green for "Voice cloned": success reads green, and it breaks up the yellow. */
+const COMPLETE_COLOR = "#AFC9A8";
 /** Brief hold on "You’re all set", then leave. Animation is cosmetic only. */
 const SUCCESS_HOLD_MS = 2800;
 /** Pause on a finished line before the next one appears. */
@@ -432,22 +433,34 @@ export function VoiceRecordScreen({ navigation }: Props) {
   }, [complete, recording]);
 
   const leftRef = useRef(false);
+  const goToPreview = useCallback(() => {
+    try {
+      navigationRef.current.replace('VoicePreview');
+    } catch {
+      try {
+        navigationRef.current.navigate('VoicePreview');
+      } catch {
+        /* nothing else to try */
+      }
+    }
+  }, []);
   const leaveToVoicePreview = useCallback(() => {
-    if (leftRef.current) return;
+    // A second tap means the first exit never landed (people were left on a
+    // blank gold sheet): go straight away, no animation.
+    if (leftRef.current) {
+      goToPreview();
+      return;
+    }
     leftRef.current = true;
     let gone = false;
     const go = () => {
       if (gone) return;
       gone = true;
-      try {
-        navigationRef.current.replace('VoicePreview');
-      } catch {
-        navigationRef.current.navigate('VoicePreview');
-      }
+      goToPreview();
     };
-    // Same exit as Welcome: copy fades, the full-screen gold sheet retracts
-    // upward and its bottom corners round off, then the next page.
-    const fallback = setTimeout(go, 1300);
+    // Copy fades, the gold sheet starts to retract, and we leave on a fixed
+    // clock. Navigation never waits on the height animation's callback.
+    setTimeout(go, 520);
     Animated.timing(completeOpacity, {
       toValue: 0,
       duration: 280,
@@ -459,11 +472,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
       duration: 900,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: false,
-    }).start(() => {
-      clearTimeout(fallback);
-      go();
-    });
-  }, [completeOpacity, goldSheetH]);
+    }).start();
+  }, [completeOpacity, goldSheetH, goToPreview]);
   const leaveToVoicePreviewRef = useRef(leaveToVoicePreview);
   leaveToVoicePreviewRef.current = leaveToVoicePreview;
 

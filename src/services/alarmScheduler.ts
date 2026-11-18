@@ -495,13 +495,19 @@ async function planRings(
   const dates = nextAlarmOccurrences(alarm, count, windowDays);
   const now = Date.now();
   const stocked: RingMessage[] = [];
+  // Earlier messages: replayed when nothing new could be built (voice/AI
+  // service down or unpaid) so mornings still vary instead of the base text.
+  const archive: RingMessage[] = [];
   for (const m of await ringMessagesFor(alarm.id)) {
-    if (m.ring > now && (await wakeSoundExists(m.soundName))) stocked.push(m);
+    if (!(await wakeSoundExists(m.soundName))) continue;
+    (m.ring > now ? stocked : archive).push(m);
   }
+  archive.sort((a, b) => b.ring - a.ring);
   const baseSound = notificationSoundFor(alarm.id, hasBaseSound);
   return dates.map((date, index) => {
     const exact = stocked.find((m) => m.ring === date.getTime());
-    const m = exact ?? (stocked.length ? stocked[index % stocked.length] : null);
+    const pool = stocked.length ? stocked : archive;
+    const m = exact ?? (pool.length ? pool[index % pool.length] : null);
     if (m) {
       return {
         date,

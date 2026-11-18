@@ -86,26 +86,31 @@ export function putRingMessage(alarmId: string, message: RingMessage) {
 }
 
 /**
- * Drop messages no longer needed: rings that are not upcoming any more
- * (time/days edited) and rings that went off over 12 h ago. Returns them so
- * the caller can delete files AFTER rescheduling away from them.
+ * Past messages kept as a fallback. If the voice or AI service is down (or
+ * unpaid), upcoming rings replay these instead of the one fixed base text.
+ */
+export const ARCHIVE_SIZE = 7;
+
+/**
+ * Keep every upcoming ring plus the newest ARCHIVE_SIZE other messages
+ * (rings that already went off, or rings dropped by a time/day edit).
+ * Returns the rest so the caller can delete files AFTER rescheduling.
  */
 export function pruneRingMessages(
   alarmId: string,
   upcomingRings: number[],
-  now = Date.now()
+  _now = Date.now()
 ) {
   return locked(async () => {
     const bank = await readBank();
     const list = bank[alarmId] ?? [];
     const upcoming = new Set(upcomingRings);
     const keep: RingMessage[] = [];
-    const drop: RingMessage[] = [];
-    for (const m of list) {
-      const justRang = m.ring <= now && m.ring >= now - 12 * 60 * 60 * 1000;
-      if (upcoming.has(m.ring) || justRang) keep.push(m);
-      else drop.push(m);
-    }
+    const rest: RingMessage[] = [];
+    for (const m of list) (upcoming.has(m.ring) ? keep : rest).push(m);
+    rest.sort((a, b) => b.ring - a.ring);
+    keep.push(...rest.slice(0, ARCHIVE_SIZE));
+    const drop = rest.slice(ARCHIVE_SIZE);
     if (keep.length) bank[alarmId] = keep;
     else delete bank[alarmId];
     await writeBank(bank);
