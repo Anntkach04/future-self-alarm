@@ -231,8 +231,9 @@ const styles = StyleSheet.create({
   block: {
     borderRadius: radii.card,
     borderCurve: 'continuous',
-    // Color carries the alarm: sky card, ink type (the app went too monochrome).
-    backgroundColor: accents.mist,
+    // Soft sky: ~35% of the mist accent on the cream page. Full mist read
+    // as a loud flat blue block.
+    backgroundColor: '#E2F0F4',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     overflow: 'hidden',
