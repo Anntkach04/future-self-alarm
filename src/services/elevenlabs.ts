@@ -189,6 +189,9 @@ export type GeneratedAlarm = {
   base64: string;
   mixed: boolean;
   bedFile: string | null;
+  scenario?: string | null;
+  theme?: string | null;
+  opening?: string | null;
 };
 
 function connectError(cause?: unknown, atBase?: string | null) {
@@ -429,6 +432,13 @@ export async function generateMorningAlarm(params: {
   text?: string;
   /** Day the message will be heard (messages are built days ahead). */
   forDate?: Date;
+  /** Last scripts, newest first: the model must not repeat them. */
+  recentScripts?: {
+    text: string;
+    scenario?: string | null;
+    theme?: string | null;
+    opening?: string | null;
+  }[];
 }): Promise<GeneratedAlarm> {
   const weekday = (params.forDate ?? new Date()).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -445,6 +455,11 @@ export async function generateMorningAlarm(params: {
       answers: {
         ...params.answers,
         weekday,
+        // "Good morning" only for rings before noon.
+        isMorning: (params.forDate ?? new Date()).getHours() < 12,
+        ...(params.recentScripts?.length
+          ? { recentScripts: params.recentScripts.slice(0, 10) }
+          : {}),
         ...(params.mood
           ? {
               moodForTomorrow: params.mood.label,

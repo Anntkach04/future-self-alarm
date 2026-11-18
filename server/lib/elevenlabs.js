@@ -24,7 +24,8 @@ function realisticVoiceSettings() {
   const stability = Number(process.env.ELEVENLABS_STABILITY ?? 0.42);
   const similarity = Number(process.env.ELEVENLABS_SIMILARITY ?? 0.72);
   const style = Number(process.env.ELEVENLABS_STYLE ?? 0);
-  const speed = Number(process.env.ELEVENLABS_SPEED ?? 1);
+  // 0.92: unhurried, closer to a real half-awake voice message (picked by ear).
+  const speed = Number(process.env.ELEVENLABS_SPEED ?? 0.92);
   return {
     stability: clamp01(stability),
     similarity_boost: clamp01(similarity),

@@ -12,6 +12,7 @@ import {
   dropRingMessagesExcept,
   pruneRingMessages,
   putRingMessage,
+  recentScripts,
   ringMessagesFor,
   type RingMessage,
 } from './ringBank';
@@ -65,6 +66,8 @@ async function buildRingMessage(params: {
     answers: params.answers,
     mood: params.mood ?? undefined,
     forDate: new Date(params.ringMs),
+    // Includes rings stocked a moment ago in this same run.
+    recentScripts: await recentScripts(10),
   });
   const mp3Uri = await saveAlarmAudio(
     generated.base64,
@@ -83,6 +86,10 @@ async function buildRingMessage(params: {
       soundName,
       prepKey: params.prepKey,
       builds: params.builds,
+      builtAt: Date.now(),
+      scenario: generated.scenario ?? null,
+      theme: generated.theme ?? null,
+      opening: generated.opening ?? null,
     };
   } catch (error) {
     await FileSystem.deleteAsync(mp3Uri, { idempotent: true }).catch(
@@ -126,6 +133,7 @@ export async function adoptMessageForNextRing(
       soundName,
       prepKey: await prepKeyOf(ringMood(0, ringMs, mood, now)),
       builds: 1,
+      builtAt: now,
     });
     if (prev) await deleteRingFiles([prev]);
   } catch (error) {

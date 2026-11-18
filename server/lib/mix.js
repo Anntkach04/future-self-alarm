@@ -241,58 +241,32 @@ async function buildHybridCloneSamples(buffer, originalname, mimetype) {
 }
 
 /**
- * Vintage telephone / old landline — narrow, muffled, grainy; words stay clear.
- * No loudnorm in-graph (breaks anoisesrc). No reverb/echo. Pitch/speed unchanged.
+ * Voice-message-from-a-phone color (picked by ear, A/B tested):
+ * muffled (HP 300 / LP 3.5 kHz, 12 dB/oct, filtered again after the
+ * saturation so it never gets harsh), ~5 dB of 3:1 compression, audible
+ * soft-clip roughness on vowels. Input is normalized to -18 LUFS first; the
+ * chain lands at about -31, +7 dB puts the voice at about -24 LUFS.
  */
-function phoneVoiceAf(volumeExpr) {
-  return [
-    'aformat=sample_fmts=fltp:channel_layouts=mono',
-    `volume=${volumeExpr}`,
-    'highpass=f=300',
-    'lowpass=f=3000',
-    // Midrange boost +3 dB around 1500 Hz
-    'equalizer=f=1500:t=q:w=1.2:g=3',
-    // Compression 4:1
-    'acompressor=threshold=-18dB:ratio=4:attack=6:release=55:makeup=2.5',
-    // Soft saturation ~8% (gentle tanh drive, not crushed)
-    'asoftclip=type=tanh:threshold=0.88',
-    'alimiter=limit=0.94',
-  ].join(',');
-}
+const PHONE_VOICE_CHAIN = [
+  'aformat=sample_fmts=fltp:channel_layouts=mono:sample_rates=44100',
+  'highpass=f=300:poles=2',
+  'acompressor=threshold=-21dB:ratio=3:attack=10:release=100:makeup=1',
+  'volume=9dB',
+  'asoftclip=type=tanh:oversample=4',
+  'volume=-6dB',
+  'highpass=f=300:poles=2',
+  'lowpass=f=3500:poles=2',
+  'lowpass=f=3500:poles=2',
+  'volume=7dB',
+].join(',');
 
 /**
- * Continuous white hiss (~−38 dB) + sparse crackles for unstable analog line.
- * Hiss stays audible in pauses (amix duration=first / longest hiss).
+ * Very quiet 1–5 kHz hiss, ~30 dB under the voice, gated by the voice so it
+ * only breathes while speaking and fades out in pauses. PHONE_NOISE=off
+ * keeps only the roughness.
  */
-function phoneHissMixGraph(durationSec = WAKE_MAX_SECONDS) {
-  const d = Math.max(5, Number(durationSec) || WAKE_MAX_SECONDS).toFixed(2);
-  // −52 dB: a hint of line texture, no audible hiss under the voice
-  // (−38 dB read as a loud "shhh" on a phone speaker).
-  const hissAmp = (10 ** (-52 / 20)).toFixed(4);
-  return [
-    '[0:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=1.0[voice]',
-    [
-      `anoisesrc=color=white:amplitude=${hissAmp}:duration=${d}:sample_rate=44100`,
-      'aformat=sample_fmts=fltp:channel_layouts=mono',
-      'highpass=f=300',
-      // Darker: the 2–3 kHz band is what reads as hiss.
-      'lowpass=f=1800',
-      'volume=1.0',
-    ].join(',') + '[hiss]',
-    [
-      // Occasional crackles / interference — quiet, band-limited pops
-      `anoisesrc=color=white:amplitude=0.045:duration=${d}:sample_rate=44100`,
-      'aformat=sample_fmts=fltp:channel_layouts=mono',
-      'highpass=f=1200',
-      'lowpass=f=4500',
-      // Gate-ish: mostly quiet, tiny bursts (volume low overall)
-      'volume=0.02',
-      'apulsator=mode=sine:hz=0.35:amount=0.85',
-    ].join(',') + '[crackle]',
-    '[voice][hiss][crackle]amix=inputs=3:duration=longest:dropout_transition=0:normalize=0,aformat=channel_layouts=mono,alimiter=limit=0.95,atrim=0:' +
-      d +
-      '[phone]',
-  ].join(';');
+function phoneNoiseOn() {
+  return process.env.PHONE_NOISE !== 'off';
 }
 
 async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
@@ -305,32 +279,61 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
   const voiceUi = unit(levels.voiceLevel, 0.85);
   const bedUi = unit(levels.bedLevel, 0.35);
-  const voiceVol = (0.9 + voiceUi * 1.1).toFixed(2);
-  // Quiet calm pad under the call — never spa/bali-loud
-  const bedVol = (0.025 + bedUi * 0.06).toFixed(3);
+  // Default level = unity; the slider only trims a few dB either way.
+  const voiceGain = (0.7 + voiceUi * 0.35).toFixed(3);
+  // Quiet calm pad under the call (x1.26: the new voice sits ~2 dB louder).
+  const bedVol = ((0.025 + bedUi * 0.06) * 1.26).toFixed(3);
   const bedFile = findBedFile(bedId);
   // Optional: drop assets/beds/morning-birds.(mp3|m4a) in and every wake
   // message gets soft birdsong under the voice.
   const birdsFile = findBirdsFile();
   // Bed file is normalized to -26 LUFS; ~0.39 at the default level puts the
-  // birds about 18 dB under the voice: present, never competing.
-  const birdsVol = (0.25 + bedUi * 0.4).toFixed(3);
+  // birds about 22 dB under the voice, fading in over 5 s: present, never competing.
+  const birdsVol = ((0.15 + bedUi * 0.3) * 1.26).toFixed(3);
 
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const voicePath = path.join(os.tmpdir(), `fs-voice-${stamp}.mp3`);
+  const normPath = path.join(os.tmpdir(), `fs-norm-${stamp}.wav`);
   const coloredPath = path.join(os.tmpdir(), `fs-phone-${stamp}.mp3`);
   const outPath = path.join(os.tmpdir(), `fs-mix-${stamp}.mp3`);
 
   fs.writeFileSync(voicePath, voiceBuffer);
 
   try {
-    // Pass 1 — tinny handset (separate file; loudnorm-in-graph was empty output).
+    // Pass 0: even loudness in (TTS level varies), so the chain behaves the
+    // same on every message. Separate pass: loudnorm-in-graph broke anoisesrc.
     await runFfmpeg([
       '-y',
       '-i',
       voicePath,
       '-af',
-      `${phoneVoiceAf(voiceVol)},afade=t=out:st=${WAKE_MAX_SECONDS - 2}:d=2`,
+      'aformat=sample_fmts=fltp:channel_layouts=mono:sample_rates=44100,loudnorm=I=-18:TP=-2:LRA=11',
+      '-ar',
+      '44100',
+      normPath,
+    ]);
+
+    // Pass 1: phone color (+ voice-gated hiss), wake length, fade-out.
+    // Pad to the full wake length so birds + music play on after the last
+    // word and fade out together (they used to stop dead with the voice).
+    const fade = `apad=whole_dur=${WAKE_MAX_SECONDS},afade=t=out:st=${WAKE_MAX_SECONDS - 3}:d=3`;
+    const graph = phoneNoiseOn()
+      ? [
+          `[0:a]${PHONE_VOICE_CHAIN},volume=${voiceGain}[pv]`,
+          '[pv]asplit=2[v][key]',
+          `anoisesrc=color=white:amplitude=0.00625:sample_rate=44100:duration=${WAKE_MAX_SECONDS + 2},highpass=f=1000:poles=2,lowpass=f=5000:poles=2[n]`,
+          '[n][key]sidechaingate=threshold=0.02:ratio=10:attack=20:release=300:range=0.001[ng]',
+          `[v][ng]amix=inputs=2:normalize=0:duration=first,${fade}[out]`,
+        ].join(';')
+      : `[0:a]${PHONE_VOICE_CHAIN},volume=${voiceGain},${fade}[out]`;
+    await runFfmpeg([
+      '-y',
+      '-i',
+      normPath,
+      '-filter_complex',
+      graph,
+      '-map',
+      '[out]',
       '-t',
       String(WAKE_MAX_SECONDS),
       '-c:a',
@@ -340,31 +343,14 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
       coloredPath,
     ]);
 
-    // Pass 2 — landline hiss + crackles (never re-normalize after this).
-    await runFfmpeg([
-      '-y',
-      '-i',
-      coloredPath,
-      '-filter_complex',
-      phoneHissMixGraph(WAKE_MAX_SECONDS),
-      '-map',
-      '[phone]',
-      '-t',
-      String(WAKE_MAX_SECONDS),
-      '-ac',
-      '1',
-      '-c:a',
-      'libmp3lame',
-      '-b:a',
-      '192k',
-      outPath,
-    ]);
+    // No hiss / crackle pass any more: the voice goes straight to the bed.
+    fs.copyFileSync(coloredPath, outPath);
 
     if (!bedFile) {
       return {
         buffer: fs.readFileSync(outPath),
         mixed: true,
-        reason: 'nokia_hiss',
+        reason: 'phone',
         bedFile: null,
         bedId: null,
       };
@@ -389,7 +375,7 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
         ...(birdsFile
           ? [
               // Morning birds: wide band (chirps live at 2–8 kHz), quiet.
-              `[2:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${birdsVol},highpass=f=900,lowpass=f=9000,afade=t=in:d=2[birds]`,
+              `[2:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${birdsVol},highpass=f=900,lowpass=f=9000,afade=t=in:d=5[birds]`,
               '[phone][bed][birds]amix=inputs=3:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]',
             ]
           : [
@@ -415,12 +401,12 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     return {
       buffer,
       mixed: true,
-      reason: birdsFile ? 'nokia_hiss+bed+birds' : 'nokia_hiss+bed',
+      reason: birdsFile ? 'phone+bed+birds' : 'phone+bed',
       bedFile: path.basename(bedFile),
       bedId: path.basename(bedFile, '.mp3'),
     };
   } finally {
-    for (const file of [voicePath, coloredPath, outPath]) {
+    for (const file of [voicePath, normPath, coloredPath, outPath]) {
       try {
         fs.unlinkSync(file);
       } catch {

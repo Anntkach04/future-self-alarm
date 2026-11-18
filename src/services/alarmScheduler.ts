@@ -609,9 +609,11 @@ async function scheduleWithAlarmKit(
   alarm: Alarm,
   plan: RingPlan[]
 ): Promise<boolean> {
-  // Never schedule AlarmKit without the user's voice — bare Kit plays the
-  // default system tone instead of (or on top of) your voice.
-  if (!plan.length || !plan.some((p) => p.custom)) return false;
+  // A wake is ALWAYS a real alarm (full screen, rings until "I'm up"), even
+  // when the voice isn't ready: those rings use the bundled soft tone
+  // (fs_fallback.caf). Skipping Kit here sent a plain notification instead,
+  // which on a locked phone looked like a text message and didn't wake people.
+  if (!plan.length) return false;
 
   const kit = await loadAlarmKit();
   if (!kit) return false;
@@ -744,7 +746,7 @@ async function scheduleAlarmNotificationsNow(
     // AlarmKit owns snooze and keeps ringing until Stop/Snooze. No
     // notification chain here: it doubled the +10 min ring and kept firing
     // after the system "I'm up".
-    return { hasCustomVoice: true, mode: 'alarmkit' };
+    return { hasCustomVoice: kitPlan.some((p) => p.custom), mode: 'alarmkit' };
   }
 
   // Notification path: play-once CAF + pre-scheduled +10/+20… until I'm up.

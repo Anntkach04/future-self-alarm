@@ -3,6 +3,7 @@ import type { OnboardingAnswers } from '../context/OnboardingContext';
 import { installAlarmSystemSound } from './alarmSoundFile';
 import { saveAlarmAudio } from './audioPreview';
 import { generateMorningAlarm } from './elevenlabs';
+import { recentScripts } from './ringBank';
 
 export async function buildAlarmAudioForId(params: {
   alarmId: string;
@@ -21,6 +22,7 @@ export async function buildAlarmAudioForId(params: {
     voiceId,
     answers,
     mood: mood ?? undefined,
+    recentScripts: await recentScripts(10),
   });
   const uri = await saveAlarmAudio(generated.base64, alarmId);
   const text = generated.text;

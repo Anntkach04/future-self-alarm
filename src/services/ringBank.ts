@@ -26,6 +26,19 @@ export type RingMessage = {
   /** What the message depended on (mood, AI consent) — see eveningRegen. */
   prepKey: string;
   builds: number;
+  /** When it was written (newest-first history for the AI). */
+  builtAt?: number;
+  /** The plan the server chose, sent back so the next script varies. */
+  scenario?: string | null;
+  theme?: string | null;
+  opening?: string | null;
+};
+
+export type RecentScript = {
+  text: string;
+  scenario?: string | null;
+  theme?: string | null;
+  opening?: string | null;
 };
 
 type Bank = Record<string, RingMessage[]>;
@@ -145,6 +158,25 @@ export async function deleteRingFiles(messages: RingMessage[]) {
       }
     })
   );
+}
+
+/**
+ * The person's last scripts across all alarms, newest first. The server
+ * tells the model not to repeat their openings, phrases or structure.
+ */
+export async function recentScripts(limit = 10): Promise<RecentScript[]> {
+  const bank = await readBank();
+  return Object.values(bank)
+    .flat()
+    .filter((m) => m.text)
+    .sort((a, b) => (b.builtAt ?? b.ring) - (a.builtAt ?? a.ring))
+    .slice(0, limit)
+    .map((m) => ({
+      text: m.text,
+      scenario: m.scenario ?? null,
+      theme: m.theme ?? null,
+      opening: m.opening ?? null,
+    }));
 }
 
 export const RING_BANK_STORAGE_KEY = KEY;

@@ -1,6 +1,6 @@
 const { looksLikeCrisis, CRISIS_REPLY } = require('./moodSafety');
 const fetch = require('node-fetch');
-const { buildScriptMessages } = require('./prompt');
+const { buildScriptMessages, lengthGuide, BANNED_RE } = require('./prompt');
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
@@ -33,7 +33,7 @@ function getOpenAiKey() {
   return process.env.OPENAI_API_KEY || '';
 }
 
-async function generateMorningScript(answers) {
+async function generateMorningScriptOnce(answers, extraNote) {
   const apiKey = getOpenAiKey();
   if (!apiKey) {
     const error = new Error(
@@ -43,7 +43,7 @@ async function generateMorningScript(answers) {
     throw error;
   }
 
-  const { system, user } = buildScriptMessages(answers);
+  const { system, user, meta } = buildScriptMessages(answers);
   const response = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {
@@ -58,7 +58,7 @@ async function generateMorningScript(answers) {
       max_tokens: 420,
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: user },
+        { role: 'user', content: extraNote ? `${user}\n${extraNote}` : user },
       ],
     }),
   });
@@ -91,7 +91,25 @@ async function generateMorningScript(answers) {
     text,
     model: data.model || MODEL,
     wordCount: text.split(/\s+/).filter(Boolean).length,
+    // What was planned, so the app can send it back and keep varying.
+    ...meta,
   };
+}
+
+/** One rewrite if the model slipped into banned / template phrasing. */
+async function generateMorningScript(answers) {
+  const first = await generateMorningScriptOnce(answers);
+  const words = first.wordCount;
+  if (!BANNED_RE.test(first.text) && words <= lengthGuide().max) return first;
+  try {
+    const second = await generateMorningScriptOnce(
+      answers,
+      'Your last draft used banned phrasing, an exclamation mark, or ran long. Write it again, plainer and within the word limit.'
+    );
+    return BANNED_RE.test(second.text) && !BANNED_RE.test(first.text) ? first : second;
+  } catch {
+    return first;
+  }
 }
 
 async function generateMoodAdvice({ mood, note, name }) {
