@@ -1,11 +1,11 @@
 import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
-import { buildAlarmScript } from '../data/alarmScript';
 import { ensureGuestSession } from './apiAuth';
 import { savePreviewAudio } from './audioPreview';
 import {
   checkVoiceApiHealth,
   cloneVoiceFromUri,
   DEMO_VOICE,
+  buildPreviewLine,
   synthesizeSpeech,
   type VoiceApiHealth,
 } from './elevenlabs';
@@ -37,7 +37,7 @@ async function previewWithPremadeVoice(
   voiceId: string,
   answers: OnboardingAnswers
 ): Promise<Omit<CloneResult, 'voiceId'>> {
-  const text = buildAlarmScript(answers.name, null, answers.morningHabits);
+  const text = buildPreviewLine(answers.name);
   const tts = await synthesizeSpeech({ voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return { previewPath, previewText: text, isDemo: true };
@@ -80,32 +80,28 @@ export async function cloneOnboardingVoice(params: {
   });
 
   // Server owns expressive wake script; omit `text` so delivery stays up to date.
+  // First AI message as the preview. If AI is unavailable the clone itself
+  // still succeeded: fall through to a short voice sample, never a template.
   if (health.openai === true || health.elevenLabs) {
-    const { generateMorningAlarm } = await import('./elevenlabs');
-    const alarm = await generateMorningAlarm({
-      voiceId: clone.voiceId,
-      answers: params.answers,
-    });
-    const previewPath = await savePreviewAudio(alarm.base64);
-    return {
-      voiceId: clone.voiceId,
-      previewPath,
-      previewText:
-        alarm.text ||
-        buildAlarmScript(
-          params.answers.name,
-          null,
-          params.answers.morningHabits
-        ),
-      isDemo: false,
-    };
+    try {
+      const { generateMorningAlarm } = await import('./elevenlabs');
+      const alarm = await generateMorningAlarm({
+        voiceId: clone.voiceId,
+        answers: params.answers,
+      });
+      const previewPath = await savePreviewAudio(alarm.base64);
+      return {
+        voiceId: clone.voiceId,
+        previewPath,
+        previewText: alarm.text || buildPreviewLine(params.answers.name),
+        isDemo: false,
+      };
+    } catch (error) {
+      console.warn('AI preview failed, using a voice sample', error);
+    }
   }
 
-  const text = buildAlarmScript(
-    params.answers.name,
-    null,
-    params.answers.morningHabits
-  );
+  const text = buildPreviewLine(params.answers.name);
   const tts = await synthesizeSpeech({ voiceId: clone.voiceId, text });
   const previewPath = await savePreviewAudio(tts.base64);
   return {

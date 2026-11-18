@@ -19,10 +19,9 @@ import { TextArrowButton } from '../components/TextArrowButton';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { buildAlarmScript } from '../data/alarmScript';
 import { ensureGuestSession } from '../services/apiAuth';
 import { savePreviewAudio } from '../services/audioPreview';
-import { synthesizeSpeech } from '../services/elevenlabs';
+import { buildPreviewLine, synthesizeSpeech } from '../services/elevenlabs';
 import { userFacingError } from '../services/userFacingError';
 import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
 
@@ -57,7 +56,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
   const line =
     cleanScript(
     voice.previewText ||
-      buildAlarmScript(answers.name, null, answers.morningHabits)
+      buildPreviewLine(answers.name)
   );
 
   const detachPlayer = () => {
@@ -82,7 +81,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
         await ensureGuestSession();
         const text = cleanScript(
           voice.previewText ||
-            buildAlarmScript(answers.name, null, answers.morningHabits)
+            buildPreviewLine(answers.name)
         );
         const tts = await synthesizeSpeech({
           voiceId: voice.voiceId,
@@ -117,7 +116,7 @@ export function VoicePreviewScreen({ navigation }: Props) {
     await ensureGuestSession();
     const text = cleanScript(
       voice.previewText ||
-        buildAlarmScript(answers.name, null, answers.morningHabits)
+        buildPreviewLine(answers.name)
     );
     const tts = await synthesizeSpeech({
       voiceId: voice.voiceId,

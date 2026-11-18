@@ -91,6 +91,8 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
         ) : null}
 
+        <MoodCheckInCard name={answers.name} />
+
         <View style={[styles.block, !hasAlarms && styles.blockEmpty]}>
           {allPaused ? (
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedBanner}>
@@ -168,19 +170,13 @@ export function HomeScreen({ navigation }: Props) {
           )}
         </View>
         {hasAlarms ? (
-          // Secondary action: quiet outline, the card already carries color.
-          <Pressable
-            accessibilityRole="button"
+          <TextArrowButton
+            label="add alarm"
+            color={accents.gold}
             onPress={() => navigation.navigate('CreateAlarm')}
-            style={({ pressed }) => [styles.addAlarm, pressed && styles.pressed]}
-          >
-            <Text maxFontSizeMultiplier={1.3} style={styles.addAlarmLabel}>
-              + add alarm
-            </Text>
-          </Pressable>
+            style={styles.addAlarm}
+          />
         ) : null}
-
-        <MoodCheckInCard name={answers.name} />
       </ScrollView>
 
       {/*
@@ -235,7 +231,8 @@ const styles = StyleSheet.create({
   block: {
     borderRadius: radii.card,
     borderCurve: 'continuous',
-    backgroundColor: colors.chip,
+    // Color carries the alarm: sky card, ink type (the app went too monochrome).
+    backgroundColor: accents.mist,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     overflow: 'hidden',
@@ -294,18 +291,8 @@ const styles = StyleSheet.create({
   },
   addAlarm: {
     alignSelf: 'flex-start',
-    minHeight: 44,
-    justifyContent: 'center',
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
+    marginTop: spacing.md,
   },
-  addAlarmLabel: {
-    fontFamily: fonts.bodyMedium,
-    ...typeScale.body,
-    color: colors.text,
-    ...noFakeBold,
-  },
-  pressed: { opacity: 0.6 },
   alarmTime: {
     fontFamily: fonts.headingRegular,
     ...typeScale.display,

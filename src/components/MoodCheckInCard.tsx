@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { fetchMoodAdvice } from '../services/moodAdvice';
 import {
+  accents,
   colors,
   fonts,
   noFakeBold,
@@ -108,7 +109,7 @@ export function MoodCheckInCard({ name }: { name: string }) {
               hitSlop={12}
               style={styles.send}
             >
-              <ForwardArrow color={colors.text} />
+              <ForwardArrow size={18} color={colors.text} />
             </Pressable>
           ) : null}
         </View>
@@ -149,7 +150,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null),
   },
-  send: { paddingVertical: spacing.xs },
+  send: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: accents.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xxs,
+  },
   card: {
     backgroundColor: colors.chip,
     borderRadius: radii.card,

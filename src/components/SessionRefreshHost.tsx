@@ -11,6 +11,13 @@ export function SessionRefreshHost() {
   const { ready, appleUserId, clearAppleAccount, setSessionReauth } =
     useAppSettings();
   const running = useRef(false);
+  // Callbacks via refs: they are re-created on every settings update, and as
+  // effect deps they re-ran this check after each result — an endless
+  // /api/me loop (~27 requests a second).
+  const clearRef = useRef(clearAppleAccount);
+  const reauthRef = useRef(setSessionReauth);
+  clearRef.current = clearAppleAccount;
+  reauthRef.current = setSessionReauth;
 
   useEffect(() => {
     if (!ready) return;
@@ -20,6 +27,7 @@ export function SessionRefreshHost() {
       running.current = true;
       try {
         const result = await refreshSessionIfNeeded({ appleUserId });
+        const setSessionReauth = reauthRef.current;
         if (result.status === 'ok' || result.status === 'skipped') {
           setSessionReauth(false);
           return;
@@ -28,7 +36,7 @@ export function SessionRefreshHost() {
           return;
         }
         if (result.status === 'revoked') {
-          clearAppleAccount();
+          clearRef.current();
           setSessionReauth(
             true,
             'Apple Sign In was revoked. Sign in again to restore cloud backup.'
@@ -52,7 +60,7 @@ export function SessionRefreshHost() {
     };
     const sub = AppState.addEventListener('change', onAppState);
     return () => sub.remove();
-  }, [ready, appleUserId, clearAppleAccount, setSessionReauth]);
+  }, [ready, appleUserId]);
 
   return null;
 }

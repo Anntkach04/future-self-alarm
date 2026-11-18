@@ -444,11 +444,11 @@ export function VoiceRecordScreen({ navigation }: Props) {
       }
     }
   }, []);
-  const leaveToVoicePreview = useCallback(() => {
-    // A second tap means the first exit never landed (people were left on a
-    // blank gold sheet): go straight away, no animation.
+  const leaveToVoicePreview = useCallback((tap?: unknown) => {
+    // A second TAP means the first exit never landed (people were left on a
+    // blank sheet): go straight away. Timer re-calls just wait.
     if (leftRef.current) {
-      goToPreview();
+      if (tap) goToPreview();
       return;
     }
     leftRef.current = true;
@@ -458,9 +458,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
       gone = true;
       goToPreview();
     };
-    // Copy fades, the gold sheet starts to retract, and we leave on a fixed
-    // clock. Navigation never waits on the height animation's callback.
-    setTimeout(go, 520);
+    // Copy fades, the sheet rises all the way, then the next page. A fixed
+    // clock backs up the animation callback so we can never get stuck.
+    const fallback = setTimeout(go, 1100);
     Animated.timing(completeOpacity, {
       toValue: 0,
       duration: 280,
@@ -472,7 +472,10 @@ export function VoiceRecordScreen({ navigation }: Props) {
       duration: 900,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: false,
-    }).start();
+    }).start(() => {
+      clearTimeout(fallback);
+      go();
+    });
   }, [completeOpacity, goldSheetH, goToPreview]);
   const leaveToVoicePreviewRef = useRef(leaveToVoicePreview);
   leaveToVoicePreviewRef.current = leaveToVoicePreview;

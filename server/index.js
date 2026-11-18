@@ -15,7 +15,6 @@ const {
   getElevenKey,
 } = require('./lib/elevenlabs');
 const { generateMorningScript, generateMoodAdvice, getOpenAiKey } = require('./lib/openai');
-const { buildAlarmScript } = require('./lib/alarmScript');
 const {
   mixVoiceWithBed,
   mp3BufferToAlarmCaf,
@@ -585,14 +584,11 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, as
     assertVoiceAccess(req, voiceId, authEnforced());
     const providedText = cappedText(req.body?.text);
 
-    // Personal script by default: name, habits, goals, today's mood + note.
-    // USE_AI_ALARM_SCRIPTS=false forces the fixed template; any OpenAI
-    // failure also falls back to it so an alarm is never left without audio.
-    // aiScript:false = the user has not agreed to send answers to OpenAI.
-    const useAiScripts =
-      process.env.USE_AI_ALARM_SCRIPTS !== 'false' &&
-      Boolean(getOpenAiKey()) &&
-      req.body?.aiScript !== false;
+    // Every wake message is written by AI from the person's goals, habits
+    // and mood. There is no fixed template any more: it silently replaced
+    // the AI text whenever OpenAI failed (e.g. out of credits), so people
+    // heard the same words every morning. On failure we return an error and
+    // the app replays one of its earlier AI messages instead.
     let script = null;
     if (providedText) {
       const text = String(providedText).trim();
@@ -601,24 +597,30 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, as
         wordCount: text.split(/\s+/).filter(Boolean).length,
         model: 'provided',
       };
-    } else if (useAiScripts) {
+    } else {
+      if (req.body?.aiScript === false) {
+        const err = new Error('AI consent required to write wake messages');
+        err.status = 403;
+        throw err;
+      }
+      if (process.env.USE_AI_ALARM_SCRIPTS === 'false' || !getOpenAiKey()) {
+        const err = new Error('AI wake messages are unavailable right now');
+        err.status = 503;
+        throw err;
+      }
       try {
         script = await generateMorningScript(answers || {});
       } catch (error) {
-        console.warn('AI wake script failed, using template', error?.message || error);
+        const reason = error?.message || String(error);
+        console.warn('AI wake script failed', reason);
+        const err = new Error(
+          /credit|billing|quota|insufficient/i.test(reason)
+            ? 'AI wake messages unavailable: billing / quota'
+            : 'AI wake messages unavailable right now'
+        );
+        err.status = /credit|billing|quota|insufficient/i.test(reason) ? 402 : 503;
+        throw err;
       }
-    }
-    if (!script) {
-      const text = buildAlarmScript(
-        answers?.name,
-        { label: answers?.moodForTomorrow },
-        answers?.morningHabits || answers?.alreadyProud
-      );
-      script = {
-        text,
-        wordCount: text.split(/\s+/).filter(Boolean).length,
-        model: answers?.moodForTomorrow ? 'fixed+mood' : 'fixed',
-      };
     }
 
     const spoken = await synthesizeSpeech({

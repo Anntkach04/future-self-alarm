@@ -2,7 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RoundArrowButton } from '../components/RoundArrowButton';
+import { Pressable } from 'react-native';
 import { SoftConfetti } from '../components/SoftConfetti';
 import { RootStackParamList } from '../navigation/types';
 import { playCongratsSound } from '../services/uiSounds';
@@ -17,7 +17,8 @@ const FULL_H = Dimensions.get('screen').height;
 const SHEET_RADIUS = Math.max(Dimensions.get('window').width * 0.55, 180);
 
 /**
- * Celebration after first alarm — centered copy, arrow to Home, more confetti.
+ * Celebration after first alarm: centered copy and confetti, then the sheet
+ * rises away to Home on its own.
  */
 export function OnboardingCongratsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -96,8 +97,8 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
       enterScale.setValue(1);
       opacity.setValue(1);
     }, 520);
-    // Auto-continue — don’t strand on celebration.
-    const autoNav = setTimeout(goHome, 4500);
+    // No button: hold the celebration ~2.5 s, then the sheet rises to Home.
+    const autoNav = setTimeout(goHome, 2600);
     return () => {
       clearTimeout(failsafe);
       clearTimeout(autoNav);
@@ -106,7 +107,8 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
   }, []);
 
   return (
-    <View style={styles.root}>
+    // Tap anywhere to skip the wait.
+    <Pressable style={styles.root} onPress={goHome} accessibilityRole="button" accessibilityLabel="Continue">
       <Animated.View
         pointerEvents="none"
         style={[
@@ -138,11 +140,8 @@ export function OnboardingCongratsScreen({ navigation }: Props) {
             Tomorrow starts with your own voice. Nice work.
           </Text>
         </View>
-        <View style={styles.footer}>
-          <RoundArrowButton onPress={goHome} color={colors.bg} />
-        </View>
       </Animated.View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -185,8 +184,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     maxWidth: 300,
-  },
-  footer: {
-    alignItems: 'flex-end',
   },
 });

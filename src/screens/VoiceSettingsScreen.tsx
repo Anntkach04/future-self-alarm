@@ -12,11 +12,10 @@ import { BackButton } from '../components/BackButton';
 import { cleanScript } from '../components/KaraokeScript';
 import { Screen } from '../components/Screen';
 import { useOnboarding } from '../context/OnboardingContext';
-import { buildAlarmScript } from '../data/alarmScript';
 import { RootStackParamList } from '../navigation/types';
 import { ensureGuestSession } from '../services/apiAuth';
 import { savePreviewAudio } from '../services/audioPreview';
-import { synthesizeSpeech } from '../services/elevenlabs';
+import { buildPreviewLine, synthesizeSpeech } from '../services/elevenlabs';
 import { userFacingError } from '../services/userFacingError';
 import {
   accents,
@@ -82,7 +81,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
     if (!voice.voiceId) return null;
     const line = cleanScript(
       voice.previewText ||
-        buildAlarmScript(answers.name, null, answers.morningHabits)
+        buildPreviewLine(answers.name)
     );
     await ensureGuestSession();
     const tts = await synthesizeSpeech({ voiceId: voice.voiceId, text: line });
