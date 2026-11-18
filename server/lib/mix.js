@@ -312,7 +312,9 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
   // Optional: drop assets/beds/morning-birds.(mp3|m4a) in and every wake
   // message gets soft birdsong under the voice.
   const birdsFile = findBirdsFile();
-  const birdsVol = (0.12 + bedUi * 0.18).toFixed(3);
+  // Bed file is normalized to -26 LUFS; ~0.39 at the default level puts the
+  // birds about 18 dB under the voice: present, never competing.
+  const birdsVol = (0.25 + bedUi * 0.4).toFixed(3);
 
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const voicePath = path.join(os.tmpdir(), `fs-voice-${stamp}.mp3`);
