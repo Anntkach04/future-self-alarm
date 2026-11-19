@@ -16,6 +16,7 @@ import {
   BANK_SIZE,
   type RingMessage,
   currentRingMessage,
+  isTemplateText,
   ringMessageAt,
   ringMessagesFor,
 } from './ringBank';
@@ -500,7 +501,9 @@ async function planRings(
   const archive: RingMessage[] = [];
   for (const m of await ringMessagesFor(alarm.id)) {
     if (!(await wakeSoundExists(m.soundName))) continue;
-    (m.ring > now ? stocked : archive).push(m);
+    if (m.ring > now) stocked.push(m);
+    // Never replay an old template message as a fallback.
+    else if (!isTemplateText(m.text)) archive.push(m);
   }
   archive.sort((a, b) => b.ring - a.ring);
   const baseSound = notificationSoundFor(alarm.id, hasBaseSound);

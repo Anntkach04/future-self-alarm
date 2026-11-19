@@ -105,6 +105,16 @@ export function putRingMessage(alarmId: string, message: RingMessage) {
 export const ARCHIVE_SIZE = 7;
 
 /**
+ * The old fixed template (removed). The server used it silently whenever
+ * OpenAI failed (e.g. out of credits), so banks filled with it, even on
+ * phones that onboarded recently. Such messages are rebuilt and never kept
+ * as fallback.
+ */
+export function isTemplateText(text: string | null | undefined) {
+  return /Feel the bed for a second, then sit up when you(?:'|’)re ready/i.test(text || '');
+}
+
+/**
  * Keep every upcoming ring plus the newest ARCHIVE_SIZE other messages
  * (rings that already went off, or rings dropped by a time/day edit).
  * Returns the rest so the caller can delete files AFTER rescheduling.
@@ -120,10 +130,15 @@ export function pruneRingMessages(
     const upcoming = new Set(upcomingRings);
     const keep: RingMessage[] = [];
     const rest: RingMessage[] = [];
-    for (const m of list) (upcoming.has(m.ring) ? keep : rest).push(m);
+    const drop: RingMessage[] = [];
+    for (const m of list) {
+      if (upcoming.has(m.ring)) keep.push(m);
+      else if (isTemplateText(m.text)) drop.push(m);
+      else rest.push(m);
+    }
     rest.sort((a, b) => b.ring - a.ring);
     keep.push(...rest.slice(0, ARCHIVE_SIZE));
-    const drop = rest.slice(ARCHIVE_SIZE);
+    drop.push(...rest.slice(ARCHIVE_SIZE));
     if (keep.length) bank[alarmId] = keep;
     else delete bank[alarmId];
     await writeBank(bank);
@@ -168,7 +183,7 @@ export async function recentScripts(limit = 10): Promise<RecentScript[]> {
   const bank = await readBank();
   return Object.values(bank)
     .flat()
-    .filter((m) => m.text)
+    .filter((m) => m.text && !isTemplateText(m.text))
     .sort((a, b) => (b.builtAt ?? b.ring) - (a.builtAt ?? a.ring))
     .slice(0, limit)
     .map((m) => ({

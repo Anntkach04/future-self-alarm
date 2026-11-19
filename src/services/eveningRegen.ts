@@ -11,6 +11,7 @@ import {
   deleteRingFiles,
   dropRingMessagesExcept,
   pruneRingMessages,
+  isTemplateText,
   putRingMessage,
   recentScripts,
   ringMessagesFor,
@@ -181,6 +182,8 @@ export async function maybeEveningRegen(params: {
       const prepKey = await prepKeyOf(ringMoodNow);
       const needsBuild =
         !stocked ||
+        // Template text from an AI outage: always replace with a real one.
+        isTemplateText(stocked.text) ||
         (stocked.prepKey !== prepKey && stocked.builds < MAX_BUILDS_PER_RING);
       if (!needsBuild) continue;
 
