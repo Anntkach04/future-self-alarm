@@ -99,6 +99,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
   /** State (not ref) so advance gate opens after line change. */
   const [lineReady, setLineReady] = useState(false);
   const quietSinceRef = useRef(0);
+  /** Ms the mic heard speech on the current line (fallback when STT is deaf). */
+  const voicedMsRef = useRef(0);
+  const lastVoicedAtRef = useRef(0);
   const lastSpokenCountRef = useRef(0);
   const lastSpokenAtRef = useRef(0);
   /** One-shot: success leave armed — never re-arm until re-record. */
@@ -343,6 +346,8 @@ export function VoiceRecordScreen({ navigation }: Props) {
     quietSinceRef.current = 0;
     lastSpokenCountRef.current = 0;
     lastSpokenAtRef.current = Date.now();
+    voicedMsRef.current = 0;
+    lastVoicedAtRef.current = 0;
     const wait = lineIndex === 0 ? 40 : 80;
     const t = setTimeout(() => {
       setLineReady(true);
@@ -379,28 +384,55 @@ export function VoiceRecordScreen({ navigation }: Props) {
         lastSpokenAtRef.current = now;
       }
 
-      // Full match.
+      // Time the person has actually been talking on this line (mic level),
+      // so the line can still move on when recognition hears nothing.
+      if (!quietLiveRef.current) {
+        voicedMsRef.current += 90;
+        lastVoicedAtRef.current = now;
+      }
+
+      // Never cut someone off mid-line: the line moves on only once it is
+      // finished, and then after a one-second beat (LINE_HOLD_MS).
+      const holdThenAdvance = () => {
+        if (lineHoldRef.current === idx) return;
+        lineHoldRef.current = idx;
+        setTimeout(() => {
+          if (lineIndexRef.current === idx) advanceLineRef.current();
+        }, LINE_HOLD_MS);
+      };
+
+      const quietFor = quietLiveRef.current
+        ? now - Math.max(lastVoicedAtRef.current, lastSpokenAtRef.current)
+        : 0;
+
+      // Every word heard.
       if (words > 0 && spoken >= words) {
-        advanceLineRef.current();
+        holdThenAdvance();
         return;
       }
 
-      // Almost finished + quiet (STT often drops the last word).
+      // Almost every word (STT often drops the last one) and they stopped.
       const almost =
         isLineFullyLit(line, spoken) ||
         (words >= 3 && spoken >= words - 1) ||
         (displayTotal >= 3 && lit >= displayTotal - 1) ||
         (words >= 5 && spoken / words >= 0.78);
-      if (!almost) {
-        quietSinceRef.current = 0;
+      if (almost && quietLiveRef.current && quietFor >= 400) {
+        holdThenAdvance();
         return;
       }
 
-      const quietLongEnough =
-        quietLiveRef.current || now - lastSpokenAtRef.current >= 480;
-      if (!quietLongEnough) return;
-      if (!quietSinceRef.current) quietSinceRef.current = now;
-      if (now - quietSinceRef.current >= 280) {
+      // Recognition heard (almost) nothing, but they clearly read the line:
+      // enough talking for its length, then a pause. The pause is the beat.
+      const neededMs = Math.max(1500, words * 260);
+      if (
+        spoken <= 1 &&
+        voicedMsRef.current >= neededMs &&
+        quietLiveRef.current &&
+        quietFor >= 900
+      ) {
+        if (lineHoldRef.current === idx) return;
+        lineHoldRef.current = idx;
         advanceLineRef.current();
       }
     }, 90);

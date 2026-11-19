@@ -186,16 +186,25 @@ export function matchedPrefixCount(expectedLine: string, heard: string) {
   const window = Math.max(expected.length + 12, 24);
   const got = allGot.slice(-window);
 
-  let best = 0;
-  const starts: number[] = [];
-  for (let start = 0; start < got.length; start += 1) {
-    if (wordsMatch(got[start]!, expected[0]!)) starts.push(start);
+  // A match may start at any of the first three script words: speech
+  // recognition often drops or mangles the first word, and then nothing
+  // lit up at all and the line never advanced.
+  const leadSkips = Math.min(2, expected.length - 1);
+  const starts: { g: number; e: number }[] = [];
+  for (let g = 0; g < got.length; g += 1) {
+    for (let e = 0; e <= leadSkips; e += 1) {
+      if (wordsMatch(got[g]!, expected[e]!)) {
+        starts.push({ g, e });
+        break;
+      }
+    }
   }
   // Newest candidate starts first.
-  const limited = (starts.length > 14 ? starts.slice(-14) : starts).reverse();
+  const limited = (starts.length > 20 ? starts.slice(-20) : starts).reverse();
 
-  for (const start of limited) {
-    let i = 0;
+  let best = 0;
+  for (const { g: start, e: firstExpected } of limited) {
+    let i = firstExpected;
     let miss = 0;
     for (let g = start; g < got.length && i < expected.length; g += 1) {
       const word = got[g]!;
@@ -204,8 +213,14 @@ export function matchedPrefixCount(expectedLine: string, heard: string) {
         miss = 0;
         continue;
       }
+      // Skip up to two script words the recognizer missed.
       if (i + 1 < expected.length && wordsMatch(word, expected[i + 1]!)) {
         i += 2;
+        miss = 0;
+        continue;
+      }
+      if (i + 2 < expected.length && wordsMatch(word, expected[i + 2]!)) {
+        i += 3;
         miss = 0;
         continue;
       }
