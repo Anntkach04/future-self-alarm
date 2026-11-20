@@ -6,9 +6,11 @@ export const fonts = {
   headingItalic: 'InstrumentSerif_400Regular_Italic',
   headingBold: 'InstrumentSerif_400Regular',
   bodyLight: 'Inter_300Light',
-  body: 'Inter_400Regular',
-  bodyMedium: 'Inter_500Medium',
-  bodySemiBold: 'Inter_600SemiBold',
+  /** Body copy is Light: Regular reads heavy on cream. */
+  body: 'Inter_300Light',
+  /** Emphasis (buttons, short labels): Regular, never Medium. */
+  bodyMedium: 'Inter_400Regular',
+  bodySemiBold: 'Inter_400Regular',
 } as const;
 
 /**
@@ -43,6 +45,13 @@ export const accents = {
   sand: '#D8C29E',
   mist: '#ADDEFF',
   ink: '#1A1A1A',
+  /** Delete / destructive actions only — never a normal CTA. */
+  danger: '#FF5A4E',
+  /** Tonal buttons: one shade deeper than the card they sit on, ink label. */
+  goldDeep: '#F2AE3D',
+  mistDeep: '#7FC6F4',
+  /** Soft lilac: progress bars. */
+  lilac: '#B9ADD9',
 } as const;
 
 /** Soft chips / bubbles — Figma muted + extras that fit cream UI */
@@ -99,8 +108,9 @@ export const inkStroke = 'rgba(26, 26, 26, 0.7)';
 export const colors = {
   bg: '#FFFAEE',
   text: accents.ink,
-  textMuted: '#7A7568',
-  textSoft: '#9A9488',
+  /** Secondary text: ink at 80%, never a separate gray. */
+  textMuted: 'rgba(26, 26, 26, 0.8)',
+  textSoft: 'rgba(26, 26, 26, 0.8)',
   border: inkStroke,
   chip: '#F3EBD3',
   chipSelected: accents.ink,
@@ -118,18 +128,63 @@ export const colors = {
   fab: '#AEE1FF',
 };
 
+/**
+ * Spacing grid: multiples of 8; 4 only for tight pairs (icon + label).
+ * Allowed: 4, 8, 16, 24, 32, 40, 48, 56, 64.
+ */
 export const spacing = {
+  xxs: 4,
   xs: 8,
-  sm: 12,
+  sm: 16,
   md: 16,
   lg: 24,
   xl: 32,
   xxl: 48,
-  /** Minimum margin on every screen edge */
-  inset: 40,
+  /** Side margin on every screen (one value app-wide). */
+  inset: 24,
+  /** Gap between the safe area and the first element (back / menu). */
+  screenTop: 16,
   /** Extra top gap on mobile web — Safari chrome reports 0 safe-area. */
   webTop: Platform.OS === 'web' ? 20 : 0,
 };
+
+/**
+ * Type scale — the only sizes in the app (size / line height):
+ * display 48/56 · title1 40/44 · title2 28/32 · title3 22/28 ·
+ * body 17/24 · subhead 15/20 · footnote 13/16.
+ * Serif (Instrument) for display/titles, Inter for the rest.
+ */
+/**
+ * One chip size everywhere (onboarding questions, profile edit, Account
+ * summary): 12 + 20 + 12 = 44 pt tall, 15 pt label, 16 pt between rows.
+ */
+export const chipMetrics = {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  fontSize: 15,
+  lineHeight: 20,
+  rowGap: 16,
+  columnGap: 8,
+} as const;
+
+export const typeScale = {
+  display: { fontSize: 48, lineHeight: 56 },
+  title1: { fontSize: 40, lineHeight: 44 },
+  title2: { fontSize: 28, lineHeight: 32 },
+  title3: { fontSize: 22, lineHeight: 28 },
+  body: { fontSize: 17, lineHeight: 24 },
+  subhead: { fontSize: 15, lineHeight: 20 },
+  footnote: { fontSize: 13, lineHeight: 16 },
+} as const;
+
+/**
+ * Instrument Serif glyphs carry ~3.5% of the size as built-in left space
+ * (0, G, S, d…), so big serif lines look indented next to Inter text at the
+ * same x. Pull them back by that amount so edges line up optically.
+ */
+export function opticalLeft(fontSize: number) {
+  return { marginLeft: -Math.round(fontSize * 0.035) };
+}
 
 /** Instrument Serif glyphs clip when line-height is tight or overflow is hidden. */
 export const headingClipFix =

@@ -1,14 +1,39 @@
+const { looksLikeCrisis, CRISIS_REPLY } = require('./moodSafety');
 const fetch = require('node-fetch');
-const { buildScriptMessages } = require('./prompt');
+const { buildScriptMessages, lengthGuide, BANNED_RE } = require('./prompt');
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
+const MOOD_MODEL = process.env.OPENAI_MOOD_MODEL || 'gpt-4o-mini';
+const MOOD_MAX_WORDS = 32;
+
+function clampMoodAdvice(text) {
+  const cleaned = String(text)
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    // No dashes in the UI: a dash between words becomes a sentence break.
+    // Hyphens inside words ("self-care") stay.
+    .replace(/\s*[—–―]\s*/g, ' - ')
+    .replace(/\s+-\s+/g, '. ')
+    .replace(/\.\s+([a-z])/g, (_, c) => `. ${c.toUpperCase()}`)
+    .replace(/\s+/g, ' ');
+  if (!cleaned) return cleaned;
+
+  const sentences =
+    cleaned.match(/[^.!?]+[.!?]+/g)?.map((part) => part.trim()) ?? [cleaned];
+  let short = sentences.slice(0, 3).join(' ').trim();
+  const words = short.split(/\s+/).filter(Boolean);
+  if (words.length > MOOD_MAX_WORDS) {
+    short = `${words.slice(0, MOOD_MAX_WORDS).join(' ').replace(/[.,!?]+$/, '')}.`;
+  }
+  return short;
+}
 
 function getOpenAiKey() {
   return process.env.OPENAI_API_KEY || '';
 }
 
-async function generateMorningScript(answers) {
+async function generateMorningScriptOnce(answers, extraNote) {
   const apiKey = getOpenAiKey();
   if (!apiKey) {
     const error = new Error(
@@ -18,7 +43,7 @@ async function generateMorningScript(answers) {
     throw error;
   }
 
-  const { system, user } = buildScriptMessages(answers);
+  const { system, user, meta } = buildScriptMessages(answers);
   const response = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {
@@ -27,11 +52,13 @@ async function generateMorningScript(answers) {
     },
     body: JSON.stringify({
       model: MODEL,
-      temperature: 0.8,
-      max_tokens: 700,
+      temperature: 1.05,
+      presence_penalty: 0.55,
+      frequency_penalty: 0.45,
+      max_tokens: 420,
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: user },
+        { role: 'user', content: extraNote ? `${user}\n${extraNote}` : user },
       ],
     }),
   });
@@ -48,7 +75,11 @@ async function generateMorningScript(answers) {
 
   const text = String(data?.choices?.[0]?.message?.content || '')
     .trim()
-    .replace(/^["']|["']$/g, '');
+    .replace(/^["']|["']$/g, '')
+    // Script is shown on screen too: no dashes between words.
+    .replace(/\s*[—–―]\s*/g, ', ')
+    .replace(/\s+-\s+/g, ', ')
+    .replace(/\s+/g, ' ');
 
   if (!text) {
     const error = new Error('OpenAI returned an empty script');
@@ -60,15 +91,37 @@ async function generateMorningScript(answers) {
     text,
     model: data.model || MODEL,
     wordCount: text.split(/\s+/).filter(Boolean).length,
+    // What was planned, so the app can send it back and keep varying.
+    ...meta,
   };
 }
 
+/** One rewrite if the model slipped into banned / template phrasing. */
+async function generateMorningScript(answers) {
+  const first = await generateMorningScriptOnce(answers);
+  const words = first.wordCount;
+  if (!BANNED_RE.test(first.text) && words <= lengthGuide().max) return first;
+  try {
+    const second = await generateMorningScriptOnce(
+      answers,
+      'Your last draft used banned phrasing, an exclamation mark, or ran long. Write it again, plainer and within the word limit.'
+    );
+    return BANNED_RE.test(second.text) && !BANNED_RE.test(first.text) ? first : second;
+  } catch {
+    return first;
+  }
+}
+
 async function generateMoodAdvice({ mood, note, name }) {
+  // Free-text mood can carry a crisis: never answer it with a pep talk.
+  if (looksLikeCrisis(`${mood} ${note}`)) {
+    return { advice: CRISIS_REPLY, model: 'safety' };
+  }
   const apiKey = getOpenAiKey();
   if (!apiKey) {
     return {
       advice:
-        "That's allowed. You don't have to sort the whole day tonight. Tomorrow, start with one small thing — I'll be there when you wake.",
+        "That’s not the real you. You’re strong, capable, and already winning. Rest up; tomorrow you’re going to crush it.",
     };
   }
 
@@ -79,18 +132,30 @@ async function generateMoodAdvice({ mood, note, name }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.7,
-      max_tokens: 420,
+      model: MOOD_MODEL,
+      temperature: 0.85,
+      max_tokens: 55,
       messages: [
         {
           role: 'system',
-          content:
-            "You are the user's Future Self. Speak in first person as them, like a warm letter to tonight. 5–8 sentences. Warm, specific, not clinical, not a therapist, no quotes, no bullets, no emoji. Acknowledge the feeling in their own words, sit with it, then offer one small next step. Longer than a slogan — a real note.",
+          content: [
+            'You are the user\'s Future Self, their hype person, not their therapist.',
+            'Write EXACTLY 2 short sentences. Hard limit: 30 words total.',
+            'They describe how they feel in their own words.',
+            'Tone: warm, confident, loving. Lift them up; if what they wrote sounds painful, be gentle and steady rather than loud.',
+            'Tell them they\'re strong, capable, amazing, already winning.',
+            'Point to tomorrow as a fresh start where they will crush it.',
+            'NEVER repeat or echo their negative words (no "bad person", "heavy", "mistakes", "imperfect").',
+            'NEVER therapize: no "I know it\'s hard", "give yourself grace", "being human", "take a deep breath", "act of kindness".',
+            'NEVER analyze feelings. Just hype them up like a best friend before bed.',
+            'Never use dashes of any kind; use periods and commas. Example: "That\'s not you. You\'re powerful and you\'ve got this. Sleep, reset, tomorrow you\'re going to kill it."',
+            'Bad: "I know it feels overwhelming and being human means being imperfect..."',
+            'No bullets, quotes, emoji, or name at the start.',
+          ].join(' '),
         },
         {
           role: 'user',
-          content: `Name: ${name || 'friend'}\nMood: ${mood}\nThey wrote: ${note || '(nothing more)'}`,
+          content: `Mood: ${mood}\nThey wrote: ${note || '(nothing)'}`,
         },
       ],
     }),
@@ -105,9 +170,9 @@ async function generateMoodAdvice({ mood, note, name }) {
     throw error;
   }
 
-  const advice = String(data?.choices?.[0]?.message?.content || '')
-    .trim()
-    .replace(/^["']|["']$/g, '');
+  const advice = clampMoodAdvice(
+    String(data?.choices?.[0]?.message?.content || '')
+  );
 
   if (!advice) {
     const error = new Error('OpenAI returned empty advice');
@@ -115,7 +180,7 @@ async function generateMoodAdvice({ mood, note, name }) {
     throw error;
   }
 
-  return { advice, model: data.model || MODEL };
+  return { advice, model: data.model || MOOD_MODEL };
 }
 
 module.exports = { generateMorningScript, generateMoodAdvice, getOpenAiKey };

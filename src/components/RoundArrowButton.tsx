@@ -9,6 +9,8 @@ type Props = {
   disabled?: boolean;
   style?: ViewStyle;
   color?: string;
+  /** Icon-only button — VoiceOver needs words (default "Continue"). */
+  accessibilityLabel?: string;
 };
 
 export function RoundArrowButton({
@@ -16,10 +18,13 @@ export function RoundArrowButton({
   disabled,
   style,
   color = accents.gold,
+  accessibilityLabel = 'Continue',
 }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [

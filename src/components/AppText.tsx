@@ -1,5 +1,5 @@
 import { Text as RNText, TextProps, StyleSheet } from 'react-native';
-import { colors, fonts } from '../theme';
+import { colors, fonts, opticalLeft } from '../theme';
 
 type Variant = 'hero' | 'title' | 'body' | 'bodyStrong' | 'muted' | 'label';
 
@@ -11,42 +11,41 @@ const variantStyle = StyleSheet.create({
   hero: {
     fontFamily: fonts.headingRegular,
     fontWeight: '400',
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 40,
+    ...opticalLeft(40),
+    lineHeight: 44,
     color: colors.text,
   },
   title: {
     fontFamily: fonts.headingRegular,
     fontWeight: '400',
     fontSize: 28,
-    lineHeight: 34,
+    lineHeight: 32,
     color: colors.text,
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 16,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
   },
   bodyStrong: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 16,
+    fontFamily: fonts.body,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
-    fontWeight: '300',
   },
   muted: {
     fontFamily: fonts.body,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
     color: colors.textMuted,
   },
   label: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
+    fontFamily: fonts.body,
+    fontSize: 15,
     lineHeight: 20,
     color: colors.textMuted,
-    fontWeight: '300',
   },
 });
 

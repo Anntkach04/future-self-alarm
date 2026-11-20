@@ -7,10 +7,22 @@ const DOODLES: Record<IntroCardTone, ImageSourcePropType> = {
   gold: require('../../assets/illustrations/vector-3.png'),
 };
 
+/**
+ * Box = the drawing's own aspect ratio wherever it should sit flush in the
+ * card's corner. A wider box made "contain" center the art and left a big
+ * empty strip on the right (sun rays: 237 wide for a 145 wide drawing).
+ */
 const SIZES: Record<IntroCardTone, { width: number; height: number }> = {
   sky: { width: 187, height: 157 },
   coral: { width: 153, height: 112 },
-  gold: { width: 237, height: 105 },
+  // vector-3 is 885×643: 145×105 keeps it flush right and bottom, so the
+  // right gap equals the bottom gap (the card's 24 px padding).
+  gold: { width: 145, height: 105 },
+};
+
+/** Per-drawing nudge inside the corner (wave sits a little left of the edge). */
+const OFFSETS: Partial<Record<IntroCardTone, { marginRight: number }>> = {
+  sky: { marginRight: 16 },
 };
 
 type Props = {
@@ -23,7 +35,7 @@ export function IntroDoodle({ tone }: Props) {
   return (
     <Image
       source={DOODLES[tone]}
-      style={[styles.img, size]}
+      style={[styles.img, size, OFFSETS[tone]]}
       resizeMode="contain"
       accessibilityIgnoresInvertColors
     />

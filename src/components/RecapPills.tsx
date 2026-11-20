@@ -1,19 +1,21 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { mutedColorForLabel } from '../theme';
-import { fonts, noFakeLight } from '../theme';
-import { colors } from '../theme';
+import { chipMetrics, colors, fonts, mutedColorForLabel } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
   items: string[];
+  /** Keep original casing (names). Habit/goal chips stay lowercase. */
+  keepCase?: boolean;
   /** Optional fixed colors per item (from onboarding options). */
   colors?: string[];
   onPress?: () => void;
+  /** Shown when there are no items (default "-"). */
+  emptyLabel?: string;
 };
 
-export function RecapPills({ items, colors: itemColors, onPress }: Props) {
+export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-', keepCase = false }: Props) {
   if (!items.length) {
-    return <Text style={styles.empty}>-</Text>;
+    return <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.empty}>{emptyLabel}</Text>;
   }
 
   const content = (
@@ -29,7 +31,7 @@ export function RecapPills({ items, colors: itemColors, onPress }: Props) {
             },
           ]}
         >
-          <Text style={styles.pillText}>{uiLabel(item)}</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pillText}>{keepCase ? item.trim() : uiLabel(item)}</Text>
         </View>
       ))}
     </View>
@@ -46,28 +48,30 @@ export function RecapPills({ items, colors: itemColors, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // Same chip as the onboarding questions (theme chipMetrics).
   pills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    rowGap: chipMetrics.rowGap,
+    columnGap: chipMetrics.columnGap,
     marginBottom: 8,
   },
   pill: {
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderCurve: 'continuous',
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
   },
   pillText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
+    fontFamily: fonts.body,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     color: colors.text,
-    ...noFakeLight,
   },
   empty: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
+    fontFamily: fonts.body,
+    fontSize: 15,
     color: colors.textMuted,
     marginBottom: 8,
-    ...noFakeLight,
   },
 });

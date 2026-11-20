@@ -5,9 +5,17 @@ alwaysApply: true
 
 # Later onboarding (do not skip)
 
-After the current onboarding (name → feelings → voice → home), add screens **before Home**:
+Onboarding order (current):
 
-1. **Login / account** — the person needs to be signed in.
-2. **Notification permission** — Future Self cannot wake them without iOS/Android alert access. Ask clearly, then deep-link to system settings if denied.
+1. **Intro** → **Sign in with Apple** (required; no guest Continue).
+   Apple fullName seeds the next step when available.
+2. **Name** survey → Questions → Voice record → Voice preview.
+   (No wake-time screen before recording — time is chosen on Create Alarm after paywall.)
+3. **Allow alarms** — one screen: notifications then AlarmKit on Continue. If denied: bottom nudge on Home / Create Alarm → Settings. Do **not** also request Mic, Speech, or ATT here.
+4. **Paywall** — single primary CTA (7-day free trial → monthly). Restore as a secondary text link (Apple requirement). No skip without a plan.
 
-Do not pretend a sound picker controls the iPhone Clock app. The alarm is the cloned voice via notifications; a chime-before-voice picker can come later, bundled in the app.
+(Store-optimal alternative later: move Sign in back to after Voice preview if review prefers value-first.)
+
+Just-in-time: Microphone + Speech on first Voice Record tap; no ATT.
+
+Do not put long Clock.app / Focus explainers on Create Alarm — keep that screen clean. Wake is AlarmKit (real system alarm) with notification fallback.

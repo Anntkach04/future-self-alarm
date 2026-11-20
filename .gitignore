@@ -45,5 +45,8 @@ server/assets/beds/*.m4a
 server/assets/beds/*.wav
 server/assets/beds/*.ogg
 
+# local user store when DATABASE_URL is unset
+server/data/
+
 # local tooling
 .claude/

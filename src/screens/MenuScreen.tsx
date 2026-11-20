@@ -1,23 +1,39 @@
+import { BETA_FREE_ACCESS } from '../config/beta';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
+import { LegalLinks } from '../components/LegalLinks';
 import { Screen } from '../components/Screen';
 import { ONBOARDING_RESET_ENABLED } from '../config/devBypass';
+import { contactUsUrl, supportMailtoUrl } from '../config/legal';
 import { useAlarms } from '../context/AlarmsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, noFakeBold } from '../theme';
+import { colors, fonts, noFakeBold, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
-const ROWS: {
+const ELEVENLABS_LOGO = require('../../assets/illustrations/elevenlabs-logo.png');
+/** Official wordmark (~2082×270). Keep height readable under “With thanks”. */
+const LOGO_H = 18;
+const LOGO_W = Math.round((LOGO_H * 2082) / 270);
+
+type MenuRow = {
   title: string;
-  route: 'Subscription' | 'VoiceSettings' | 'NotificationSettings';
-}[] = [
+  route:
+    | 'EditProfile'
+    | 'Subscription'
+    | 'VoiceSettings'
+    | 'NotificationSettings';
+};
+
+const ROWS: MenuRow[] = ([
+  { title: 'Account', route: 'EditProfile' },
   { title: 'Subscription', route: 'Subscription' },
   { title: 'Voice', route: 'VoiceSettings' },
   { title: 'Notifications', route: 'NotificationSettings' },
-];
+  // Free beta: nothing to subscribe to, so no Subscription row.
+] as MenuRow[]).filter((row) => !(BETA_FREE_ACCESS && row.route === 'Subscription'));
 
 export function MenuScreen({ navigation }: Props) {
   const { resetOnboarding } = useOnboarding();
@@ -51,7 +67,7 @@ export function MenuScreen({ navigation }: Props) {
     <Screen>
       <View style={styles.page}>
         <BackButton style={styles.back} />
-        <Text style={styles.title}>Menu</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Menu</Text>
         <View style={styles.list}>
           {ROWS.map((row) => (
             <Pressable
@@ -59,7 +75,7 @@ export function MenuScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(row.route)}
               style={styles.row}
             >
-              <Text style={styles.rowText}>{row.title}</Text>
+              <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowText}>{row.title}</Text>
             </Pressable>
           ))}
         </View>
@@ -69,12 +85,28 @@ export function MenuScreen({ navigation }: Props) {
             onPress={confirmReset}
             style={styles.resetBtn}
           >
-            <Text style={styles.resetText}>reset (dev)</Text>
+            <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.resetText}>reset (dev)</Text>
           </Pressable>
         ) : null}
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => {
+            const url = contactUsUrl() || supportMailtoUrl('Support');
+            void Linking.openURL(url);
+          }}
+          style={styles.supportBtn}
+        >
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.supportText}>Contact Us</Text>
+        </Pressable>
+        <LegalLinks style={styles.legal} />
         <View style={styles.thanks}>
-          <Text style={styles.thanksKicker}>With thanks</Text>
-          <Text style={styles.thanksLine}>Voice · ElevenLabs</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.thanksKicker}>With thanks</Text>
+          <Image
+            source={ELEVENLABS_LOGO}
+            style={styles.thanksLogo}
+            accessibilityLabel="ElevenLabs"
+            resizeMode="contain"
+          />
         </View>
       </View>
     </Screen>
@@ -90,8 +122,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 44,
+    fontSize: 40,
+    ...opticalLeft(40),
+    lineHeight: 44,
     color: colors.text,
+    marginTop: 8,
     marginBottom: 32,
     ...noFakeBold,
   },
@@ -99,42 +134,55 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   row: {
-    borderBottomWidth: 1.5,
+    borderBottomWidth: 1,
     borderBottomColor: colors.text,
     paddingVertical: 16,
   },
   rowText: {
     fontFamily: fonts.headingRegular,
-    fontSize: 26,
+    fontSize: 28,
+    lineHeight: 32,
     color: colors.text,
     ...noFakeBold,
   },
   resetBtn: {
     marginTop: 24,
     alignSelf: 'flex-start',
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   resetText: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 14,
+    fontFamily: fonts.body,
+    fontSize: 15,
     color: colors.textMuted,
     textDecorationLine: 'underline',
   },
-  thanks: {
+  supportBtn: {
     marginTop: 'auto',
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  supportText: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
+  },
+  legal: {
+    marginBottom: 16,
+  },
+  thanks: {
     paddingBottom: 8,
     gap: 4,
   },
   thanksKicker: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.textMuted,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  thanksLine: {
-    fontFamily: fonts.headingRegular,
-    fontSize: 18,
-    color: colors.textMuted,
-    ...noFakeBold,
+  thanksLogo: {
+    width: LOGO_W,
+    height: LOGO_H,
+    opacity: 0.55,
   },
 });
