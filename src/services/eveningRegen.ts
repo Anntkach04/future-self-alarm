@@ -40,9 +40,14 @@ export function moodKeyOf(mood: { label: string; note?: string } | null) {
 }
 
 /** What the built message depended on: mood (next ring only) + AI consent. */
-async function prepKeyOf(mood: { label: string; note?: string } | null) {
+async function prepKeyOf(
+  mood: { label: string; note?: string } | null,
+  voiceId: string | null
+) {
   const { hasAiConsent } = await import('./aiConsent');
-  return `${moodKeyOf(mood)}|ai:${(await hasAiConsent()) ? 1 : 0}`;
+  // Voice in the key: after a re-record, stocked rings are rebuilt in the
+  // new voice instead of playing the old one for up to a week.
+  return `${moodKeyOf(mood)}|ai:${(await hasAiConsent()) ? 1 : 0}|v:${voiceId ?? ''}`;
 }
 
 type Mood = { label: string; note?: string } | null;
@@ -108,7 +113,8 @@ async function buildRingMessage(params: {
 export async function adoptMessageForNextRing(
   alarm: Alarm,
   built: { mp3Uri: string; text: string },
-  mood: Mood
+  mood: Mood,
+  voiceId: string | null
 ) {
   if (Platform.OS === 'web') return;
   const next = nextAlarmOccurrences(alarm, 1)[0];
@@ -132,7 +138,7 @@ export async function adoptMessageForNextRing(
       text: built.text,
       mp3Uri,
       soundName,
-      prepKey: await prepKeyOf(ringMood(0, ringMs, mood, now)),
+      prepKey: await prepKeyOf(ringMood(0, ringMs, mood, now), voiceId ?? null),
       builds: 1,
       builtAt: now,
     });
@@ -179,7 +185,7 @@ export async function maybeEveningRegen(params: {
         (m) => m.ring === ringMs
       );
       const ringMoodNow = ringMood(index, ringMs, mood, now);
-      const prepKey = await prepKeyOf(ringMoodNow);
+      const prepKey = await prepKeyOf(ringMoodNow, voiceId);
       const needsBuild =
         !stocked ||
         // Template text from an AI outage: always replace with a real one.

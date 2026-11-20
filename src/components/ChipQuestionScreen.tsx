@@ -22,7 +22,8 @@ import {
   noFakeBold,
   spacing, opticalLeft } from '../theme';
 /** 4/8 grid: the same gap between every chip row on every screen. */
-const ROW_GAP = spacing.xxs;
+/** Same vertical gap between chip rows on every chip screen (4/8 grid). */
+const ROW_GAP = spacing.xs;
 
 type Props = {
   question: string;

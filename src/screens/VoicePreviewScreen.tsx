@@ -40,7 +40,7 @@ function playableUri(uri: string) {
 
 
 export function VoicePreviewScreen({ navigation }: Props) {
-  const { answers, voice, setPreview } = useOnboarding();
+  const { answers, voice, setPreview, onboardingComplete } = useOnboarding();
   const { notificationsReady, alarmKitReady, appleUserId } = useAppSettings();
   const [playing, setPlaying] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -192,6 +192,13 @@ export function VoicePreviewScreen({ navigation }: Props) {
   };
 
   const continueNext = () => {
+    // Re-recorded from Settings: the new voice is already saved, so go back
+    // to where they came from. Never the paywall (it used to land there).
+    if (onboardingComplete) {
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      return;
+    }
     // Value first: the user has heard their voice — now ask them to save it.
     if (!appleUserId) {
       navigation.navigate('SignIn', { mode: 'save' });

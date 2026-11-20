@@ -506,7 +506,11 @@ async function planRings(
     else if (!isTemplateText(m.text)) archive.push(m);
   }
   archive.sort((a, b) => b.ring - a.ring);
-  const baseSound = notificationSoundFor(alarm.id, hasBaseSound);
+  // A base sound recorded from the old fixed template (built while the AI
+  // was unavailable) must never play: fall back to the soft tone instead.
+  const baseIsTemplate = isTemplateText(alarm.scriptText);
+  const baseUsable = hasBaseSound && !baseIsTemplate;
+  const baseSound = notificationSoundFor(alarm.id, baseUsable);
   return dates.map((date, index) => {
     const exact = stocked.find((m) => m.ring === date.getTime());
     const pool = stocked.length ? stocked : archive;
@@ -523,9 +527,9 @@ async function planRings(
     return {
       date,
       sound: baseSound,
-      audioUri: baseAudioUri,
-      text: alarm.scriptText ?? null,
-      custom: hasBaseSound,
+      audioUri: baseIsTemplate ? null : baseAudioUri,
+      text: baseIsTemplate ? null : alarm.scriptText ?? null,
+      custom: baseUsable,
     };
   });
 }

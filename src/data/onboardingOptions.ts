@@ -85,23 +85,24 @@ export const MUSIC_BED_OPTIONS: BubbleOption[] = [
 /** Brighter plus chip */
 export const ADD_CHIP_COLOR = '#FFD84D';
 
+/** What it is, what it does, what you get. Titles 2 lines, bodies 2 short lines. */
 export const INTRO_SLIDES = [
   {
     label: '',
-    title: 'Wake up to your\nfuture self',
-    body: 'No random ringtone.\nJust your own voice.',
+    title: 'An alarm that\nsounds like you',
+    body: 'Your own voice wakes you,\nnot a ringtone.',
     card: 'sky' as const,
   },
   {
     label: '',
-    title: 'Read for\none minute',
-    body: 'Read a short script aloud.\nWe turn it into your voice.',
+    title: 'A new message\nevery morning',
+    body: 'Fresh words every day,\nshaped by your goals.',
     card: 'coral' as const,
   },
   {
     label: '',
-    title: 'Hear yourself\ntomorrow morning',
-    body: 'Your name and habits,\nin your own voice.',
+    title: 'Start your day\nwith a reason',
+    body: 'Wake up calmer,\nreminded why you rise.',
     card: 'gold' as const,
   },
 ];

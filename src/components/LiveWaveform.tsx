@@ -4,12 +4,13 @@ import { brightPalette, mutedPalette } from '../theme';
 
 type Props = {
   active: boolean;
-  /** Kept for API compatibility; animation no longer depends on every meter tick. */
+  /** Kept for API compatibility; the animation does not follow meter ticks. */
   metering?: number;
   hearing?: boolean;
 };
 
 const BAR_COUNT = 11;
+const BAR_MAX = 76;
 const WAVE_COLORS = [
   mutedPalette[6],
   brightPalette[1],
@@ -25,13 +26,26 @@ const WAVE_COLORS = [
 ];
 
 /**
- * Lightweight waveform — Animated only, no setState every frame.
- * (React state + metering updates was freezing the dictaphone UI.)
+ * Lightweight waveform on the native driver: bars scale (transform) instead
+ * of animating height, so nothing runs on the JS thread. The old JS-driven
+ * height loops ran 11 animations at 60 fps on the same thread that handles
+ * speech recognition, which made recording lag and freeze.
  */
 export function LiveWaveform({ active, hearing = false }: Props) {
   const phases = useRef(
     Array.from({ length: BAR_COUNT }, () => new Animated.Value(0))
   ).current;
+  // How tall the bars swing: louder while speech is heard. Native-driven too.
+  const energy = useRef(new Animated.Value(0.2)).current;
+
+  useEffect(() => {
+    Animated.timing(energy, {
+      toValue: active ? (hearing ? 1 : 0.55) : 0.2,
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [active, energy, hearing]);
 
   useEffect(() => {
     const animations = phases.map((phase, i) =>
@@ -41,31 +55,27 @@ export function LiveWaveform({ active, hearing = false }: Props) {
             toValue: 1,
             duration: 380 + i * 35,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(phase, {
             toValue: 0,
             duration: 380 + i * 35,
             easing: Easing.inOut(Easing.sin),
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ])
       )
     );
-
     if (active) {
       animations.forEach((anim) => anim.start());
     } else {
       animations.forEach((anim) => anim.stop());
       phases.forEach((phase) => phase.setValue(0.15));
     }
-
     return () => {
       animations.forEach((anim) => anim.stop());
     };
   }, [active, phases]);
-
-  const energy = active ? (hearing ? 1 : 0.55) : 0.2;
 
   return (
     <View
@@ -74,19 +84,22 @@ export function LiveWaveform({ active, hearing = false }: Props) {
       accessibilityLabel="Voice waveform"
     >
       {phases.map((phase, i) => {
-        const height = phase.interpolate({
-          inputRange: [0, 1],
-          outputRange: [12 + (i % 3) * 2, 18 + 58 * energy],
-        });
+        const min = (12 + (i % 3) * 2) / BAR_MAX;
+        // scale = min + phase * (reach - min), reach = (18 + 58 * energy) / BAR_MAX
+        const reach = Animated.add(18 / BAR_MAX, Animated.multiply(energy, 58 / BAR_MAX));
+        const scaleY = Animated.add(
+          min,
+          Animated.multiply(phase, Animated.subtract(reach, min))
+        );
         return (
           <Animated.View
             key={i}
             style={[
               styles.bar,
               {
-                height,
                 backgroundColor: WAVE_COLORS[i % WAVE_COLORS.length],
                 opacity: active ? 1 : 0.45,
+                transform: [{ scaleY }],
               },
             ]}
           />
@@ -106,6 +119,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: 5,
+    height: BAR_MAX,
     borderRadius: 999,
   },
 });

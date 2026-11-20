@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
+import { BETA_FREE_ACCESS } from '../config/beta';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { navigationRef } from '../navigation/navigationRef';
@@ -70,7 +71,8 @@ export function EntitlementGateHost() {
   const locked = useRef(false);
 
   useEffect(() => {
-    if (!ready || !onboardingComplete || !hasPurchasesKey()) {
+    // Free beta: nobody is ever locked out for not subscribing.
+    if (BETA_FREE_ACCESS || !ready || !onboardingComplete || !hasPurchasesKey()) {
       locked.current = false;
       return;
     }

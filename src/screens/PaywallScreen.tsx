@@ -29,6 +29,7 @@ import {
 } from '../services/subscriptions';
 import { canRemindTrialEnd, scheduleTrialEndReminder } from '../services/trialReminder';
 import { userFacingError } from '../services/userFacingError';
+import { BETA_FREE_ACCESS } from '../config/beta';
 import { privacyPolicyUrl, termsOfUseUrl } from '../config/legal';
 import { accents, colors, fonts, noFakeBold, spacing, opticalLeft, typeScale } from '../theme';
 
@@ -71,6 +72,11 @@ export function PaywallScreen({ navigation, route }: Props) {
   };
 
   useEffect(() => {
+    // Free beta: no paywall, continue as if they had subscribed.
+    if (BETA_FREE_ACCESS) {
+      after();
+      return;
+    }
     void loadPlan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

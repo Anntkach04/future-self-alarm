@@ -295,7 +295,8 @@ const styles = StyleSheet.create({
   },
   /** Reserves 2 lines (all intro titles are 2 lines) so cards stay put. */
   headingBand: {
-    marginTop: 24,
+    // 40: more air between the progress bars and the heading (was 24).
+    marginTop: spacing.xl + spacing.xs,
     marginBottom: 8,
     minHeight: 44 * 2,
     justifyContent: 'flex-start',

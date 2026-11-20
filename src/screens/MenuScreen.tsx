@@ -1,3 +1,4 @@
+import { BETA_FREE_ACCESS } from '../config/beta';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
@@ -17,19 +18,22 @@ const ELEVENLABS_LOGO = require('../../assets/illustrations/elevenlabs-logo.png'
 const LOGO_H = 18;
 const LOGO_W = Math.round((LOGO_H * 2082) / 270);
 
-const ROWS: {
+type MenuRow = {
   title: string;
   route:
     | 'EditProfile'
     | 'Subscription'
     | 'VoiceSettings'
     | 'NotificationSettings';
-}[] = [
+};
+
+const ROWS: MenuRow[] = ([
   { title: 'Account', route: 'EditProfile' },
   { title: 'Subscription', route: 'Subscription' },
   { title: 'Voice', route: 'VoiceSettings' },
   { title: 'Notifications', route: 'NotificationSettings' },
-];
+  // Free beta: nothing to subscribe to, so no Subscription row.
+] as MenuRow[]).filter((row) => !(BETA_FREE_ACCESS && row.route === 'Subscription'));
 
 export function MenuScreen({ navigation }: Props) {
   const { resetOnboarding } = useOnboarding();

@@ -55,8 +55,43 @@ function assertVoiceAccess(req, voiceId, authOn) {
 function withOwnedVoice(user, voiceId) {
   const owned = ownedVoiceIds(user);
   const id = String(voiceId || '').trim();
-  if (id && !isPremadeVoice(id) && !owned.includes(id)) owned.push(id);
-  return { ...(user?.profile || {}), ownedVoiceIds: owned.slice(-20) };
+  const createdAt = { ...(user?.profile?.voiceCreatedAt || {}) };
+  if (id && !isPremadeVoice(id) && !owned.includes(id)) {
+    owned.push(id);
+    createdAt[id] = Date.now();
+  }
+  return {
+    ...(user?.profile || {}),
+    ownedVoiceIds: owned.slice(-20),
+    voiceCreatedAt: createdAt,
+  };
+}
+
+/**
+ * Clones made BEFORE the one the phone now uses: safe to delete (each one
+ * holds an ElevenLabs voice slot). Newer ones are kept, since a clone may
+ * still be finishing. Clones from before creation times were recorded count
+ * as older; if the kept voice itself has no time, nothing is pruned.
+ */
+function voicesOlderThan(user, keepId) {
+  const keep = String(keepId || '').trim();
+  const times = user?.profile?.voiceCreatedAt || {};
+  const keepAt = times[keep];
+  if (!keep || !keepAt) return [];
+  return ownedVoiceIds(user).filter(
+    (id) => id !== keep && !isPremadeVoice(id) && (times[id] || 0) < keepAt
+  );
+}
+
+/** Profile patch that forgets the given clones. */
+function withoutVoices(user, ids) {
+  const drop = new Set(ids);
+  const times = { ...(user?.profile?.voiceCreatedAt || {}) };
+  for (const id of drop) delete times[id];
+  return {
+    ownedVoiceIds: ownedVoiceIds(user).filter((id) => !drop.has(id)),
+    voiceCreatedAt: times,
+  };
 }
 
 module.exports = {
@@ -66,4 +101,6 @@ module.exports = {
   userCanUseVoice,
   assertVoiceAccess,
   withOwnedVoice,
+  voicesOlderThan,
+  withoutVoices,
 };

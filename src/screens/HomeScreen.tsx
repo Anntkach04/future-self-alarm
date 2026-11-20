@@ -16,6 +16,7 @@ import { AlarmPermissionNudge } from '../components/AlarmPermissionNudge';
 import { MoodCheckInCard } from '../components/MoodCheckInCard';
 import { NotificationPermissionNudge } from '../components/NotificationPermissionNudge';
 import { TextArrowButton } from '../components/TextArrowButton';
+import { BETA_FREE_ACCESS, BETA_LABEL } from '../config/beta';
 import { useAppSettings } from '../context/AppSettingsContext';
 import {
   formatAlarmDays,
@@ -82,6 +83,13 @@ export function HomeScreen({ navigation }: Props) {
         >
           <Image source={MENU} style={styles.menuIcon} resizeMode="contain" />
         </Pressable>
+        {BETA_FREE_ACCESS ? (
+          <View style={styles.betaPill} accessibilityLabel="Beta version">
+            <Text maxFontSizeMultiplier={1.2} style={styles.betaText}>
+              {BETA_LABEL}
+            </Text>
+          </View>
+        ) : null}
 
         <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.hello}>{title}</Text>
 
@@ -212,6 +220,22 @@ const styles = StyleSheet.create({
   menuIcon: {
     width: 28,
     height: 28,
+  },
+  /** Free-beta marker, top right, same row as the menu button. */
+  betaPill: {
+    position: 'absolute',
+    top: spacing.webTop + spacing.screenTop + 8,
+    right: spacing.inset,
+    backgroundColor: accents.lilac,
+    borderRadius: radii.chip,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xxs,
+  },
+  betaText: {
+    fontFamily: fonts.bodyMedium,
+    ...typeScale.footnote,
+    color: colors.text,
+    ...noFakeBold,
   },
   hello: {
     fontFamily: fonts.headingRegular,

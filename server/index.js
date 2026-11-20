@@ -17,6 +17,7 @@ const {
 const { generateMorningScript, generateMoodAdvice, getOpenAiKey } = require('./lib/openai');
 const {
   mixVoiceWithBed,
+  normalizeLoudness,
   mp3BufferToAlarmCaf,
   getFfmpegPath,
   listBeds,
@@ -45,7 +46,9 @@ const {
   isPremadeVoice,
   ownedVoiceIds,
   userCanUseVoice,
+  voicesOlderThan,
   withOwnedVoice,
+  withoutVoices,
 } = require('./lib/voiceAccess');
 const { rateLimit, HOUR, DAY } = require('./lib/rateLimit');
 const { requireEntitlement, entitlementEnforced } = require('./lib/entitlement');
@@ -368,6 +371,9 @@ app.patch('/api/me', requireAuth, async (req, res) => {
       profile: safeProfile,
       email,
     });
+    // The phone confirmed which voice it uses: free the slots of the clones
+    // it replaced (re-record used to leave every old voice behind).
+    if (safeVoiceId) void pruneReplacedVoices(user, safeVoiceId, req.userId);
     return res.json({ user: publicUser(user) });
   } catch (error) {
     console.error('me patch error', error);
@@ -410,6 +416,30 @@ app.delete('/api/me', requireAuth, async (req, res) => {
     return sendError(res, error);
   }
 });
+
+/** Best-effort and off the request path: ElevenLabs can be slow. */
+async function pruneReplacedVoices(user, keepId, userId) {
+  const old = voicesOlderThan(user, keepId);
+  if (!old.length) return;
+  const gone = [];
+  for (const id of old) {
+    try {
+      await deleteVoice(id);
+      gone.push(id);
+    } catch (error) {
+      // deleteVoice already treats 404 as done; anything else retries next time.
+      console.warn('old voice delete failed', error?.message || error);
+    }
+  }
+  if (!gone.length) return;
+  try {
+    const fresh = await getUser(userId);
+    if (fresh) await updateUser(userId, { profile: withoutVoices(fresh, gone) });
+    console.log(`[voices] freed ${gone.length} replaced voice slot(s) for ${userId}`);
+  } catch (error) {
+    console.warn('old voice bookkeeping failed', error?.message || error);
+  }
+}
 
 async function persistVoiceId(req, voiceId) {
   if (!req.userId || !voiceId) return;
@@ -515,9 +545,11 @@ app.post('/api/tts', requireAuth, limitSpeech, async (req, res) => {
       withTimestamps: wantTimes,
     });
     if (skipMix || wantTimes) {
+      // Raw TTS is very quiet (~-37 LUFS): bring it to a normal level.
+      const loud = await normalizeLoudness(Buffer.from(result.base64, 'base64'), -16);
       return res.json({
-        mimeType: result.mimeType,
-        base64: result.base64,
+        mimeType: 'audio/mpeg',
+        base64: loud.toString('base64'),
         words: result.words || null,
       });
     }

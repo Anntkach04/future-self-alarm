@@ -14,6 +14,16 @@ import { WEEKDAYS } from './AlarmsContext';
 
 const STORAGE_KEY = APP_STORAGE_KEYS.onboarding;
 
+/** Preset answers of the retired "What helps on hard mornings?" question. */
+const OLD_HARD_MORNING_ANSWERS = new Set([
+  'one step is enough.',
+  "you're not behind.",
+  'today can feel lighter.',
+  'good things are coming.',
+  'keep your promise to yourself.',
+  'soft mornings still count.',
+]);
+
 export type OnboardingAnswers = {
   name: string;
   morningFeelings: string[];
@@ -141,6 +151,14 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
               next.morningHabits = [];
             }
             delete (next as { alreadyProud?: string[] }).alreadyProud;
+            // The question changed from "What helps on hard mornings?"
+            // (affirmations) to "What gets you out of bed?". Old answers
+            // would show up as odd custom chips and mislead the AI.
+            if (Array.isArray(next.hardMornings)) {
+              next.hardMornings = next.hardMornings.filter(
+                (v) => !OLD_HARD_MORNING_ANSWERS.has(String(v).trim().toLowerCase())
+              );
+            }
             // bali bed removed — never keep it as the active under-voice track
             if (
               next.musicBedId === 'bali-morning' ||

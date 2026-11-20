@@ -5,4 +5,8 @@ export const IOS_BUILD_NUMBER = String(
   appJson?.expo?.ios?.buildNumber ?? '?'
 );
 
-export const BUILD_MARK = `b${IOS_BUILD_NUMBER}`;
+import { BETA_FREE_ACCESS, BETA_LABEL } from './beta';
+
+export const BUILD_MARK = BETA_FREE_ACCESS
+  ? `${BETA_LABEL} · b${IOS_BUILD_NUMBER}`
+  : `b${IOS_BUILD_NUMBER}`;

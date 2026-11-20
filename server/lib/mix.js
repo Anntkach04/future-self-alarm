@@ -269,6 +269,47 @@ function phoneNoiseOn() {
   return process.env.PHONE_NOISE !== 'off';
 }
 
+/**
+ * Even, phone-friendly loudness. Raw ElevenLabs audio arrives around -37 LUFS,
+ * which played back almost inaudibly on the preview screen. Duration and
+ * timing are unchanged (word timestamps stay valid).
+ */
+async function normalizeLoudness(buffer, targetLufs = -16) {
+  if (!getFfmpegPath()) return buffer;
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const inPath = path.join(os.tmpdir(), `fs-ln-in-${stamp}.mp3`);
+  const outPath = path.join(os.tmpdir(), `fs-ln-out-${stamp}.mp3`);
+  fs.writeFileSync(inPath, buffer);
+  try {
+    await runFfmpeg([
+      '-y',
+      '-i',
+      inPath,
+      '-af',
+      `loudnorm=I=${targetLufs}:TP=-1.5:LRA=11`,
+      '-ar',
+      '44100',
+      '-c:a',
+      'libmp3lame',
+      '-b:a',
+      '192k',
+      outPath,
+    ]);
+    return fs.readFileSync(outPath);
+  } catch (error) {
+    console.warn('[mix] loudness normalize failed', error?.message || error);
+    return buffer;
+  } finally {
+    for (const f of [inPath, outPath]) {
+      try {
+        fs.unlinkSync(f);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
 async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
   if (!getFfmpegPath()) {
     return { buffer: voiceBuffer, mixed: false, reason: 'no_ffmpeg' };
@@ -348,7 +389,7 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
 
     if (!bedFile) {
       return {
-        buffer: fs.readFileSync(outPath),
+        buffer: await normalizeLoudness(fs.readFileSync(outPath), -18),
         mixed: true,
         reason: 'phone',
         bedFile: null,
@@ -392,7 +433,8 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
       '192k',
       withBedPath,
     ]);
-    const buffer = fs.readFileSync(withBedPath);
+    // Whole mix up to a clear level (it sat near -24 LUFS); balance unchanged.
+    const buffer = await normalizeLoudness(fs.readFileSync(withBedPath), -18);
     try {
       fs.unlinkSync(withBedPath);
     } catch {
@@ -541,6 +583,7 @@ async function denoiseVoiceBuffer(inputBuffer, ext = 'm4a') {
 }
 
 module.exports = {
+  normalizeLoudness,
   mixVoiceWithBed,
   mp3BufferToAlarmCaf,
   denoiseVoiceBuffer,

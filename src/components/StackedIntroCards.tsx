@@ -388,7 +388,8 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 32,
     color: '#1A1A1A',
-    width: 240,
+    // Full inner width of the card, the same text box on every card.
+    width: '100%',
     ...(Platform.OS === 'web'
       ? ({ fontWeight: '400', fontSynthesis: 'none' } as object)
       : { fontWeight: '400' as const }),

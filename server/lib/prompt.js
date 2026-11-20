@@ -171,7 +171,7 @@ Content:
 - Mention the weekday only if it is given AND it adds something.
 - Banned words and phrases: "you've got this", "best version of yourself", "future self", "lean into", "hold space", "journey", "manifest", "rise and shine", "seize the day", "new day", "embrace", "unfold", "magic", "tranquil", "savor", "cozy", "radiant", "vibrant", "take on the day", "let's get moving", "fresh start".
 
-Rhythm reference (for pace and pauses ONLY, never copy its words or structure): "Hey. It's me. No rush. Feel the bed for a second, then sit up when you're ready. Water first. Then we'll see."
+Rhythm reference (for pace and pauses ONLY, never copy its words or structure): "Hey. It's me. No rush. One slow breath, then sit up. Water first. Then we'll see."
 - No emoji, no stage directions, no quotes around the script, no dashes of any kind (the text is also shown on screen). Plain spoken English, or the user's language if their answers are clearly not English.
 - Return ONLY the spoken script.`;
 

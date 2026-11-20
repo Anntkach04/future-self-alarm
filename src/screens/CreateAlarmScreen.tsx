@@ -142,7 +142,8 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
           await adoptMessageForNextRing(
             { id: alarmId, ...payload, audioUri: uri, scriptText: text },
             { mp3Uri: uri, text },
-            today ? { label: today.moodLabel, note: today.note } : null
+            today ? { label: today.moodLabel, note: today.note } : null,
+            voiceId
           );
         }
 

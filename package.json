@@ -46,7 +46,8 @@
     "export:web": "expo export -p web",
     "server": "bash scripts/start-server.sh",
     "server:install": "cd server && npm install",
-    "dev": "concurrently -k -n api,app -c cyan,magenta \"npm run server\" \"expo start --web\""
+    "dev": "concurrently -k -n api,app -c cyan,magenta \"npm run server\" \"expo start --web\"",
+    "test": "node --require sucrase/register --test src/services/__tests__/*.test.ts"
   },
   "private": true
 }

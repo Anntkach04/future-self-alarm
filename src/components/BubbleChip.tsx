@@ -25,6 +25,49 @@ type Props = {
 
 const FLOAT_MS = 2400;
 
+/**
+ * One bob for every chip on screen. Each chip used to start its own loop
+ * after its own entrance (staggered), so rows drifted out of phase and the
+ * vertical gap between them kept changing. Shared value = constant gap.
+ */
+const SHARED_FLOAT = new Animated.Value(0);
+let floatUsers = 0;
+let sharedLoop: Animated.CompositeAnimation | null = null;
+
+function acquireSharedFloat() {
+  floatUsers += 1;
+  if (!sharedLoop) {
+    sharedLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(SHARED_FLOAT, {
+          toValue: 1,
+          duration: FLOAT_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(SHARED_FLOAT, {
+          toValue: 0,
+          duration: FLOAT_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    sharedLoop.start();
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    floatUsers = Math.max(0, floatUsers - 1);
+    if (floatUsers === 0 && sharedLoop) {
+      sharedLoop.stop();
+      sharedLoop = null;
+      SHARED_FLOAT.setValue(0);
+    }
+  };
+}
+
 /** Visible immediately; spring + float are motion-only (opacity always 1). */
 export function BubbleChip({
   label = '',
@@ -39,9 +82,9 @@ export function BubbleChip({
 }: Props) {
   const scale = useRef(new Animated.Value(0.86)).current;
   const rise = useRef(new Animated.Value(14)).current;
-  const float = useRef(new Animated.Value(0)).current;
+  const float = SHARED_FLOAT;
   const startDelay = Math.min(Math.max(delay, 0), 160);
-  const floatLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const floatLoop = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     scale.setValue(0.86);
@@ -74,33 +117,14 @@ export function BubbleChip({
       if (!finished) return;
       scale.setValue(1);
       rise.setValue(0);
-      floatLoop.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(float, {
-            toValue: 1,
-            // Same period for every chip: rows bob together, so the gap
-            // between them never visibly changes.
-            duration: FLOAT_MS,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(float, {
-            toValue: 0,
-            // Same period for every chip: rows bob together, so the gap
-            // between them never visibly changes.
-            duration: FLOAT_MS,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      floatLoop.current.start();
+      floatLoop.current = acquireSharedFloat();
     });
 
     return () => {
       clearTimeout(failsafe);
       enter.stop();
-      floatLoop.current?.stop();
+      floatLoop.current?.();
+      floatLoop.current = null;
       scale.setValue(1);
       rise.setValue(0);
     };

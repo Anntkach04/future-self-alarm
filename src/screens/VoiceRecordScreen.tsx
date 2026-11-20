@@ -25,14 +25,10 @@ import { buildVoiceScriptLines } from '../data/voiceScript';
 import { useSmartDictaphone } from '../hooks/useSmartDictaphone';
 import { RootStackParamList } from '../navigation/types';
 import { cloneOnboardingVoice } from '../services/cloneOnboardingVoice';
-import {
-  displayWords,
-  isLineFullyLit,
-  spokenDisplayCount,
-} from '../services/speechMatch';
 import { playAllSetSound } from '../services/uiSounds';
 import { ensureAiConsent } from '../services/aiConsent';
 import * as Haptics from 'expo-haptics';
+import { LineTransition } from '../services/karaokeTransition';
 import { userFacingError } from '../services/userFacingError';
 import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
@@ -71,7 +67,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const currentLine = lines[lineIndex] ?? '';
   const advanceLineRef = useRef<() => boolean>(() => false);
   /** Line index whose auto-advance is already scheduled. */
-  const lineHoldRef = useRef(-1);
   // Do NOT advance from the STT callback — it fired on the first matches.
   // Interval below waits until the line is nearly red + a short quiet settle.
   const dictaphone = useSmartDictaphone(currentLine);
@@ -98,12 +93,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
   const readOpacity = useRef(new Animated.Value(1)).current;
   /** State (not ref) so advance gate opens after line change. */
   const [lineReady, setLineReady] = useState(false);
-  const quietSinceRef = useRef(0);
-  /** Ms the mic heard speech on the current line (fallback when STT is deaf). */
-  const voicedMsRef = useRef(0);
-  const lastVoicedAtRef = useRef(0);
-  const lastSpokenCountRef = useRef(0);
-  const lastSpokenAtRef = useRef(0);
   /** One-shot: success leave armed — never re-arm until re-record. */
   const successLeaveArmedRef = useRef(false);
   const navigationRef = useRef(navigation);
@@ -280,17 +269,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
   lineIndexRef.current = lineIndex;
 
   // Live STT signals as refs — interval must NOT restart on every meter tick.
-  const spokenLiveRef = useRef(0);
-  const wordCountLiveRef = useRef(0);
   const heardEnoughLiveRef = useRef(false);
-  const quietLiveRef = useRef(true);
-  const currentLineLiveRef = useRef(currentLine);
   const lineReadyLiveRef = useRef(false);
-  spokenLiveRef.current = dictaphone.spokenCount;
-  wordCountLiveRef.current = dictaphone.wordCount;
   heardEnoughLiveRef.current = dictaphone.lineHeardEnough;
-  quietLiveRef.current = dictaphone.quiet;
-  currentLineLiveRef.current = currentLine;
 
   const advanceLine = useCallback(() => {
     if (finishingRef.current) return false;
@@ -343,11 +324,6 @@ export function VoiceRecordScreen({ navigation }: Props) {
     advancingRef.current = false;
     setLineReady(false);
     lineReadyLiveRef.current = false;
-    quietSinceRef.current = 0;
-    lastSpokenCountRef.current = 0;
-    lastSpokenAtRef.current = Date.now();
-    voicedMsRef.current = 0;
-    lastVoicedAtRef.current = 0;
     const wait = lineIndex === 0 ? 40 : 80;
     const t = setTimeout(() => {
       setLineReady(true);
@@ -361,108 +337,27 @@ export function VoiceRecordScreen({ navigation }: Props) {
   }, [lineReady]);
 
   /**
-   * Auto-advance after the chunk is heard (STT). Interval uses refs only —
-   * deps are recording + complete so metering ticks don't recreate it.
+   * Line change: exactly LINE_HOLD_MS after the line's final word is
+   * accepted, never on a pause or a timer alone, never twice, cancelled if
+   * recognition withdraws the final word (see karaokeTransition).
    */
+  const transitionRef = useRef<LineTransition | null>(null);
+  if (!transitionRef.current) {
+    transitionRef.current = new LineTransition((fromLine) => {
+      if (lineIndexRef.current !== fromLine) return;
+      if (finishingRef.current) return;
+      advanceLineRef.current();
+    }, LINE_HOLD_MS);
+  }
   useEffect(() => {
-    if (!recording || complete) return;
-    const id = setInterval(() => {
-      if (!lineReadyLiveRef.current) return;
-      if (advancingRef.current || finishingRef.current) return;
-      const idx = lineIndexRef.current;
-      if (doneLineRef.current === idx) return;
-
-      const spoken = spokenLiveRef.current;
-      const words = wordCountLiveRef.current;
-      const line = currentLineLiveRef.current;
-      const displayTotal = displayWords(line).length;
-      const lit = spokenDisplayCount(line, spoken);
-      const now = Date.now();
-
-      if (spoken > lastSpokenCountRef.current) {
-        lastSpokenCountRef.current = spoken;
-        lastSpokenAtRef.current = now;
-      }
-
-      // Time the person has actually been talking on this line (mic level),
-      // so the line can still move on when recognition hears nothing.
-      if (!quietLiveRef.current) {
-        voicedMsRef.current += 90;
-        lastVoicedAtRef.current = now;
-      }
-
-      // Never cut someone off mid-line: the line moves on only once it is
-      // finished, and then after a one-second beat (LINE_HOLD_MS).
-      const holdThenAdvance = () => {
-        if (lineHoldRef.current === idx) return;
-        lineHoldRef.current = idx;
-        setTimeout(() => {
-          if (lineIndexRef.current === idx) advanceLineRef.current();
-        }, LINE_HOLD_MS);
-      };
-
-      const quietFor = quietLiveRef.current
-        ? now - Math.max(lastVoicedAtRef.current, lastSpokenAtRef.current)
-        : 0;
-
-      // Every word heard.
-      if (words > 0 && spoken >= words) {
-        holdThenAdvance();
-        return;
-      }
-
-      // Almost every word (STT often drops the last one) and they stopped.
-      const almost =
-        isLineFullyLit(line, spoken) ||
-        (words >= 3 && spoken >= words - 1) ||
-        (displayTotal >= 3 && lit >= displayTotal - 1) ||
-        (words >= 5 && spoken / words >= 0.78);
-      if (almost && quietLiveRef.current && quietFor >= 400) {
-        holdThenAdvance();
-        return;
-      }
-
-      // Recognition heard (almost) nothing, but they clearly read the line:
-      // enough talking for its length, then a pause. The pause is the beat.
-      const neededMs = Math.max(1500, words * 260);
-      if (
-        spoken <= 1 &&
-        voicedMsRef.current >= neededMs &&
-        quietLiveRef.current &&
-        quietFor >= 900
-      ) {
-        if (lineHoldRef.current === idx) return;
-        lineHoldRef.current = idx;
-        advanceLineRef.current();
-      }
-    }, 90);
-    return () => clearInterval(id);
-  }, [complete, recording]);
-
-  // Quiet-time failsafe: heard something, then stalled → advance.
-  useEffect(() => {
-    if (!recording || complete) return;
-    const id = setInterval(() => {
-      if (!lineReadyLiveRef.current) return;
-      if (advancingRef.current || finishingRef.current) return;
-      const idx = lineIndexRef.current;
-      if (doneLineRef.current === idx) return;
-      const spoken = spokenLiveRef.current;
-      const words = wordCountLiveRef.current;
-      if (words < 2 || spoken < 1) return;
-      if (spoken / Math.max(words, 1) < 0.45) return;
-      const now = Date.now();
-      if (now - lastSpokenAtRef.current < 1400) return;
-      if (!quietLiveRef.current) return;
-      // Hold the finished line for a beat so it reads as done, then move on.
-      if (lineHoldRef.current === idx) return;
-      lineHoldRef.current = idx;
-      setTimeout(() => {
-        if (lineIndexRef.current === idx) advanceLineRef.current();
-      }, LINE_HOLD_MS);
-    }, 200);
-    return () => clearInterval(id);
-  }, [complete, recording]);
+    const t = transitionRef.current!;
+    if (!recording || complete || !lineReady) {
+      t.cancel();
+      return;
+    }
+    t.update(lineIndex, dictaphone.lineComplete);
+  }, [complete, dictaphone.lineComplete, lineIndex, lineReady, recording]);
+  useEffect(() => () => transitionRef.current?.cancel(), []);
 
   const leftRef = useRef(false);
   const goToPreview = useCallback(() => {
@@ -560,7 +455,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
     setCloneReady(false);
     resetCompleteVisuals();
     setLineIndex(0);
-    lineHoldRef.current = -1;
+    transitionRef.current?.reset();
     doneLineRef.current = -1;
     advancingRef.current = false;
     lineOpacity.setValue(1);
@@ -597,8 +492,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
       setCloneError(null);
       resetCompleteVisuals();
       setLineIndex(0);
-      lineHoldRef.current = -1;
-    lineHoldRef.current = -1;
+      transitionRef.current?.reset();
       doneLineRef.current = -1;
       lineOpacity.setValue(1);
       lineY.setValue(0);
@@ -613,7 +507,7 @@ export function VoiceRecordScreen({ navigation }: Props) {
     finishingRef.current = false;
     resetCompleteVisuals();
     setLineIndex(0);
-    lineHoldRef.current = -1;
+    transitionRef.current?.reset();
     doneLineRef.current = -1;
     lineOpacity.setValue(1);
     lineY.setValue(0);

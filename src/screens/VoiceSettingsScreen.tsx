@@ -11,6 +11,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import { BackButton } from '../components/BackButton';
 import { cleanScript } from '../components/KaraokeScript';
 import { Screen } from '../components/Screen';
+import { TextArrowButton } from '../components/TextArrowButton';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import { ensureGuestSession } from '../services/apiAuth';
@@ -196,15 +197,16 @@ export function VoiceSettingsScreen({ navigation }: Props) {
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        {/* The app's own button (pill, serif label, arrow), in the quiet
+            tonal color: secondary to the play control above. Goes straight
+            to the karaoke recorder; the old voice stays until the new one
+            is cloned. */}
+        <TextArrowButton
+          wide
+          label="re-record voice"
+          color={colors.chip}
           onPress={() => navigation.navigate('VoiceRecord')}
-          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-        >
-          <Text maxFontSizeMultiplier={1.3} style={styles.secondaryLabel}>
-            re-record voice
-          </Text>
-        </Pressable>
+        />
       </View>
     </Screen>
   );
@@ -273,18 +275,6 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 'auto',
     paddingBottom: spacing.md,
-    alignItems: 'center',
-  },
-  secondary: {
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    justifyContent: 'center',
-  },
-  secondaryLabel: {
-    fontFamily: fonts.bodyMedium,
-    ...typeScale.body,
-    color: colors.text,
-    textDecorationLine: 'underline',
-    ...noFakeBold,
+    alignItems: 'stretch',
   },
 });
