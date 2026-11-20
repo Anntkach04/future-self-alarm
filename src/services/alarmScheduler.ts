@@ -345,11 +345,11 @@ export async function ensureAlarmKitReady(force = false) {
 export async function hasAlarmKitPermission() {
   if (Platform.OS !== 'ios') return false;
   if (alarmKitReady === true) return true;
-  if (alarmKitReady === false) {
-    // Re-probe after Settings — may flip to authorized without a new sheet.
-    return ensureAlarmKitReady(true);
-  }
-  return false;
+  // Unknown (fresh launch) or false: ask iOS. Once the person has decided,
+  // requestAuthorization just returns the status without a sheet. It used
+  // to answer "no" while unknown, so "One step left" showed on every launch
+  // even with alarms allowed.
+  return ensureAlarmKitReady(true);
 }
 
 /** One AlarmKit alarm per ring (each with its own sound); ids kept here. */

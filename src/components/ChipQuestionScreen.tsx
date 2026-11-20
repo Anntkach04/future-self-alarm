@@ -15,6 +15,7 @@ import { BubbleEnter } from './BubbleEnter';
 import { RoundArrowButton } from './RoundArrowButton';
 import { type BubbleOption } from '../data/onboardingOptions';
 import {
+  chipMetrics,
   colors,
   fonts,
   headingClipFix,
@@ -23,7 +24,7 @@ import {
   spacing, opticalLeft } from '../theme';
 /** 4/8 grid: the same gap between every chip row on every screen. */
 /** Same vertical gap between chip rows on every chip screen (4/8 grid). */
-const ROW_GAP = spacing.xs;
+const ROW_GAP = chipMetrics.rowGap;
 
 type Props = {
   question: string;

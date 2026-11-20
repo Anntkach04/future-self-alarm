@@ -104,7 +104,7 @@ export function HomeScreen({ navigation }: Props) {
         <View style={[styles.block, !hasAlarms && styles.blockEmpty]}>
           {allPaused ? (
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.pausedBanner}>
-              All alarms are off. Turn one on if you want Future You to wake
+              All alarms are off. Turn one on if you want future you to wake
               you tomorrow.
             </Text>
           ) : null}
@@ -162,7 +162,7 @@ export function HomeScreen({ navigation }: Props) {
                 Set your first wake
               </Text>
               <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.emptyAlarms}>
-                Future You will call you by name tomorrow morning.
+                Future you will call you by name tomorrow morning.
               </Text>
             </View>
           )}

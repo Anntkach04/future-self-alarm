@@ -205,10 +205,11 @@ export function VoicePreviewScreen({ navigation }: Props) {
       return;
     }
     if (!notificationsReady || !alarmKitReady) {
-      navigation.replace('AlarmPermission');
+      // Push (not replace): Back from the next step returns here.
+      navigation.navigate('AlarmPermission');
       return;
     }
-    navigation.replace('Paywall');
+    navigation.navigate('Paywall');
   };
 
   return (

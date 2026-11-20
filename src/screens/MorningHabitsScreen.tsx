@@ -12,7 +12,6 @@ export function MorningHabitsScreen({ navigation }: Props) {
   return (
     <ChipQuestionScreen
       question={"What do you want\nto do in the morning?"}
-      subtitle="We’ll remind you of the habits you chose."
       options={MORNING_HABIT_OPTIONS}
       selected={answers.morningHabits}
       onToggle={toggleMorningHabit}

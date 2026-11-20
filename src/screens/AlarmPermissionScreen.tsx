@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
 import { FeatureList, type FeatureItem } from '../components/FeatureList';
 import { Screen } from '../components/Screen';
@@ -11,8 +11,10 @@ import { RootStackParamList } from '../navigation/types';
 import {
   ensureAlarmKitReady,
   ensureNotificationPermissions,
+  hasAlarmKitPermission,
   hasNotificationPermissions,
 } from '../services/alarmScheduler';
+import { openAppSettings, withTimeout } from '../services/appSettings';
 import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlarmPermission'>;
@@ -37,6 +39,7 @@ export function AlarmPermissionScreen({ navigation }: Props) {
   // Already allowed earlier (e.g. reinstall): show the check right away.
   useEffect(() => {
     void (async () => {
+      if (await hasAlarmKitPermission()) setAlarm(true);
       if (await hasNotificationPermissions()) setNotif(true);
       else {
         const current = await Notifications.getPermissionsAsync().catch(() => null);
@@ -48,27 +51,34 @@ export function AlarmPermissionScreen({ navigation }: Props) {
   const goNext = () => {
     if (leaving.current) return;
     leaving.current = true;
-    navigation.replace('Paywall');
+    // Push: Back from the paywall returns to this step, not three steps back.
+    navigation.navigate('Paywall');
   };
 
   const allow = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const notifOk = await ensureNotificationPermissions();
+      const notifOk = await withTimeout(ensureNotificationPermissions(), 5000, false);
       setNotif(notifOk);
       setNotificationsReady(notifOk);
-      const alarmOk = await ensureAlarmKitReady(true);
+      const alarmOk = await withTimeout(ensureAlarmKitReady(true), 5000, false);
       setAlarm(alarmOk);
       setAlarmKitReady(alarmOk);
       // Let the checks land before moving on.
-      if (notifOk && alarmOk) setTimeout(goNext, 700);
+      if (notifOk && alarmOk) {
+        setTimeout(goNext, 700);
+        return;
+      }
+      // iOS shows its own sheet only once per app. If either was declined
+      // before, nothing appears, so open this app's page in Settings.
+      await openAppSettings();
     } finally {
       setBusy(false);
     }
   };
 
-  const openSettings = () => void Linking.openSettings().catch(() => undefined);
+  const openSettings = () => void openAppSettings();
 
   const items: FeatureItem[] = [
     {

@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   AppState,
-  Linking,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { openAppSettings, withTimeout } from '../services/appSettings';
 import { useAppSettings } from '../context/AppSettingsContext';
 import {
   ensureNotificationPermissions,
@@ -53,18 +52,14 @@ export function NotificationPermissionNudge({ placement = 'bottom' }: Props) {
     if (busy) return;
     setBusy(true);
     try {
-      const ok = await ensureNotificationPermissions();
+      const ok = await withTimeout(ensureNotificationPermissions(), 5000, false);
       setNotificationsReady(ok);
       if (ok) {
         setNeeds(false);
         return;
       }
-      // Already denied once — open Settings so they can flip Alerts on.
-      if (Platform.OS === 'ios') {
-        await Linking.openURL('app-settings:');
-      } else {
-        await Linking.openSettings();
-      }
+      // Already denied once: open Settings so they can flip Alerts on.
+      await openAppSettings();
     } finally {
       setBusy(false);
     }

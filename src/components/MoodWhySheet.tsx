@@ -78,7 +78,7 @@ export function MoodWhySheet({ mood, name, visible, onClose, onSaved }: Props) {
               <>
                 <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.question}>Why do you feel that way?</Text>
                 <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.moodPurpose}>
-                  Future You will use this for tomorrow’s alarm only. After one
+                  Future you will use this for tomorrow’s alarm only. After one
                   wake, it resets.
                 </Text>
                 <TextInput maxFontSizeMultiplier={1.5}

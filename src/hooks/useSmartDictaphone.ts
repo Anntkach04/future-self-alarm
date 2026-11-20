@@ -402,10 +402,10 @@ export function useSmartDictaphone(
         await startAvRecording();
         if (!speech) {
           setError(
-            'Recording without live script check. Use Next line to continue.'
+            'Live script check is off. Just read each line, then tap continue.'
           );
         } else {
-          setError('Speech recognition unavailable. Use Next line to continue.');
+          setError('Live script check is off. Just read each line, then tap continue.');
         }
       }
 

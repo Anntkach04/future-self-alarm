@@ -8,7 +8,7 @@ import {
   Text,
   ViewStyle,
 } from 'react-native';
-import { colors, fonts, noFakeLight, radii } from '../theme';
+import { chipMetrics, colors, fonts, noFakeLight, radii } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
@@ -196,9 +196,8 @@ const styles = StyleSheet.create({
   chip: {
     borderRadius: radii.chip,
     // Same density on every chip screen (goals / habits / tone / …).
-    paddingHorizontal: 16,
-    // 12 + 24 + 12 = 48pt: compact, still above the 44pt tap minimum.
-    paddingVertical: 12,
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
     borderWidth: 0,
     alignSelf: 'flex-start',
     flexShrink: 0,
@@ -216,8 +215,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.body,
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     flexShrink: 0,
     ...(Platform.OS === 'web'
       ? ({ whiteSpace: 'nowrap' } as object)

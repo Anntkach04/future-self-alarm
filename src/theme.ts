@@ -154,6 +154,19 @@ export const spacing = {
  * body 17/24 · subhead 15/20 · footnote 13/16.
  * Serif (Instrument) for display/titles, Inter for the rest.
  */
+/**
+ * One chip size everywhere (onboarding questions, profile edit, Account
+ * summary): 12 + 20 + 12 = 44 pt tall, 15 pt label, 16 pt between rows.
+ */
+export const chipMetrics = {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  fontSize: 15,
+  lineHeight: 20,
+  rowGap: 16,
+  columnGap: 8,
+} as const;
+
 export const typeScale = {
   display: { fontSize: 48, lineHeight: 56 },
   title1: { fontSize: 40, lineHeight: 44 },

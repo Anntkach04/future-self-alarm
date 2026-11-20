@@ -1,7 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { mutedColorForLabel } from '../theme';
-import { fonts } from '../theme';
-import { colors } from '../theme';
+import { chipMetrics, colors, fonts, mutedColorForLabel } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
@@ -50,20 +48,24 @@ export function RecapPills({ items, colors: itemColors, onPress, emptyLabel = '-
 }
 
 const styles = StyleSheet.create({
+  // Same chip as the onboarding questions (theme chipMetrics).
   pills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    rowGap: chipMetrics.rowGap,
+    columnGap: chipMetrics.columnGap,
     marginBottom: 8,
   },
   pill: {
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderCurve: 'continuous',
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
   },
   pillText: {
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     color: colors.text,
   },
   empty: {

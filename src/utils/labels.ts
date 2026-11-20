@@ -5,5 +5,5 @@ export function uiLabel(text: string) {
     .trim()
     .toLowerCase()
     .replace(/(^|[^a-z'])i(?=$|[^a-z'])/g, '$1I')
-    .replace(/(^|[^a-z'])i'(m|ve|ll|d)\b/g, "$1I'$2");
+    .replace(/(^|[^a-z'’])i(['’])(m|ve|ll|d)\b/g, "$1I$2$3");
 }

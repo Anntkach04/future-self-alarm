@@ -1,13 +1,19 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
 import { formatDateKey } from '../utils/dates';
-import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { BackButton } from '../components/BackButton';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { RootStackParamList } from '../navigation/types';
-import { ensureNotificationPermissions } from '../services/alarmScheduler';
+import {
+  ensureAlarmKitReady,
+  ensureNotificationPermissions,
+  hasAlarmKitPermission,
+} from '../services/alarmScheduler';
+import { openAppSettings, withTimeout } from '../services/appSettings';
 import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationSettings'>;
@@ -16,32 +22,51 @@ export function NotificationSettingsScreen({}: Props) {
   const { notificationsReady, setNotificationsReady, setPauseDays, pauseUntil, isPaused } =
     useAppSettings();
 
-  const refresh = async () => {
-    const ok = await ensureNotificationPermissions();
-    setNotificationsReady(ok);
-    if (!ok && Platform.OS === 'ios') {
-      await Linking.openURL('app-settings:');
-    } else if (!ok) {
-      await Linking.openSettings();
+  const { alarmKitReady, setAlarmKitReady } = useAppSettings();
+  const allOn = notificationsReady && alarmKitReady;
+
+  /**
+   * Missing permission: ask (iOS shows its sheet only the first time), and
+   * if it stays off, open this app's page in Settings. Everything on: the
+   * button just opens Settings, to change or turn things off there. (It
+   * used to do nothing at all when alerts were already on.)
+   */
+  const onPress = async () => {
+    if (allOn) {
+      await openAppSettings();
+      return;
     }
-    const current = await Notifications.getPermissionsAsync();
-    setNotificationsReady(
-      Boolean(
-        current.granted ||
-          current.ios?.status ===
-            Notifications.IosAuthorizationStatus.PROVISIONAL
+    const notif = await withTimeout(ensureNotificationPermissions(), 5000, false);
+    setNotificationsReady(notif);
+    const alarms = await withTimeout(ensureAlarmKitReady(true), 5000, false);
+    setAlarmKitReady(alarms);
+    if (!notif || !alarms) await openAppSettings();
+  };
+
+  // Settings may have changed while the app was in the background.
+  useEffect(() => {
+    void hasAlarmKitPermission().then(setAlarmKitReady);
+    void Notifications.getPermissionsAsync().then((current) =>
+      setNotificationsReady(
+        Boolean(
+          current.granted ||
+            current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+        )
       )
     );
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Screen>
       <BackButton style={styles.back} />
       <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>Notifications</Text>
       <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.body}>
-        {notificationsReady
-          ? 'Alerts are on.'
-          : 'Alerts are off, so your mornings can’t ring yet.'}
+        {allOn
+          ? 'Alarms and alerts are on.'
+          : !alarmKitReady
+            ? 'Alarms are off, so your voice can’t wake you yet.'
+            : 'Alerts are off, so your mornings can’t ring yet.'}
       </Text>
 
       <View style={styles.block}>
@@ -73,11 +98,17 @@ export function NotificationSettingsScreen({}: Props) {
       </View>
 
       <View style={styles.actions}>
+        <Text maxFontSizeMultiplier={1.4} style={styles.hint}>
+          {allOn
+            ? 'To change or turn them off, use iPhone Settings.'
+            : 'Turn them on so Future Self can wake you.'}
+        </Text>
         <TextArrowButton
-            wide
-          label={notificationsReady ? 'open system settings' : 'allow alerts'}
-          color={accents.lime}
-          onPress={() => void refresh()}
+          wide
+          label={allOn ? 'iphone settings' : 'turn on alarms'}
+          // Primary only when something needs fixing.
+          color={allOn ? colors.chip : accents.lime}
+          onPress={() => void onPress()}
         />
       </View>
     </Screen>
@@ -86,6 +117,14 @@ export function NotificationSettingsScreen({}: Props) {
 
 const styles = StyleSheet.create({
   back: { marginTop: 0 },
+  hint: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,

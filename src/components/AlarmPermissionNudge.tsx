@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   AppState,
-  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { openAppSettings, withTimeout } from '../services/appSettings';
 import { useAppSettings } from '../context/AppSettingsContext';
 import {
   ensureAlarmKitReady,
@@ -56,17 +56,16 @@ export function AlarmPermissionNudge({ placement = 'bottom' }: Props) {
     if (busy) return;
     setBusy(true);
     try {
-      const ok = await ensureAlarmKitReady(true);
+      // iOS shows the Allow sheet only once. After a "Don't Allow" (or a
+      // decision kept from an earlier install) it returns at once, so take
+      // the person to this app's page in Settings to switch Alarms on.
+      const ok = await withTimeout(ensureAlarmKitReady(true), 5000, false);
       setAlarmKitReady(ok);
       if (ok) {
         setNeeds(false);
         return;
       }
-      if (Platform.OS === 'ios') {
-        await Linking.openURL('app-settings:');
-      } else {
-        await Linking.openSettings();
-      }
+      await openAppSettings();
     } finally {
       setBusy(false);
     }

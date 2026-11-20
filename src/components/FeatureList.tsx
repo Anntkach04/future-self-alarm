@@ -40,8 +40,10 @@ function Icon({ name }: { name: FeatureIcon }) {
     case 'bell':
       return (
         <Svg width={22} height={22} viewBox="0 0 22 22">
+          {/* Flared bell with a clapper and a top knob: the old rounded
+              dome on a base read as a microphone. */}
           <Path
-            d="M5.5 15.5V10a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H4l1.5-1.5ZM9 19a2 2 0 0 0 4 0"
+            d="M11 2.5v1.3M11 3.8c-3 0-5 2.4-5 5.4v3.1c0 1-.6 1.9-1.5 2.7l-.7.6h14.4l-.7-.6c-.9-.8-1.5-1.7-1.5-2.7V9.2c0-3-2-5.4-5-5.4ZM9.2 18.2a1.9 1.9 0 0 0 3.6 0"
             {...common}
           />
         </Svg>

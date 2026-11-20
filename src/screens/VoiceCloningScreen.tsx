@@ -48,7 +48,7 @@ export function VoiceCloningScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safe} edges={['bottom', 'left', 'right']}>
         <View style={styles.page}>
           <LoadingLabel text="Cloning your voice" style={styles.quiet} />
-          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.eta}>This usually takes about 1-2 minutes</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.eta}>This usually takes a minute or two</Text>
         </View>
       </SafeAreaView>
     );
@@ -64,8 +64,8 @@ export function VoiceCloningScreen({ navigation }: Props) {
           {error}
         </Text>
         <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.hint}>
-          Check Wi-Fi, that the voice server is online, then try again or
-          re-record in a quiet room.
+          Check your connection and try again, or re-record in a quiet
+          room.
         </Text>
 
         <View style={styles.footer}>

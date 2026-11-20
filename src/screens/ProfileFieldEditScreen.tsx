@@ -31,16 +31,15 @@ type FieldConfig = {
 
 const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
   futureSelf: {
-    question: 'Write 3 of your\nmain goals in life',
+    question: 'What are you\nworking toward?',
     options: FUTURE_SELF_OPTIONS,
     getSelected: (a) => a.futureSelf,
     onToggle: (ctx, value) => ctx.toggleFutureSelf(value),
     onAddCustom: (ctx, value) => ctx.addFutureSelf(value),
-    addPlaceholder: 'Write a goal in your own words',
+    addPlaceholder: 'Your goal',
   },
   morningHabits: {
     question: "What do you want\nto do in the morning?",
-    subtitle: 'We’ll remind you of the habits you chose.',
     options: MORNING_HABIT_OPTIONS,
     getSelected: (a) => a.morningHabits,
     onToggle: (ctx, value) => ctx.toggleMorningHabit(value),
@@ -56,7 +55,7 @@ const FIELDS: Record<ProfileFieldKey, FieldConfig> = {
     addPlaceholder: 'Your own words',
   },
   voiceStyle: {
-    question: 'What tone should\nmornings have?',
+    question: 'How should future\nyou sound?',
     options: VOICE_STYLE_OPTIONS,
     getSelected: (a) => (a.voiceStyle ? [a.voiceStyle] : []),
     onToggle: (ctx, value) => ctx.setVoiceStyle(value),
