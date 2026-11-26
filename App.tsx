@@ -33,6 +33,7 @@ installGlobalErrorReporting();
 import { DeferredMount } from './src/components/DeferredMount';
 import { AlarmAudioRepairHost } from './src/components/AlarmAudioRepairHost';
 import { EveningRegenHost } from './src/components/EveningRegenHost';
+import { NudgeHost } from './src/components/NudgeHost';
 import { PauseAlarmsHost } from './src/components/PauseAlarmsHost';
 import { ProfileSyncHost } from './src/components/ProfileSyncHost';
 
@@ -102,6 +103,7 @@ export default function App() {
                     <SoftStatusBanners />
                     <AlarmAudioRepairHost />
                     <EveningRegenHost />
+                    <NudgeHost />
                     <PauseAlarmsHost />
                     <ProfileSyncHost />
                     <SessionRefreshHost />

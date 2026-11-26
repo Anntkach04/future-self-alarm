@@ -36,5 +36,6 @@ export type RootStackParamList = {
   ProfileFieldEdit: { field: ProfileFieldKey };
   Subscription: undefined;
   VoiceSettings: undefined;
+  MusicSounds: undefined;
   NotificationSettings: undefined;
 };

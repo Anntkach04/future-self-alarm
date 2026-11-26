@@ -13,6 +13,7 @@ import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { RootStackParamList } from '../navigation/types';
 import { buildAlarmAudioForId } from '../services/alarmGeneration';
+import { moodForAlarm } from '../services/moodForAlarm';
 import {
   ensureNotificationPermissions,
   scheduleAlarmNotifications,
@@ -34,8 +35,11 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     markOnboardingComplete,
     setVoiceId,
     clearVoice,
+    setCountdownEnding,
   } = useOnboarding();
-  const { today } = useMoodCheckIn();
+  // A changed countdown means the saved message no longer matches.
+  const initialCountdownRef = useRef(answers.countdownEnding);
+  const { today, previous } = useMoodCheckIn();
   const { isPaused, setNotificationsReady } = useAppSettings();
   const editingId = route.params?.alarmId;
   const existing = useMemo(
@@ -49,7 +53,6 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     existing?.days ?? (answers.wakeDays.length ? answers.wakeDays : [...WEEKDAYS])
   );
   const [snoozeOn, setSnoozeOn] = useState(existing?.snoozeEnabled !== false);
-  const [vibrate, setVibrate] = useState(existing?.vibrate ?? true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,12 +60,10 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
   const minuteRef = useRef(minute);
   const daysRef = useRef(days);
   const snoozeOnRef = useRef(snoozeOn);
-  const vibrateRef = useRef(vibrate);
   hourRef.current = hour;
   minuteRef.current = minute;
   daysRef.current = days;
   snoozeOnRef.current = snoozeOn;
-  vibrateRef.current = vibrate;
 
   const leaveAfterSave = (then: 'home' | 'another') => {
     if (then === 'another') {
@@ -86,12 +87,14 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
     days: number[];
     snoozeEnabled: boolean;
     snoozeMinutes: number;
-    vibrate: boolean;
   }) => {
     void (async () => {
-      const reuseUri = existing?.audioUri ?? null;
+      const reuseUri =
+        answers.countdownEnding === initialCountdownRef.current
+          ? (existing?.audioUri ?? null)
+          : null;
       let uri = reuseUri;
-      let text = existing?.scriptText ?? null;
+      let text = reuseUri ? (existing?.scriptText ?? null) : null;
 
       // Ring is scheduled right away — with the current voice if we have one,
       // else the bundled fallback tone — so a slow or failed voice build can
@@ -126,9 +129,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
             alarmId,
             voiceId,
             answers,
-            mood: today
-              ? { label: today.moodLabel, note: today.note }
-              : null,
+            mood: moodForAlarm(today, previous),
           });
           uri = built.uri;
           text = built.text;
@@ -142,7 +143,7 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
           await adoptMessageForNextRing(
             { id: alarmId, ...payload, audioUri: uri, scriptText: text },
             { mp3Uri: uri, text },
-            today ? { label: today.moodLabel, note: today.note } : null,
+            moodForAlarm(today, previous),
             voiceId
           );
         }
@@ -197,7 +198,6 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
         days: daysRef.current.length ? [...daysRef.current] : [...WEEKDAYS],
         snoozeEnabled: snoozeOnRef.current,
         snoozeMinutes: 10,
-        vibrate: vibrateRef.current,
       };
 
       const alarmId = existing ? existing.id : addAlarm(payload).id;
@@ -275,17 +275,14 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <View style={styles.rowCopy}>
-            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>Vibrate</Text>
+            <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.rowTitle}>Count me up</Text>
             <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.rowSub}>
-              Buzz when your future self starts talking
+              Your voice ends with “I’m counting now. Five, four, three, two, one. Up.”
             </Text>
           </View>
           <Switch
-            value={vibrate}
-            onValueChange={(v) => {
-              vibrateRef.current = v;
-              setVibrate(v);
-            }}
+            value={answers.countdownEnding}
+            onValueChange={setCountdownEnding}
             trackColor={{ false: colors.border, true: colors.text }}
           />
         </View>

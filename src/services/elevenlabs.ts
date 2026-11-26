@@ -177,6 +177,9 @@ export type VoiceApiHealth = {
   elevenLabs?: boolean;
   openai?: boolean;
   musicBed?: boolean;
+  /** Music tracks and nature sounds this server has (for the picker). */
+  beds?: { id: string; label: string; available: boolean }[];
+  sounds?: { id: string; label: string; available: boolean }[];
   ffmpeg?: boolean;
   readyToGenerate?: boolean;
 };
@@ -432,7 +435,7 @@ export async function generateMorningAlarm(params: {
     musicBedId?: string;
   };
   /** Yesterday/today mood — server uses for THIS wake only. */
-  mood?: { label: string; note?: string };
+  mood?: { label: string; note?: string; intention?: string | null; followUp?: string | null };
   voiceLevel?: number;
   bedLevel?: number;
   /** When set, server speaks this text instead of generating a new script. */
@@ -471,6 +474,8 @@ export async function generateMorningAlarm(params: {
           ? {
               moodForTomorrow: params.mood.label,
               moodNoteForTomorrow: params.mood.note || '',
+              intentionForTomorrow: params.mood.intention || '',
+              yesterdayFollowUp: params.mood.followUp || '',
             }
           : {}),
         ...(typeof params.voiceLevel === 'number'

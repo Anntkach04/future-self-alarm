@@ -44,6 +44,9 @@ server/assets/beds/*.mp3
 server/assets/beds/*.m4a
 server/assets/beds/*.wav
 server/assets/beds/*.ogg
+# Our own ElevenLabs-generated sounds/music are small and ours: keep them in git
+!server/assets/beds/sound-*.mp3
+!server/assets/beds/music-*.mp3
 
 # local user store when DATABASE_URL is unset
 server/data/

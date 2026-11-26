@@ -6,9 +6,9 @@ import {
 import * as FileSystem from 'expo-file-system/legacy';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import { StyleSheet, Text, View } from 'react-native';
 import { BackButton } from '../components/BackButton';
+import { PlayVoiceButton, VoiceLevelBars } from '../components/VoicePlayback';
 import { cleanScript } from '../components/KaraokeScript';
 import { Screen } from '../components/Screen';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -24,19 +24,11 @@ import {
   fonts,
   noFakeBold,
   opticalLeft,
-  radii,
   spacing,
   typeScale,
 } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceSettings'>;
-
-const BAR_COUNT = 32;
-/** Fixed, voice-like bar profile (not random per render). */
-const BARS = Array.from({ length: BAR_COUNT }, (_, i) => {
-  const v = 0.35 + 0.65 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37));
-  return Math.round(8 + v * 24);
-});
 
 function playableUri(uri: string) {
   if (/^(file:|https?:|blob:)/.test(uri)) return uri;
@@ -65,6 +57,8 @@ export function VoiceSettingsScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  /** Current player, for the level bars (state so they re-subscribe). */
+  const [player, setPlayer] = useState<AudioPlayer | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
   const subRef = useRef<{ remove: () => void } | null>(null);
 
@@ -73,6 +67,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
     subRef.current = null;
     playerRef.current?.remove();
     playerRef.current = null;
+    setPlayer(null);
   };
   useEffect(() => () => detach(), []);
 
@@ -116,6 +111,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
       detach();
       const player = createAudioPlayer({ uri: playableUri(uri) }, { updateInterval: 100 });
       playerRef.current = player;
+      setPlayer(player);
       subRef.current = player.addListener('playbackStatusUpdate', (status) => {
         setCurrentTime(Number(status.currentTime) || 0);
         if (status.duration > 0) setDuration(Number(status.duration));
@@ -134,7 +130,6 @@ export function VoiceSettingsScreen({ navigation }: Props) {
     }
   };
 
-  const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
   const status = busy
     ? 'Loading…'
     : playing
@@ -147,60 +142,28 @@ export function VoiceSettingsScreen({ navigation }: Props) {
     <Screen>
       <BackButton style={styles.back} />
       <Text maxFontSizeMultiplier={1.2} style={styles.title}>
-        Voice
+        Your voice
       </Text>
-
-      <View style={styles.card}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={playing ? 'Stop your voice' : 'Play your voice'}
-          onPress={() => void play()}
-          style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}
-        >
-          <Svg width={20} height={20} viewBox="0 0 20 20">
-            {playing ? (
-              <>
-                <Rect x={4} y={3} width={4} height={14} rx={1} fill={colors.text} />
-                <Rect x={12} y={3} width={4} height={14} rx={1} fill={colors.text} />
-              </>
-            ) : (
-              <Path d="M6 3.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L7.5 2.64A1 1 0 0 0 6 3.5Z" fill={colors.text} />
-            )}
-          </Svg>
-        </Pressable>
-        <View style={styles.trackColumn}>
-          <View style={styles.bars} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            {BARS.map((h, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.bar,
-                  { height: h },
-                  i / BAR_COUNT < progress && styles.barPlayed,
-                ]}
-              />
-            ))}
-          </View>
-          <Text maxFontSizeMultiplier={1.3} style={styles.status}>
-            {status}
-          </Text>
-        </View>
-      </View>
-
       <Text maxFontSizeMultiplier={1.4} style={styles.caption}>
         This is the voice that wakes you up every morning.
       </Text>
-      {error ? (
-        <Text maxFontSizeMultiplier={1.4} style={styles.error}>
-          {error}
+
+      <View style={styles.stage}>
+        <VoiceLevelBars player={player} playing={playing} />
+        <PlayVoiceButton playing={playing} busy={busy} onPress={() => void play()} />
+        <Text maxFontSizeMultiplier={1.3} style={styles.status}>
+          {status}
         </Text>
-      ) : null}
+        {error ? (
+          <Text maxFontSizeMultiplier={1.4} style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
+      </View>
 
       <View style={styles.actions}>
-        {/* The app's own button (pill, serif label, arrow), in the quiet
-            tonal color: secondary to the play control above. Goes straight
-            to the karaoke recorder; the old voice stays until the new one
-            is cloned. */}
+        {/* Goes straight to the karaoke recorder; the old voice stays until
+            the new one is cloned. */}
         <TextArrowButton
           wide
           label="re-record voice"
@@ -220,60 +183,33 @@ const styles = StyleSheet.create({
     ...opticalLeft(40),
     color: colors.text,
     marginTop: spacing.xs,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xs,
     ...noFakeBold,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.chip,
-    borderRadius: radii.card,
-    borderCurve: 'continuous',
-    padding: spacing.lg,
-  },
-  playButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: accents.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: { transform: [{ scale: 0.97 }] },
-  trackColumn: { flex: 1, gap: spacing.xs },
-  bars: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 32,
-  },
-  bar: {
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(26, 26, 26, 0.25)',
-  },
-  barPlayed: { backgroundColor: colors.text },
-  status: {
-    fontFamily: fonts.body,
-    ...typeScale.footnote,
-    color: colors.textMuted,
-    fontVariant: ['tabular-nums'],
   },
   caption: {
     fontFamily: fonts.body,
     ...typeScale.subhead,
     color: colors.textMuted,
-    marginTop: spacing.md,
+  },
+  stage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+  },
+  status: {
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
   error: {
     fontFamily: fonts.body,
     ...typeScale.subhead,
     color: accents.danger,
-    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   actions: {
-    marginTop: 'auto',
     paddingBottom: spacing.md,
     alignItems: 'stretch',
   },

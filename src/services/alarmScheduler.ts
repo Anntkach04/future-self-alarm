@@ -28,7 +28,7 @@ const SCHEDULE_AHEAD = 7;
 /** iOS keeps only the soonest 64 pending local notifications per app. */
 const IOS_PENDING_LIMIT = 64;
 /** Leave room for test wakes / one-off snoozes. */
-const NOTIFICATION_HEADROOM = 4;
+const NOTIFICATION_HEADROOM = 12; // also evening nudges + "are you up?" checks
 const MAX_SCHEDULE_AHEAD = 14;
 
 /** Enabled alarms that may need the notification path (set on reschedule). */
@@ -91,7 +91,6 @@ export async function stopAlarmPlayback() {
 }
 
 async function stopPlayback() {
-  stopRingHaptics();
   if (!playback) return;
   try {
     playback.pause();
@@ -102,40 +101,19 @@ async function stopPlayback() {
   playback = null;
 }
 
-let ringingHaptic: ReturnType<typeof setInterval> | null = null;
-
-function stopRingHaptics() {
-  if (ringingHaptic) {
-    clearInterval(ringingHaptic);
-    ringingHaptic = null;
-  }
+/** Snooze texts get firmer with each round, never guilt-tripping. */
+function snoozeBody(step: number) {
+  if (step <= 1) return 'Still here. Your voice again.';
+  if (step === 2) return 'Second time. Remember what you promised yourself.';
+  if (step === 3) return 'You deserve this morning. Feet on the floor, now.';
+  return 'I’m not giving up on you. Sit up, I’ll wait.';
 }
 
-async function pulseAlarmHaptics() {
-  try {
-    const Haptics = await import('expo-haptics');
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-  } catch {
-    /* optional */
-  }
-}
-
-/** Play wake audio once (no loop). Optional vibrate pulses while it starts. */
-export async function playAlarmAudio(
-  uri: string,
-  opts?: { vibrate?: boolean }
-) {
+/** Play wake audio once (no loop). The app never vibrates for alarms. */
+export async function playAlarmAudio(uri: string) {
   if (!uri || Platform.OS === 'web') return;
   await configureAudioForAlarm();
   await stopPlayback();
-  stopRingHaptics();
-  if (opts?.vibrate !== false) {
-    void pulseAlarmHaptics();
-    ringingHaptic = setInterval(() => {
-      void pulseAlarmHaptics();
-    }, 1400);
-    setTimeout(stopRingHaptics, 8000);
-  }
   const player = createAudioPlayer({ uri });
   player.loop = false;
   player.volume = 1;
@@ -171,7 +149,7 @@ export async function ensureNotificationPermissions() {
       name: 'Future Self alarms',
       importance: Notifications.AndroidImportance.MAX,
       bypassDnd: true,
-      vibrationPattern: [0, 250, 250, 250],
+      enableVibrate: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       sound: 'default',
     });
@@ -428,8 +406,9 @@ async function scheduleOneWakeNotification(params: {
   scriptText?: string | null;
   snoozeEnabled: boolean;
   snoozeMinutes: number;
-  vibrate?: boolean;
   kind: 'wake' | 'snooze';
+  /** 1 = first snooze, 2 = second… (the text gets firmer, never harsh). */
+  snoozeStep?: number;
 }) {
   await Notifications.scheduleNotificationAsync({
     identifier: params.identifier,
@@ -437,12 +416,11 @@ async function scheduleOneWakeNotification(params: {
       title: 'Future You',
       body:
         params.kind === 'snooze'
-          ? 'Still here. Your voice again.'
+          ? snoozeBody(params.snoozeStep ?? 1)
           : params.body,
       sound: params.sound,
       priority: Notifications.AndroidNotificationPriority.MAX,
       interruptionLevel: 'timeSensitive',
-      vibrate: [0, 400, 200, 400, 200, 400],
       data: {
         type: 'future-self-alarm',
         alarmId: params.alarmId,
@@ -450,7 +428,6 @@ async function scheduleOneWakeNotification(params: {
         scriptText: params.scriptText || undefined,
         snoozeEnabled: params.snoozeEnabled,
         snoozeMinutes: params.snoozeMinutes,
-        vibrate: (params as { vibrate?: boolean }).vibrate !== false,
         kind: params.kind,
       },
     },
@@ -549,7 +526,6 @@ async function scheduleNotificationFallback(alarm: Alarm, plan: RingPlan[]) {
     typeof alarm.snoozeMinutes === 'number' && alarm.snoozeMinutes > 0
       ? alarm.snoozeMinutes
       : 10;
-  const vibrateOn = alarm.vibrate !== false;
 
   // Main wakes in parallel. Snooze chain only when explicitly enabled.
   // Last pre-scheduled wake: ask the user to open the app so the window
@@ -569,7 +545,6 @@ async function scheduleNotificationFallback(alarm: Alarm, plan: RingPlan[]) {
       scriptText: ring.text,
       snoozeEnabled: snoozeOn,
       snoozeMinutes: snoozeMin,
-      vibrate: vibrateOn,
       kind: 'wake',
     })
   );
@@ -591,8 +566,8 @@ async function scheduleNotificationFallback(alarm: Alarm, plan: RingPlan[]) {
           scriptText: first.text,
           snoozeEnabled: true,
           snoozeMinutes: snoozeMin,
-          vibrate: vibrateOn,
           kind: 'snooze',
+          snoozeStep: step,
         })
       );
     }
@@ -882,13 +857,9 @@ async function handleAlarmNotification(
   const uri = typeof data.audioUri === 'string' ? data.audioUri : null;
   const rawText = (data as { scriptText?: unknown }).scriptText;
   const scriptText = typeof rawText === 'string' ? rawText : null;
-  const vibrate = (data as { vibrate?: boolean }).vibrate !== false;
   // Lock-screen / notification already played the CAF. Do NOT play the MP3
   // again — that felt like the same message repeating.
   await stopPlayback();
-  if (vibrate) {
-    void pulseAlarmHaptics();
-  }
   emitRinging({ alarmId: data.alarmId, audioUri: uri, scriptText });
 }
 
@@ -984,7 +955,6 @@ export async function snoozeRingingAlarm(
   minutes = 10
 ) {
   await stopPlayback();
-  stopRingHaptics();
   if (Platform.OS !== 'web') {
     // Drop any pre-baked +10/+20 chain for this morning, then one clean snooze.
     await cancelNearTermSnoozes(alarmId);

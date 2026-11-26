@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import { formatDateKey } from '../utils/dates';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Switch } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { BackButton } from '../components/BackButton';
 import { Screen } from '../components/Screen';
@@ -22,7 +22,8 @@ export function NotificationSettingsScreen({}: Props) {
   const { notificationsReady, setNotificationsReady, setPauseDays, pauseUntil, isPaused } =
     useAppSettings();
 
-  const { alarmKitReady, setAlarmKitReady } = useAppSettings();
+  const { alarmKitReady, setAlarmKitReady, eveningNudges, setEveningNudges } =
+    useAppSettings();
   const allOn = notificationsReady && alarmKitReady;
 
   /**
@@ -97,6 +98,20 @@ export function NotificationSettingsScreen({}: Props) {
         </View>
       </View>
 
+      <View style={[styles.block, styles.toggleRow]}>
+        <View style={styles.toggleCopy}>
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.blockTitle}>Evening reminders</Text>
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.blockBody}>
+            A short note in the evening: tell me about your day, or set tomorrow’s alarm.
+          </Text>
+        </View>
+        <Switch
+          value={eveningNudges}
+          onValueChange={setEveningNudges}
+          trackColor={{ false: colors.border, true: colors.text }}
+        />
+      </View>
+
       <View style={styles.actions}>
         <Text maxFontSizeMultiplier={1.4} style={styles.hint}>
           {allOn
@@ -116,6 +131,8 @@ export function NotificationSettingsScreen({}: Props) {
 }
 
 const styles = StyleSheet.create({
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  toggleCopy: { flex: 1 },
   back: { marginTop: 0 },
   hint: {
     fontFamily: fonts.body,

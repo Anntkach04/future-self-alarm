@@ -171,6 +171,15 @@ export function useSmartDictaphone(
       androidIntentOptions: {
         EXTRA_LANGUAGE_MODEL: 'free_form',
       },
+      // The library defaults iOS to "measurement" mode, which turns off mic
+      // gain: clone samples came out ~20 dB too quiet and the clone copied
+      // that. "default" keeps normal gain. No Bluetooth: its mic is
+      // phone-call quality, so the clone sample uses the built-in mic.
+      iosCategory: {
+        category: 'playAndRecord',
+        categoryOptions: ['defaultToSpeaker'],
+        mode: 'default',
+      },
       recordingOptions: usesNativePersistRef.current
         ? { persist: true }
         : undefined,

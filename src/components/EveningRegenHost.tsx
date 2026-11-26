@@ -6,6 +6,7 @@ import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { askAiConsentOnceForExistingUser } from '../services/aiConsent';
 import { maybeEveningRegen } from '../services/eveningRegen';
+import { moodForAlarm } from '../services/moodForAlarm';
 import { resolveVoiceId } from '../services/defaultVoice';
 
 let regenInFlight = false;
@@ -21,17 +22,19 @@ const CHECK_EVERY_MS = 15 * 60 * 1000;
 export function EveningRegenHost() {
   const { alarms, updateAlarm, ready } = useAlarms();
   const { answers, voice } = useOnboarding();
-  const { today } = useMoodCheckIn();
+  const { today, previous } = useMoodCheckIn();
   const { isPaused } = useAppSettings();
 
   const alarmsRef = useRef(alarms);
   const answersRef = useRef(answers);
   const todayRef = useRef(today);
+  const previousRef = useRef(previous);
   const updateAlarmRef = useRef(updateAlarm);
   const pausedRef = useRef(isPaused);
   alarmsRef.current = alarms;
   answersRef.current = answers;
   todayRef.current = today;
+  previousRef.current = previous;
   updateAlarmRef.current = updateAlarm;
   pausedRef.current = isPaused;
 
@@ -43,7 +46,7 @@ export function EveningRegenHost() {
     const run = () => {
       if (regenInFlight) return;
       regenInFlight = true;
-      const mood = todayRef.current;
+      const mood = moodForAlarm(todayRef.current, previousRef.current);
       // Existing users never saw consent v2, so every message was the fixed
       // template. Ask once before building, so this ring is already personal.
       void askAiConsentOnceForExistingUser()
@@ -53,7 +56,7 @@ export function EveningRegenHost() {
             alarms: alarmsRef.current,
             voiceId,
             answers: answersRef.current,
-            mood: mood ? { label: mood.moodLabel, note: mood.note } : null,
+            mood,
             paused: pausedRef.current,
             updateAlarm: updateAlarmRef.current,
           })
@@ -82,6 +85,8 @@ export function EveningRegenHost() {
     isPaused,
     today?.moodLabel,
     today?.note,
+    today?.intention,
+    previous?.outcome,
     // Created / edited / toggled alarms need their week stocked.
     alarms
       .map((a) => `${a.id}:${a.hour}:${a.minute}:${a.days.join('')}:${a.enabled}`)

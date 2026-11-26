@@ -11,6 +11,7 @@ import { TEMP_ELEVENLABS_TTS_ONLY } from '../config/devBypass';
 import { LoadingLabel } from '../components/LoadingLabel';
 import { cloneOnboardingVoice } from '../services/cloneOnboardingVoice';
 import { colors, fonts, noFakeBold, spacing } from '../theme';
+import { userFacingError } from '../services/userFacingError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceCloning'>;
 
@@ -33,7 +34,7 @@ export function VoiceCloningScreen({ navigation }: Props) {
       setPreview(result.previewPath, result.previewText);
       navigation.replace('VoicePreview');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Voice cloning failed');
+      setError(userFacingError(e, 'Voice cloning failed. Try again.'));
     }
   }, [answers, navigation, setPreview, setVoiceId, voice.sampleUri]);
 

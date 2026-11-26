@@ -24,6 +24,9 @@ const OLD_HARD_MORNING_ANSWERS = new Set([
   'soft mornings still count.',
 ]);
 
+/** asleep: turns it off and falls back asleep; snooze: snoozes again and again; phone: grabs the phone first; low: gets up but feels bad; fine: none. */
+export type WakeStruggle = 'asleep' | 'snooze' | 'phone' | 'low' | 'fine';
+
 export type OnboardingAnswers = {
   name: string;
   morningFeelings: string[];
@@ -33,6 +36,16 @@ export type OnboardingAnswers = {
   voiceStyle: string | null;
   messageLength: string | null;
   musicBedId: string;
+  /** Nature sound under the voice: 'sound-birds' | 'sound-waves' | 'sound-rain' | 'none'. */
+  wakeSoundId: string;
+  /** When each goal was last confirmed (ISO); goals get re-checked every couple of weeks. */
+  goalChecks: Record<string, string>;
+  /** What usually goes wrong after the alarm: shapes messages and the "are you up?" check. */
+  wakeStruggle: WakeStruggle | null;
+  /** Goals they marked as done, newest first: tomorrow's message can be proud of them. */
+  goalsDone: { goal: string; date: string }[];
+  /** End every wake message with "I'm counting now. Five… One. Up." */
+  countdownEnding: boolean;
   wakeHour: number;
   wakeMinute: number;
   wakeDays: number[];
@@ -64,6 +77,13 @@ type OnboardingContextValue = {
   setVoiceStyle: (value: string) => void;
   setMessageLength: (value: string) => void;
   setMusicBedId: (value: string) => void;
+  setCountdownEnding: (value: boolean) => void;
+  setWakeSoundId: (value: string) => void;
+  /** 'keep' = still on it; 'done' = achieved (moves to goalsDone). */
+  checkGoal: (goal: string, result: 'keep' | 'done') => void;
+  setWakeStruggle: (value: WakeStruggle) => void;
+  /** First time a goal is seen: start its re-check clock. */
+  seedGoalChecks: (dates: Record<string, string>) => void;
   setWakeTime: (hour: number, minute: number) => void;
   setWakeDays: (days: number[]) => void;
   setVoiceSample: (uri: string, durationSec: number) => void;
@@ -90,6 +110,11 @@ const defaultAnswers: OnboardingAnswers = {
   voiceStyle: null,
   messageLength: 'About 30 seconds',
     musicBedId: 'soft-calm',
+  countdownEnding: false,
+  wakeSoundId: 'sound-birds',
+  goalChecks: {},
+  wakeStruggle: null,
+  goalsDone: [],
   wakeHour: 7,
   wakeMinute: 0,
   wakeDays: [...WEEKDAYS],
@@ -304,6 +329,28 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         })),
       setMusicBedId: (value) =>
         setAnswers((prev) => ({ ...prev, musicBedId: value })),
+      setCountdownEnding: (value) =>
+        setAnswers((prev) => ({ ...prev, countdownEnding: value })),
+      setWakeSoundId: (value) =>
+        setAnswers((prev) => ({ ...prev, wakeSoundId: value })),
+      checkGoal: (goal, result) =>
+        setAnswers((prev) => {
+          const now = new Date().toISOString();
+          if (result === 'keep') {
+            return { ...prev, goalChecks: { ...prev.goalChecks, [goal]: now } };
+          }
+          const { [goal]: _gone, ...rest } = prev.goalChecks ?? {};
+          return {
+            ...prev,
+            futureSelf: prev.futureSelf.filter((g) => g !== goal),
+            goalChecks: rest,
+            goalsDone: [{ goal, date: now }, ...(prev.goalsDone ?? [])].slice(0, 20),
+          };
+        }),
+      setWakeStruggle: (value) =>
+        setAnswers((prev) => ({ ...prev, wakeStruggle: value })),
+      seedGoalChecks: (dates) =>
+        setAnswers((prev) => ({ ...prev, goalChecks: { ...dates, ...prev.goalChecks } })),
       setWakeTime: (hour, minute) =>
         setAnswers((prev) => ({ ...prev, wakeHour: hour, wakeMinute: minute })),
       setWakeDays: (days) =>

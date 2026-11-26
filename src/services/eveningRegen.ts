@@ -31,17 +31,24 @@ import {
  * - Agreeing to personal AI scripts rebuilds rings built from the template.
  * - Never touch a ring in the last MIN_LEAD_MINUTES before it.
  */
-export const PREPARE_WINDOW_HOURS = 10;
+/**
+ * A check-in counts for the next ring if that ring is within this many
+ * hours. It used to be 10: a mood written at 20:00 for a 7:00 alarm was
+ * outside it and, unless the app was opened again later, never used.
+ */
+export const PREPARE_WINDOW_HOURS = 24;
 const MIN_LEAD_MINUTES = 10;
 const MAX_BUILDS_PER_RING = 2;
 
-export function moodKeyOf(mood: { label: string; note?: string } | null) {
-  return mood ? `${mood.label}|${mood.note ?? ''}` : '';
+export function moodKeyOf(mood: { label: string; note?: string; intention?: string | null; followUp?: string | null } | null) {
+  return mood
+    ? `${mood.label}|${mood.note ?? ''}|${mood.intention ?? ''}|${mood.followUp ?? ''}`
+    : '';
 }
 
 /** What the built message depended on: mood (next ring only) + AI consent. */
 async function prepKeyOf(
-  mood: { label: string; note?: string } | null,
+  mood: { label: string; note?: string; intention?: string | null; followUp?: string | null } | null,
   voiceId: string | null
 ) {
   const { hasAiConsent } = await import('./aiConsent');
@@ -50,7 +57,7 @@ async function prepKeyOf(
   return `${moodKeyOf(mood)}|ai:${(await hasAiConsent()) ? 1 : 0}|v:${voiceId ?? ''}`;
 }
 
-type Mood = { label: string; note?: string } | null;
+type Mood = { label: string; note?: string; intention?: string | null; followUp?: string | null } | null;
 
 function ringMood(index: number, ringMs: number, mood: Mood, now: number) {
   const inWindow = ringMs - now <= PREPARE_WINDOW_HOURS * 60 * 60 * 1000;

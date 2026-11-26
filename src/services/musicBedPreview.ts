@@ -46,13 +46,17 @@ async function createPlayer(uri: string) {
   return next;
 }
 
-export async function toggleMusicBedPreview(bedId: string) {
+/** Play / stop a music track (`beds`) or nature sound (`sounds`) from the server. */
+export async function toggleMusicBedPreview(
+  bedId: string,
+  kind: 'beds' | 'sounds' = 'beds'
+) {
   if (playingId === bedId) {
     await stopMusicBedPreview();
     return;
   }
   await stopMusicBedPreview();
-  const url = `${getApiUrl()}/api/beds/${encodeURIComponent(bedId)}/preview`;
+  const url = `${getApiUrl()}/api/${kind}/${encodeURIComponent(bedId)}/preview`;
 
   let next: AudioPlayer;
   try {

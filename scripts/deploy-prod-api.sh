@@ -5,9 +5,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVER="$ROOT/server"
 
-if [ ! -f "$SERVER/assets/beds/bali-morning.m4a" ]; then
-  echo "Missing music beds in server/assets/beds/ — need them in the image."
+if [ ! -f "$SERVER/assets/beds/sound-birds.mp3" ]; then
+  echo "Missing sounds in server/assets/beds/ — need them in the image."
   exit 1
+fi
+if [ ! -f "$SERVER/assets/beds/soft-calm.m4a" ]; then
+  echo "Note: soft-calm.m4a is not here. Its source is unknown; the server"
+  echo "falls back to the generated music-*.mp3 tracks or no music."
 fi
 
 if ! command -v railway >/dev/null 2>&1; then

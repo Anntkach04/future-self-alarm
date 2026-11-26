@@ -14,6 +14,13 @@ export function userFacingError(
   if (/voice_not_found|voice with voice_id|A voice with voice_id/i.test(text)) {
     return 'Your cloned voice is missing. Re-record your voice, then try again.';
   }
+  // Our own pre-clone check (server/lib/mix.js assessCloneTake).
+  if (/sample_too_quiet/i.test(text)) {
+    return 'Your recording is too quiet. Hold the phone a little closer and record again.';
+  }
+  if (/sample_too_noisy/i.test(text)) {
+    return 'There is too much background noise. Find a quiet room and record again.';
+  }
   // ElevenLabs' safety filter flagged the clone (it sometimes flags a
   // real person's own voice). A fresh, natural recording usually passes.
   if (/violate|requires verification|voice_verification|detected_unusual/i.test(text)) {

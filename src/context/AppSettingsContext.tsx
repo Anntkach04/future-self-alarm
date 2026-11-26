@@ -32,6 +32,8 @@ export type AppSettings = {
    * Store subscription. Remove once sandbox purchases work end-to-end.
    */
   softAccessUnlocked: boolean;
+  /** Evening reminders: write how the day was / set tomorrow's alarm. */
+  eveningNudges: boolean;
 };
 
 type AppSettingsContextValue = AppSettings & {
@@ -45,6 +47,7 @@ type AppSettingsContextValue = AppSettings & {
   setAlarmKitReady: (ready: boolean) => void;
   setSessionReauth: (needs: boolean, reason?: string | null) => void;
   setSoftAccessUnlocked: (unlocked: boolean) => void;
+  setEveningNudges: (on: boolean) => void;
   /** Wipe settings in memory (after account delete). */
   resetAppSettings: () => void;
   isPaused: boolean;
@@ -63,6 +66,7 @@ const defaults: AppSettings = {
   sessionNeedsReauth: false,
   sessionReauthReason: null,
   softAccessUnlocked: false,
+  eveningNudges: true,
 };
 
 function todayKey() {
@@ -170,6 +174,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         })),
       setSoftAccessUnlocked: (softAccessUnlocked) =>
         setSettings((prev) => ({ ...prev, softAccessUnlocked })),
+      setEveningNudges: (eveningNudges) =>
+        setSettings((prev) => ({ ...prev, eveningNudges })),
       resetAppSettings: () => setSettings({ ...defaults }),
     }),
     [settings, ready, isPaused]

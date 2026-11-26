@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LogoSpinner } from '../components/LogoSpinner';
-import { BUILD_MARK } from '../config/build';
 import { useOnboarding } from '../context/OnboardingContext';
 import { useSplashChrome } from '../layout/SplashChromeContext';
 import { RootStackParamList } from '../navigation/types';
@@ -173,9 +172,6 @@ export function WelcomeScreen({ navigation }: Props) {
             <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.title, { opacity: 0.8 }]}>
               Welcome to the{'\n'}future self alarm
             </Text>
-            {__DEV__ ? (
-              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buildMark}>{BUILD_MARK}</Text>
-            ) : null}
           </Animated.View>
         </Animated.View>
     </View>
@@ -213,12 +209,5 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#1A1A1A',
     ...noFakeBold,
-  },
-  buildMark: {
-    marginTop: 4,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: '#1A1A1A66',
-    textAlign: 'center',
   },
 });

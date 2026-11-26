@@ -18,7 +18,6 @@ import {
   CARD_COLORS,
   StackedIntroCards,
 } from '../components/StackedIntroCards';
-import { BUILD_MARK } from '../config/build';
 import { INTRO_SLIDES } from '../data/onboardingOptions';
 import { RootStackParamList } from '../navigation/types';
 import { useSplashChrome } from '../layout/SplashChromeContext';
@@ -273,9 +272,6 @@ export function IntroCarouselScreen({ navigation }: Props) {
             <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.welcomeTitle}>
               Welcome to the{'\n'}future self alarm
             </Text>
-            {__DEV__ ? (
-              <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out" style={styles.buildMark}>{BUILD_MARK}</Text>
-            ) : null}
           </Animated.View>
         </Animated.View>
       ) : null}
@@ -354,12 +350,5 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     paddingHorizontal: 40,
     ...noFakeBold,
-  },
-  buildMark: {
-    marginTop: 8,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: '#1A1A1A66',
-    textAlign: 'center',
   },
 });

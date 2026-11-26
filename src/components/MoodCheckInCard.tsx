@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
-import { fetchMoodAdvice } from '../services/moodAdvice';
+import { useOnboarding } from '../context/OnboardingContext';
+import { dailyMoodExample } from '../data/moodExample';
+import { useAlarms, type Alarm } from '../context/AlarmsContext';
+import { nextAlarmOccurrences } from '../services/alarmScheduler';
 import {
   accents,
   colors,
@@ -12,7 +15,7 @@ import {
   typeScale,
 } from '../theme';
 import { ForwardArrow } from './ForwardArrow';
-import { LoadingLabel } from './LoadingLabel';
+import { MoodWhySheet } from './MoodWhySheet';
 
 const MAX_CHARS = 160;
 
@@ -22,31 +25,42 @@ const MAX_CHARS = 160;
  * mood the next ring is built from).
  */
 export function MoodCheckInCard({ name }: { name: string }) {
-  const { today, saveCheckIn } = useMoodCheckIn();
+  const { today, previous, saveCheckIn, setOutcome } = useMoodCheckIn();
+  const { answers, addFutureSelf } = useOnboarding();
+  const { alarms } = useAlarms();
   const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  // The old bottom sheet answers: `words` = just sent, `reopen` = saved one.
+  const [sheet, setSheet] = useState<{ words: string; reopen: boolean } | null>(null);
 
-  const submit = async () => {
+  // A short example in their own terms; changes every day.
+  const example = useMemo(
+    () =>
+      dailyMoodExample({
+        futureSelf: answers.futureSelf,
+        hardMornings: answers.hardMornings,
+        morningFeelings: answers.morningFeelings,
+      }),
+    [answers.futureSelf, answers.hardMornings, answers.morningFeelings]
+  );
+
+  const nextRingLabel = useMemo(() => nextRingText(alarms), [alarms]);
+
+  // Last check-in's plan, asked about once: did it happen?
+  const followUp =
+    previous?.intention && !previous.outcome && isYesterday(previous.date)
+      ? previous
+      : null;
+
+  const submit = () => {
     const words = text.trim().slice(0, MAX_CHARS);
-    if (!words || busy) return;
-    setBusy(true);
-    try {
-      const result = await fetchMoodAdvice({ mood: words, note: '', name });
-      saveCheckIn({
-        moodId: 'own-words',
-        moodLabel: words,
-        note: '',
-        advice: result.text,
-      });
-      setText('');
-      setEditing(false);
-    } finally {
-      setBusy(false);
-    }
+    if (!words) return;
+    setSheet({ words, reopen: false });
+    setText('');
+    setEditing(false);
   };
 
-  const showAnswer = Boolean(today?.moodLabel) && !editing && !busy;
+  const showAnswer = Boolean(today?.moodLabel) && !editing;
 
   return (
     <View style={styles.wrap}>
@@ -57,34 +71,67 @@ export function MoodCheckInCard({ name }: { name: string }) {
         Your words shape tomorrow’s alarm.
       </Text>
 
+      {followUp ? (
+        <View style={styles.followUp}>
+          <Text maxFontSizeMultiplier={1.4} style={styles.followUpText}>
+            Yesterday you wanted to {followUp.intention}. Did you?
+          </Text>
+          <View style={styles.followUpRow}>
+            {(
+              [
+                ['yes', 'yes'],
+                ['partly', 'partly'],
+                ['no', 'not yet'],
+              ] as const
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                accessibilityRole="button"
+                onPress={() => setOutcome(followUp.date, value)}
+                style={({ pressed }) => [styles.followUpChip, pressed && styles.pressed]}
+              >
+                <Text maxFontSizeMultiplier={1.3} style={styles.followUpChipText}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
       {showAnswer && today ? (
-        <View style={styles.card}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Shows Future You’s reply"
+          onPress={() => setSheet({ words: today.moodLabel, reopen: true })}
+          style={styles.card}
+        >
           <Text maxFontSizeMultiplier={1.4} style={styles.said}>
             “{today.moodLabel}”
           </Text>
-          {today.advice ? (
-            <Text maxFontSizeMultiplier={1.3} style={styles.reply}>
-              {today.advice}
+          {today.intention ? (
+            <Text maxFontSizeMultiplier={1.4} style={styles.tomorrow}>
+              {nextRingLabel ?? 'Next alarm:'} I’ll remind you to {today.intention}.
             </Text>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setText(today.moodLabel);
-              setEditing(true);
-            }}
-            hitSlop={8}
-            style={styles.changeBtn}
-          >
+          <View style={styles.links}>
             <Text maxFontSizeMultiplier={1.3} style={styles.change}>
-              change
+              see reply
             </Text>
-          </Pressable>
-        </View>
-      ) : busy ? (
-        <View style={[styles.card, styles.loadingCard]}>
-          <LoadingLabel text="Sitting with that" style={styles.loading} />
-        </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setText(today.moodLabel);
+                setEditing(true);
+              }}
+              hitSlop={8}
+            >
+              <Text maxFontSizeMultiplier={1.3} style={styles.change}>
+                change
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
       ) : (
         // Same underline field as every onboarding question.
         <View style={styles.field}>
@@ -92,9 +139,11 @@ export function MoodCheckInCard({ name }: { name: string }) {
             maxFontSizeMultiplier={1.5}
             value={text}
             onChangeText={(v) => setText(v.slice(0, MAX_CHARS))}
-            onSubmitEditing={() => void submit()}
-            placeholder="Tired, but hopeful…"
+            onSubmitEditing={submit}
+            placeholder={example}
             placeholderTextColor={colors.placeholder}
+            multiline
+            submitBehavior="submit"
             returnKeyType="send"
             autoFocus={editing}
             selectionColor={colors.text}
@@ -105,7 +154,7 @@ export function MoodCheckInCard({ name }: { name: string }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Send"
-              onPress={() => void submit()}
+              onPress={submit}
               hitSlop={12}
               style={styles.send}
             >
@@ -114,8 +163,59 @@ export function MoodCheckInCard({ name }: { name: string }) {
           ) : null}
         </View>
       )}
+
+      <MoodWhySheet
+        visible={Boolean(sheet)}
+        mood={null}
+        freeText={sheet?.words ?? null}
+        saved={
+          sheet?.reopen && today
+            ? { advice: today.advice, intention: today.intention }
+            : null
+        }
+        name={name}
+        goals={answers.futureSelf}
+        feelings={answers.morningFeelings}
+        nextRingLabel={nextRingLabel}
+        onAddGoal={addFutureSelf}
+        onClose={() => setSheet(null)}
+        onSaved={({ mood, advice, intention }) =>
+          saveCheckIn({
+            moodId: 'own-words',
+            moodLabel: mood.label,
+            note: '',
+            advice,
+            intention,
+          })
+        }
+      />
     </View>
   );
+}
+
+function isYesterday(dateKey: string) {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return dateKey === key;
+}
+
+/** "Tomorrow at 7:00" / "Today at 9:30" for the next enabled alarm, or null. */
+function nextRingText(alarms: Alarm[]) {
+  const next = alarms
+    .filter((a) => a.enabled)
+    .map((a) => nextAlarmOccurrences(a, 1)[0])
+    .filter((d): d is Date => Boolean(d))
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+  if (!next) return null;
+  const now = new Date();
+  const time = `${next.getHours()}:${String(next.getMinutes()).padStart(2, '0')}`;
+  const sameDay = next.toDateString() === now.toDateString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  if (sameDay) return `Today at ${time}`;
+  if (next.toDateString() === tomorrow.toDateString()) return `Tomorrow at ${time}`;
+  return `On ${next.toLocaleDateString('en-US', { weekday: 'long' })} at ${time}`;
 }
 
 const styles = StyleSheet.create({
@@ -144,7 +244,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: fonts.body,
-    ...typeScale.body,
+    // Small type so a fuller, personal example fits.
+    ...typeScale.subhead,
     color: colors.text,
     paddingVertical: spacing.xs,
     paddingHorizontal: 0,
@@ -166,7 +267,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.xs,
   },
-  loadingCard: { minHeight: 64, justifyContent: 'center' },
   said: {
     fontFamily: fonts.body,
     ...typeScale.subhead,
@@ -178,17 +278,41 @@ const styles = StyleSheet.create({
     color: colors.text,
     ...noFakeBold,
   },
-  changeBtn: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
+  links: { flexDirection: 'row', gap: spacing.md, minHeight: 32, alignItems: 'center' },
+  tomorrow: {
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.text,
+  },
+  followUp: {
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  followUpText: {
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.text,
+  },
+  followUpRow: { flexDirection: 'row', gap: spacing.xs },
+  followUpChip: {
+    borderWidth: 1,
+    borderColor: colors.text,
+    borderRadius: radii.chip,
+    paddingHorizontal: spacing.sm,
+    minHeight: 36,
+    justifyContent: 'center',
+  },
+  followUpChipText: {
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.text,
+  },
+  pressed: { opacity: 0.7 },
   change: {
     fontFamily: fonts.bodyMedium,
     ...typeScale.subhead,
     color: colors.text,
     textDecorationLine: 'underline',
     ...noFakeBold,
-  },
-  loading: {
-    fontFamily: fonts.body,
-    ...typeScale.subhead,
-    color: colors.text,
   },
 });

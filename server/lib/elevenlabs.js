@@ -1,6 +1,6 @@
 const FormData = require('form-data');
 const fetch = require('node-fetch');
-const { buildHybridCloneSamples } = require('./mix');
+const { buildHybridCloneSamples, assessCloneTake } = require('./mix');
 
 const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
 
@@ -231,6 +231,18 @@ async function cloneVoice({
     if (!buffer?.length) {
       const error = new Error('Audio sample is required');
       error.status = 400;
+      throw error;
+    }
+    const ext = String(originalname || 'sample.m4a').split('.').pop() || 'm4a';
+    const take = await assessCloneTake(buffer, ext);
+    if (!take.ok) {
+      const error = new Error(
+        take.reason === 'sample_too_quiet'
+          ? 'sample_too_quiet: Your recording is too quiet. Hold the phone closer and record again.'
+          : 'sample_too_noisy: There is too much background noise. Record again in a quiet room.'
+      );
+      error.status = 422;
+      error.details = { reason: take.reason, lufs: take.lufs, snrDb: take.snrDb };
       throw error;
     }
     // Hybrid: one take → multi-clip Instant Clone (better likeness, still cheap/fast).

@@ -16,10 +16,17 @@ export type MoodCheckIn = {
   moodLabel: string;
   note: string;
   advice: string;
+  /** What they want to be reminded of next morning (from their words). */
+  intention?: string | null;
+  /** Next evening: did they do it? Feeds the following morning's message. */
+  outcome?: 'yes' | 'partly' | 'no' | null;
 };
 
 type MoodCheckInContextValue = {
   today: MoodCheckIn | null;
+  /** The most recent earlier check-in (any day before today). */
+  previous: MoodCheckIn | null;
+  setOutcome: (date: string, outcome: 'yes' | 'partly' | 'no') => void;
   history: MoodCheckIn[];
   ready: boolean;
   saveCheckIn: (entry: Omit<MoodCheckIn, 'date'>) => void;
@@ -91,6 +98,11 @@ export function MoodCheckInProvider({ children }: { children: React.ReactNode })
       history,
       ready,
       today: history.find((item) => item.date === key) ?? null,
+      previous: history.find((item) => item.date < key) ?? null,
+      setOutcome: (date, outcome) =>
+        setHistory((prev) =>
+          prev.map((item) => (item.date === date ? { ...item, outcome } : item))
+        ),
       saveCheckIn: (entry) => {
         const next: MoodCheckIn = { ...entry, date: todayKey() };
         setHistory((prev) => {

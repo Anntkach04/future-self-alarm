@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { findBedFile, findBirdsFile, listBeds, BEDS_DIR } = require('./beds');
+const { findBedFile, findSoundFile, listBeds, BEDS_DIR } = require('./beds');
 
 /** Apple custom alarm / notification sound must be <30s. Keep MP3 = CAF. */
 const WAKE_MAX_SECONDS = 28;
@@ -68,6 +68,22 @@ function probeDurationSec(filePath) {
 const CLONE_MAX_SECONDS = 90;
 const CLONE_MAX_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Clone samples keep full quality: 44.1 kHz / 128 kbps mono is ~1 MB a
+ * minute, far under the cap. (They used to be cut to 22 kHz at 48-64 kbps,
+ * which dulled the voice the clone learned from.)
+ */
+const CLONE_RATE = '44100';
+const CLONE_BITRATE = '128k';
+
+/**
+ * Before cloning: cut handling thumps and rumble below 70 Hz, then bring
+ * the take to a normal speech level. ElevenLabs copies the sample's level,
+ * so a quiet take made a quiet clone that later had to be boosted ~20 dB,
+ * noise and all. Duration and timing are unchanged.
+ */
+const CLONE_FILTER = 'highpass=f=70,highpass=f=70,loudnorm=I=-20:TP=-2:LRA=11';
+
 function cloneSampleFromFile(filePath, name) {
   return {
     buffer: fs.readFileSync(filePath),
@@ -79,8 +95,8 @@ function cloneSampleFromFile(filePath, name) {
 /** Mono MP3 well under ElevenLabs' 11MB upload cap (iOS persist is often huge PCM). */
 async function transcodeCloneMp3(inPath, outPath, opts = {}) {
   const maxSeconds = opts.maxSeconds ?? CLONE_MAX_SECONDS;
-  const bitrate = opts.bitrate ?? '64k';
-  const rate = opts.rate ?? '22050';
+  const bitrate = opts.bitrate ?? CLONE_BITRATE;
+  const rate = opts.rate ?? CLONE_RATE;
   const extra = [];
   if (opts.start != null) extra.push('-ss', Number(opts.start).toFixed(2));
   extra.push('-t', Number(opts.duration ?? maxSeconds).toFixed(2));
@@ -89,6 +105,8 @@ async function transcodeCloneMp3(inPath, outPath, opts = {}) {
     ...extra,
     '-i',
     inPath,
+    '-af',
+    CLONE_FILTER,
     '-ac',
     '1',
     '-ar',
@@ -105,8 +123,6 @@ async function compressWholeTake(inPath, stamp) {
   const outPath = path.join(os.tmpdir(), `fs-clone-full-${stamp}.mp3`);
   // Always cap length + bitrate so clone never fails with "too large".
   await transcodeCloneMp3(inPath, outPath, {
-    bitrate: '48k',
-    rate: '22050',
     maxSeconds: CLONE_MAX_SECONDS,
   });
   let sample = cloneSampleFromFile(outPath, 'sample.mp3');
@@ -193,8 +209,6 @@ async function buildHybridCloneSamples(buffer, originalname, mimetype) {
       await transcodeCloneMp3(inPath, outPath, {
         start,
         duration: len,
-        bitrate: '64k',
-        rate: '22050',
       });
       samples.push(cloneSampleFromFile(outPath, `sample-${i + 1}.mp3`));
     }
@@ -274,6 +288,91 @@ function phoneNoiseOn() {
  * which played back almost inaudibly on the preview screen. Duration and
  * timing are unchanged (word timestamps stay valid).
  */
+/**
+ * Quick check of a voice take before cloning. Rejects only takes that cannot
+ * make a good clone: nearly silent, or background noise almost as loud as
+ * the voice. Quiet-but-clean takes pass (they are levelled before cloning).
+ */
+const TAKE_MIN_LUFS = -55;
+const TAKE_MIN_SNR_DB = 10;
+
+async function assessCloneTake(buffer, ext = 'm4a') {
+  if (!getFfmpegPath() || !buffer?.length) return { ok: true };
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const inPath = path.join(os.tmpdir(), `fs-take-${stamp}.${ext}`);
+  fs.writeFileSync(inPath, buffer);
+  try {
+    const lufs = await measureLufs(inPath);
+    let rms = null;
+    let noise = null;
+    try {
+      const stderr = await runFfmpeg([
+        '-hide_banner',
+        '-nostats',
+        '-i',
+        inPath,
+        '-af',
+        'highpass=f=70,astats=measure_overall=RMS_level+Noise_floor:measure_perchannel=0',
+        '-f',
+        'null',
+        '-',
+      ]);
+      const num = (label) => {
+        const m = stderr.match(new RegExp(`${label}:\\s*(-?[0-9.]+|-inf)`));
+        return m && m[1] !== '-inf' ? Number(m[1]) : null;
+      };
+      rms = num('RMS level dB');
+      noise = num('Noise floor dB');
+    } catch {
+      // measuring is best effort
+    }
+    const snrDb = rms != null && noise != null ? rms - noise : null;
+    console.log(
+      `[clone] take level ${lufs?.toFixed(1) ?? '?'} LUFS, voice-to-noise ${snrDb?.toFixed(1) ?? '?'} dB`
+    );
+    const silent = (lufs == null && rms != null && rms < -60) || (rms != null && rms < -65);
+    if (silent || (lufs != null && lufs < TAKE_MIN_LUFS)) {
+      return { ok: false, reason: 'sample_too_quiet', lufs, snrDb };
+    }
+    if (snrDb != null && snrDb < TAKE_MIN_SNR_DB) {
+      return { ok: false, reason: 'sample_too_noisy', lufs, snrDb };
+    }
+    return { ok: true, lufs, snrDb };
+  } finally {
+    try {
+      fs.unlinkSync(inPath);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/** Most a quiet clip may be raised. More than this lifts the noise baked into
+ * clones made from quiet takes until it is clearly audible. */
+const MAX_LOUDNESS_GAIN_DB = 12;
+
+/** Integrated loudness (LUFS) of a file, or null if it can't be measured. */
+async function measureLufs(filePath) {
+  try {
+    const stderr = await runFfmpeg([
+      '-hide_banner',
+      '-nostats',
+      '-i',
+      filePath,
+      '-af',
+      'loudnorm=print_format=json',
+      '-f',
+      'null',
+      '-',
+    ]);
+    const json = stderr.slice(stderr.lastIndexOf('{'));
+    const value = Number(JSON.parse(json).input_i);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function normalizeLoudness(buffer, targetLufs = -16) {
   if (!getFfmpegPath()) return buffer;
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -281,12 +380,17 @@ async function normalizeLoudness(buffer, targetLufs = -16) {
   const outPath = path.join(os.tmpdir(), `fs-ln-out-${stamp}.mp3`);
   fs.writeFileSync(inPath, buffer);
   try {
+    const inputLufs = await measureLufs(inPath);
+    const target =
+      inputLufs == null
+        ? targetLufs
+        : Math.min(targetLufs, inputLufs + MAX_LOUDNESS_GAIN_DB);
     await runFfmpeg([
       '-y',
       '-i',
       inPath,
       '-af',
-      `loudnorm=I=${targetLufs}:TP=-1.5:LRA=11`,
+      `loudnorm=I=${target.toFixed(1)}:TP=-1.5:LRA=11`,
       '-ar',
       '44100',
       '-c:a',
@@ -310,6 +414,10 @@ async function normalizeLoudness(buffer, targetLufs = -16) {
   }
 }
 
+/**
+ * Voice + chosen music (bedId, 'none' = no music) + chosen nature sound
+ * (levels.soundId, 'none' = no sound).
+ */
 async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
   if (!getFfmpegPath()) {
     return { buffer: voiceBuffer, mixed: false, reason: 'no_ffmpeg' };
@@ -327,7 +435,7 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
   const bedFile = findBedFile(bedId);
   // Optional: drop assets/beds/morning-birds.(mp3|m4a) in and every wake
   // message gets soft birdsong under the voice.
-  const birdsFile = findBirdsFile();
+  const birdsFile = findSoundFile(levels.soundId);
   // Bed file is normalized to -26 LUFS; ~0.39 at the default level puts the
   // birds about 22 dB under the voice, fading in over 5 s: present, never competing.
   const birdsVol = ((0.15 + bedUi * 0.3) * 1.26).toFixed(3);
@@ -387,7 +495,7 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     // No hiss / crackle pass any more: the voice goes straight to the bed.
     fs.copyFileSync(coloredPath, outPath);
 
-    if (!bedFile) {
+    if (!bedFile && !birdsFile) {
       return {
         buffer: await normalizeLoudness(fs.readFileSync(outPath), -18),
         mixed: true,
@@ -398,30 +506,36 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     }
 
     const withBedPath = path.join(os.tmpdir(), `fs-bed-${stamp}.mp3`);
+    // Inputs: 0 = voice, then music and/or sound, each looped under it.
+    const layers = [];
+    const inputs = [];
+    let idx = 1;
+    if (bedFile) {
+      inputs.push('-stream_loop', '-1', '-i', bedFile);
+      layers.push(
+        `[${idx}:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${bedVol},highpass=f=180,lowpass=f=3800,afade=t=in:d=3[bed]`
+      );
+      idx += 1;
+    }
+    if (birdsFile) {
+      inputs.push('-stream_loop', '-1', '-i', birdsFile);
+      layers.push(
+        `[${idx}:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${birdsVol},highpass=f=300,lowpass=f=9000,afade=t=in:d=5[birds]`
+      );
+    }
+    const labels = `[phone]${bedFile ? '[bed]' : ''}${birdsFile ? '[birds]' : ''}`;
     await runFfmpeg([
       '-y',
       '-fflags',
       '+genpts',
       '-i',
       outPath,
-      '-stream_loop',
-      '-1',
-      '-i',
-      bedFile,
-      ...(birdsFile ? ['-stream_loop', '-1', '-i', birdsFile] : []),
+      ...inputs,
       '-filter_complex',
       [
         '[0:a]aformat=sample_fmts=fltp:channel_layouts=mono[phone]',
-        `[1:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${bedVol},highpass=f=180,lowpass=f=3800,afade=t=in:d=3[bed]`,
-        ...(birdsFile
-          ? [
-              // Morning birds: wide band (chirps live at 2–8 kHz), quiet.
-              `[2:a]aformat=sample_fmts=fltp:channel_layouts=mono,volume=${birdsVol},highpass=f=900,lowpass=f=9000,afade=t=in:d=5[birds]`,
-              '[phone][bed][birds]amix=inputs=3:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]',
-            ]
-          : [
-              '[phone][bed]amix=inputs=2:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]',
-            ]),
+        ...layers,
+        `${labels}amix=inputs=${1 + layers.length}:duration=first:dropout_transition=2:normalize=0,alimiter=limit=0.95[out]`,
       ].join(';'),
       '-map',
       '[out]',
@@ -433,7 +547,6 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
       '192k',
       withBedPath,
     ]);
-    // Whole mix up to a clear level (it sat near -24 LUFS); balance unchanged.
     const buffer = await normalizeLoudness(fs.readFileSync(withBedPath), -18);
     try {
       fs.unlinkSync(withBedPath);
@@ -443,9 +556,10 @@ async function mixVoiceWithBed(voiceBuffer, bedId, levels = {}) {
     return {
       buffer,
       mixed: true,
-      reason: birdsFile ? 'phone+bed+birds' : 'phone+bed',
-      bedFile: path.basename(bedFile),
-      bedId: path.basename(bedFile, '.mp3'),
+      reason: ['phone', bedFile && 'bed', birdsFile && 'sound'].filter(Boolean).join('+'),
+      bedFile: bedFile ? path.basename(bedFile) : null,
+      bedId: bedFile ? path.basename(bedFile, path.extname(bedFile)) : null,
+      soundFile: birdsFile ? path.basename(birdsFile) : null,
     };
   } finally {
     for (const file of [voicePath, normPath, coloredPath, outPath]) {
@@ -584,6 +698,8 @@ async function denoiseVoiceBuffer(inputBuffer, ext = 'm4a') {
 
 module.exports = {
   normalizeLoudness,
+  measureLufs,
+  assessCloneTake,
   mixVoiceWithBed,
   mp3BufferToAlarmCaf,
   denoiseVoiceBuffer,

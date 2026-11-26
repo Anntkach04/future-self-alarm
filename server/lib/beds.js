@@ -6,67 +6,101 @@ const BEDS_DIR = path.join(__dirname, '..', 'assets', 'beds');
 const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg)$/i;
 
 /**
- * Under-voice beds — modern soft calm only.
- * No bali / yoga / spa-gong direction.
+ * Music under the voice. The person picks one (or none) in the app.
+ * Only files that exist on the server are offered (see listBeds).
+ * Sources and licences: docs/music/SOURCES.md.
  */
 const BEDS = [
   { id: 'soft-calm', file: 'soft-calm.m4a', label: 'Soft calm' },
+  { id: 'music-soft-morning', file: 'music-soft-morning.mp3', label: 'Soft morning' },
+  { id: 'music-sunrise', file: 'music-sunrise.mp3', label: 'Sunrise' },
+  { id: 'music-ocean-calm', file: 'music-ocean-calm.mp3', label: 'Ocean calm' },
+  { id: 'music-lofi-morning', file: 'music-lofi-morning.mp3', label: 'Lo-fi morning' },
 ];
 
-function bedCandidates(bed) {
-  const named = path.join(BEDS_DIR, bed.file);
+/** Nature sound layered under voice + music. Generated with ElevenLabs Sound Effects. */
+const SOUNDS = [
+  { id: 'sound-birds', file: 'sound-birds.mp3', label: 'Birds' },
+  { id: 'sound-waves', file: 'sound-waves.mp3', label: 'Waves' },
+  { id: 'sound-rain', file: 'sound-rain.mp3', label: 'Rain' },
+];
+
+const DEFAULT_BED = 'soft-calm';
+const DEFAULT_SOUND = 'sound-birds';
+
+function candidates(entry) {
+  const named = path.join(BEDS_DIR, entry.file);
   const out = [named];
   if (!fs.existsSync(BEDS_DIR)) return out;
   for (const name of fs.readdirSync(BEDS_DIR)) {
     if (!AUDIO_EXT.test(name)) continue;
     const stem = path.basename(name, path.extname(name));
-    if (stem === bed.id) out.push(path.join(BEDS_DIR, name));
+    if (stem === entry.id) out.push(path.join(BEDS_DIR, name));
   }
   return [...new Set(out)];
 }
 
-function resolveBedFile(bed) {
-  return bedCandidates(bed).find((p) => fs.existsSync(p)) || null;
+function resolveFile(entry) {
+  return candidates(entry).find((p) => fs.existsSync(p)) || null;
 }
 
-function listBeds() {
-  return BEDS.map((bed) => {
-    const resolved = resolveBedFile(bed);
+function listOf(entries) {
+  return entries.map((entry) => {
+    const resolved = resolveFile(entry);
     return {
-      ...bed,
+      ...entry,
       available: Boolean(resolved),
       resolvedFile: resolved ? path.basename(resolved) : null,
     };
   });
 }
 
+function listBeds() {
+  return listOf(BEDS);
+}
+
+function listSounds() {
+  return listOf(SOUNDS);
+}
+
 function resolveBed(bedId) {
   const wanted = BEDS.find((bed) => bed.id === bedId);
   if (!wanted) return null;
-  const file = resolveBedFile(wanted);
+  const file = resolveFile(wanted);
   return file ? { ...wanted, path: file, file: path.basename(file) } : null;
 }
 
 function pickBedId() {
-  return 'soft-calm';
+  return DEFAULT_BED;
 }
 
+/**
+ * Music file for a choice. 'none' → no music. Unknown / legacy spa ids and
+ * a chosen track that is not on this server → the default bed.
+ */
 function findBedFile(bedId) {
-  // Legacy spa/bali ids → soft calm. Empty → soft calm (product default).
-  const legacy =
-    !bedId ||
-    bedId === 'bali-morning' ||
-    bedId === 'bali' ||
-    bedId === 'yoga-air' ||
-    bedId === 'soft-massage' ||
-    bedId === 'light-water' ||
-    bedId === 'warm-earth' ||
-    bedId === 'none';
-  const id = legacy ? 'soft-calm' : bedId;
-  const bed = resolveBed(id);
-  return bed ? bed.path : null;
+  if (bedId === 'none') return null;
+  const chosen = BEDS.some((bed) => bed.id === bedId) ? resolveBed(bedId) : null;
+  if (chosen) return chosen.path;
+  const fallback = resolveBed(DEFAULT_BED);
+  return fallback ? fallback.path : null;
 }
 
+/**
+ * Nature sound for a choice. 'none' → no sound. No choice yet → birds (the
+ * old default), falling back to the legacy morning-birds file.
+ */
+function findSoundFile(soundId) {
+  if (soundId === 'none') return null;
+  const wanted =
+    SOUNDS.find((s) => s.id === soundId) || SOUNDS.find((s) => s.id === DEFAULT_SOUND);
+  const file = wanted ? resolveFile(wanted) : null;
+  if (file) return file;
+  if (!soundId || soundId === DEFAULT_SOUND) return findBirdsFile();
+  return null;
+}
+
+/** Legacy birdsong file (pre-ElevenLabs); kept as a fallback only. */
 function findBirdsFile() {
   for (const ext of ['mp3', 'm4a', 'wav']) {
     const p = path.join(BEDS_DIR, `morning-birds.${ext}`);
@@ -75,4 +109,15 @@ function findBirdsFile() {
   return null;
 }
 
-module.exports = { BEDS, BEDS_DIR, listBeds, resolveBed, findBedFile, findBirdsFile, pickBedId };
+module.exports = {
+  BEDS,
+  SOUNDS,
+  BEDS_DIR,
+  listBeds,
+  listSounds,
+  resolveBed,
+  findBedFile,
+  findSoundFile,
+  findBirdsFile,
+  pickBedId,
+};

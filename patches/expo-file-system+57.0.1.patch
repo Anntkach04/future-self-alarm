@@ -1,9 +1,8 @@
 diff --git a/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift b/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
-index 1111111..2222222 100644
+index 3e3d2b4..d9e5763 100644
 --- a/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
 +++ b/node_modules/expo-file-system/ios/Legacy/FileSystemHelpers.swift
-@@ -59,6 +59,12 @@ internal func getResourceValues(from directory: URL?, forKeys: Set<URLResourceKe
-   }
+@@ -60,6 +60,12 @@ internal func getResourceValues(from directory: URL?, forKeys: Set<URLResourceKe
  }
  
  internal func ensurePathPermission(_ appContext: AppContext?, path: String, flag: EXFileSystemPermissionFlags) throws {
@@ -16,7 +15,3 @@ index 1111111..2222222 100644
    guard let fileSystemManager = appContext?.fileSystem else {
      throw Exceptions.PermissionsModuleNotFound()
    }
-   guard fileSystemManager.getPathPermissions(path).contains(flag) else {
-     throw flag == .read ? FileNotReadableException(path) : FileNotWritableException(path)
-   }
- }

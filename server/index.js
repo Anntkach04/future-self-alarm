@@ -15,6 +15,7 @@ const {
   getElevenKey,
 } = require('./lib/elevenlabs');
 const { generateMorningScript, generateMoodAdvice, getOpenAiKey } = require('./lib/openai');
+const { withCountdown } = require('./lib/prompt');
 const {
   mixVoiceWithBed,
   normalizeLoudness,
@@ -22,7 +23,7 @@ const {
   getFfmpegPath,
   listBeds,
 } = require('./lib/mix');
-const { findBedFile } = require('./lib/beds');
+const { findBedFile, findSoundFile, listSounds } = require('./lib/beds');
 const {
   initDb,
   getUser,
@@ -249,6 +250,7 @@ app.get('/api/health', (_req, res) => {
     beds: IS_PROD
       ? beds.map(({ id, label, available }) => ({ id, label, available }))
       : beds,
+    sounds: listSounds().map(({ id, label, available }) => ({ id, label, available })),
     ffmpeg,
     readyToGenerate: elevenLabs && openai,
     authRequired: authEnforced(),
@@ -513,14 +515,20 @@ app.post('/api/script', requireAuth, limitText, async (req, res) => {
 
 app.post('/api/mood-advice', requireAuth, limitText, async (req, res) => {
   try {
-    const { mood, note, name } = req.body || {};
+    const { mood, note, name, goals, feelings } = req.body || {};
     if (!mood) {
       return res.status(400).json({ error: 'mood is required' });
     }
+    const shortList = (v) =>
+      Array.isArray(v)
+        ? v.map((x) => String(x).slice(0, 60)).filter(Boolean).slice(0, 4)
+        : [];
     const result = await generateMoodAdvice({
-      mood: String(mood),
-      note: String(note || ''),
-      name: String(name || ''),
+      mood: String(mood).slice(0, 200),
+      note: String(note || '').slice(0, 300),
+      name: String(name || '').slice(0, 40),
+      goals: shortList(goals),
+      feelings: shortList(feelings),
     });
     return res.json(result);
   } catch (error) {
@@ -597,6 +605,15 @@ app.post('/api/audio/to-alarm-sound', requireAuth, limitConvert, async (req, res
   }
 });
 
+app.get('/api/sounds/:id/preview', (req, res) => {
+  const file = req.params.id === 'none' ? null : findSoundFile(req.params.id);
+  if (!file) {
+    return res.status(404).json({ error: 'Sound not found' });
+  }
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return res.sendFile(file);
+});
+
 app.get('/api/beds/:id/preview', (req, res) => {
   // Legacy bali-morning → soft-massage (calm); findBedFile remaps.
   const file = findBedFile(req.params.id);
@@ -655,6 +672,9 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, as
       }
     }
 
+    // Optional "5, 4, 3, 2, 1" ending, spoken in the same voice.
+    script = { ...script, text: withCountdown(script.text, answers || {}) };
+
     const spoken = await synthesizeSpeech({
       voiceId,
       text: script.text,
@@ -663,7 +683,8 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, as
     // Voice + vintage landline EQ/hiss + quiet modern calm pad (not bali/yoga).
     const mixed = skipMix
       ? { buffer: spoken.buffer, mixed: false, reason: 'skipped' }
-      : await mixVoiceWithBed(spoken.buffer, 'soft-calm', {
+      : await mixVoiceWithBed(spoken.buffer, answers?.musicBedId || 'soft-calm', {
+          soundId: answers?.wakeSoundId,
           voiceLevel: answers?.voiceLevel,
           bedLevel:
             typeof answers?.bedLevel === 'number' ? answers.bedLevel : 0.35,

@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlarmPermissionNudge } from '../components/AlarmPermissionNudge';
+import { GoalCheckCard } from '../components/GoalCheckCard';
+import { WakeStruggleCard } from '../components/WakeStruggleCard';
 import { MoodCheckInCard } from '../components/MoodCheckInCard';
 import { NotificationPermissionNudge } from '../components/NotificationPermissionNudge';
 import { TextArrowButton } from '../components/TextArrowButton';
@@ -100,6 +102,10 @@ export function HomeScreen({ navigation }: Props) {
         ) : null}
 
         <MoodCheckInCard name={answers.name} />
+
+        <GoalCheckCard />
+
+        <WakeStruggleCard />
 
         <View style={[styles.block, !hasAlarms && styles.blockEmpty]}>
           {allPaused ? (

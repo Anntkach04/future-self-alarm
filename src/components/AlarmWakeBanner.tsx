@@ -11,6 +11,8 @@ import {
 import { useAlarms } from '../context/AlarmsContext';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useOnboarding } from '../context/OnboardingContext';
+import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import {
   dismissAlarm,
@@ -49,6 +51,10 @@ export function AlarmWakeBanner() {
   const { alarms } = useAlarms();
   const insets = useSafeAreaInsets();
   const [playing, setPlaying] = useState(false);
+  const { answers } = useOnboarding();
+  const { previous, today } = useMoodCheckIn();
+  // People who reach for the phone first get one more screen after I'm up.
+  const [beforeScroll, setBeforeScroll] = useState(false);
 
   useEffect(() => {
     return subscribeAlarmRing((next) => {
@@ -80,14 +86,23 @@ export function AlarmWakeBanner() {
       return;
     }
     setPlaying(true);
-    void playAlarmAudio(audioUri, { vibrate: false })
+    void playAlarmAudio(audioUri)
       .catch(() => undefined)
       .finally(() => setTimeout(() => setPlaying(false), 30000));
   };
 
+  // Last night's plan ("finish the deck"), if they wrote one.
+  const plan = (previous?.intention || today?.intention || '').trim();
+
   const onUp = () => {
     setPlaying(false);
     recordMorningKept();
+    if (answers.wakeStruggle === 'phone' && !beforeScroll) {
+      void stopAlarmPlayback();
+      setBeforeScroll(true);
+      return;
+    }
+    setBeforeScroll(false);
     void dismissAlarm(ring.alarmId);
   };
 
@@ -114,6 +129,33 @@ export function AlarmWakeBanner() {
           },
         ]}
       >
+        {beforeScroll ? (
+          <>
+            <Text style={styles.kicker} maxFontSizeMultiplier={1.4}>
+              Before you scroll
+            </Text>
+            <Text style={styles.title} maxFontSizeMultiplier={1.15} accessibilityRole="header">
+              Give the first{'\n'}minutes to you
+            </Text>
+            <Text style={styles.body} maxFontSizeMultiplier={1.4} lineBreakStrategyIOS="push-out">
+              {plan
+                ? `Today’s one thing: ${plan}. Start it before anything else.`
+                : 'Put the phone down for ten minutes. Water, light, one deep breath. Then the world.'}
+            </Text>
+            <View style={styles.footer}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onUp}
+                style={styles.primary}
+              >
+                <Text style={styles.primaryText} maxFontSizeMultiplier={1.3}>
+                  got it
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <>
         <Text style={styles.kicker} maxFontSizeMultiplier={1.4}>
           Good morning
         </Text>
@@ -171,6 +213,8 @@ export function AlarmWakeBanner() {
             </Text>
           </Pressable>
         </View>
+          </>
+        )}
       </View>
     </Modal>
   );

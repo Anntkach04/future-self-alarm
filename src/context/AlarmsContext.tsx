@@ -27,8 +27,6 @@ export type Alarm = {
   /** Re-wake ~every snoozeMinutes if you don’t tap I’m up (default on, 10 min). */
   snoozeEnabled: boolean;
   snoozeMinutes: number;
-  /** Extra haptic buzz when the alarm fires in-app. */
-  vibrate: boolean;
   audioUri?: string | null;
   scriptText?: string | null;
   /** Last voice build failed — rings with the fallback tone until a retry works. */
@@ -49,7 +47,6 @@ export function normalizeAlarm(raw: Partial<Alarm> & { id: string }): Alarm {
       typeof raw.snoozeMinutes === 'number' && raw.snoozeMinutes > 0
         ? raw.snoozeMinutes
         : 10,
-    vibrate: raw.vibrate !== false,
     audioUri: raw.audioUri ?? null,
     scriptText: raw.scriptText ?? null,
     voiceFailed: raw.voiceFailed === true,

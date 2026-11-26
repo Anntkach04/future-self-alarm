@@ -23,6 +23,7 @@ import { OnboardingCongratsScreen } from '../screens/OnboardingCongratsScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MoodMoreScreen } from '../screens/MoodMoreScreen';
 import { MenuScreen } from '../screens/MenuScreen';
+import { MusicSoundsScreen } from '../screens/MusicSoundsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { EditProfileNameScreen } from '../screens/EditProfileNameScreen';
 import { ProfileFieldEditScreen } from '../screens/ProfileFieldEditScreen';
@@ -101,12 +102,23 @@ export function RootNavigator() {
         />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="MoodMore" component={MoodMoreScreen} />
-        <Stack.Screen name="Menu" component={MenuScreen} />
+        <Stack.Screen
+          name="Menu"
+          component={MenuScreen}
+          options={{
+            // Drop-down over Home, animated by MenuScreen itself.
+            presentation: 'transparentModal',
+            animation: 'none',
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: 'transparent' },
+          }}
+        />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="EditProfileName" component={EditProfileNameScreen} />
         <Stack.Screen name="ProfileFieldEdit" component={ProfileFieldEditScreen} />
         <Stack.Screen name="Subscription" component={SubscriptionScreen} />
         <Stack.Screen name="VoiceSettings" component={VoiceSettingsScreen} />
+        <Stack.Screen name="MusicSounds" component={MusicSoundsScreen} />
         <Stack.Screen
           name="NotificationSettings"
           component={NotificationSettingsScreen}
