@@ -133,7 +133,6 @@ const styles = StyleSheet.create({
     ...opticalLeft(40),
     lineHeight: 44,
     color: colors.text,
-    marginTop: spacing.md,
     marginBottom: spacing.md,
     ...noFakeBold,
   },

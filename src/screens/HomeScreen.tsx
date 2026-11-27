@@ -9,8 +9,7 @@ import {
   StyleSheet,
   Switch,
   Text,
-  View,
-} from 'react-native';
+  View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlarmPermissionNudge } from '../components/AlarmPermissionNudge';
 import { GoalCheckCard } from '../components/GoalCheckCard';
@@ -57,7 +56,7 @@ function alarmSortKey(a: Pick<Alarm, 'hour' | 'minute'>) {
 export function HomeScreen({ navigation }: Props) {
   const { answers } = useOnboarding();
   const { alarms, toggleAlarm } = useAlarms();
-  const { isPaused, pauseUntil } = useAppSettings();
+  const { isPaused, pauseUntil, setPauseDays } = useAppSettings();
 
   const greeting = greetingForHour(new Date().getHours());
   const title = answers.name ? `${greeting}, ${answers.name}` : greeting;
@@ -191,6 +190,27 @@ export function HomeScreen({ navigation }: Props) {
             style={styles.addAlarm}
           />
         ) : null}
+        {hasAlarms ? (
+          // Moved here from the old Notifications screen.
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() =>
+              isPaused
+                ? setPauseDays(null)
+                : Alert.alert('Pause all alarms?', 'Vacation mode. They come back on by themselves.', [
+                    { text: '3 days', onPress: () => setPauseDays(3) },
+                    { text: '7 days', onPress: () => setPauseDays(7) },
+                    { text: 'Cancel', style: 'cancel' },
+                  ])
+            }
+            style={styles.pauseLink}
+          >
+            <Text maxFontSizeMultiplier={1.3} style={styles.pauseLinkText}>
+              {isPaused ? 'resume alarms now' : 'pause alarms for a few days'}
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       {/*
@@ -208,6 +228,18 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  pauseLink: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.md,
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  pauseLinkText: {
+    fontFamily: fonts.body,
+    ...typeScale.subhead,
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
+  },
   safe: {
     flex: 1,
     backgroundColor: colors.bg,

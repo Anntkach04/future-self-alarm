@@ -62,6 +62,17 @@ export const HARD_MORNING_OPTIONS: BubbleOption[] = [
   }),
 ];
 
+/** After the alarm goes off (stored as `wakeStruggle`). Single choice. */
+export const WAKE_STRUGGLE_OPTIONS: (BubbleOption & { value: WakeStruggleValue })[] = [
+  { ...bubble('I fall back asleep', '#B9ADD9', { align: 'left', nudge: 0 }), value: 'asleep' },
+  { ...bubble('I snooze again and again', '#EDB28C', { align: 'right', nudge: -8 }), value: 'snooze' },
+  { ...bubble('I grab my phone', '#8FBDB7', { align: 'left', nudge: 24 }), value: 'phone' },
+  { ...bubble('I get up but feel low', '#ADDEFF', { align: 'right', nudge: 0 }), value: 'low' },
+  { ...bubble('Mornings are fine', '#AFC9A8', { align: 'left', nudge: 12 }), value: 'fine' },
+];
+
+type WakeStruggleValue = 'asleep' | 'snooze' | 'phone' | 'low' | 'fine';
+
 export const VOICE_STYLE_OPTIONS: BubbleOption[] = [
   bubble('Warm, almost a whisper', '#EDB28C', { align: 'left', nudge: 0 }),
   bubble('Calm & confident', '#ADDEFF', { align: 'right', nudge: 0 }),

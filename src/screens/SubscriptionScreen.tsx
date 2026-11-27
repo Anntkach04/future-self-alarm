@@ -296,7 +296,6 @@ const styles = StyleSheet.create({
     ...typeScale.title1,
     ...opticalLeft(40),
     color: colors.text,
-    marginTop: spacing.xs,
     marginBottom: spacing.xs,
     ...noFakeBold,
   },

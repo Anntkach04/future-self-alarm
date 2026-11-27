@@ -11,6 +11,7 @@ export type RootStackParamList = {
   FutureSelf: undefined;
   MorningHabits: undefined;
   HardMornings: undefined;
+  WakeStruggle: undefined;
   VoiceStyle: undefined;
   MessageLength: undefined;
   MusicBed: undefined;

@@ -319,9 +319,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: spacing.md,
   },
-  back: {
-    marginBottom: 8,
-  },
+  back: {},
   title: {
     fontFamily: fonts.headingRegular,
     fontSize: 40,

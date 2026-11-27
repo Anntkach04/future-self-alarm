@@ -195,3 +195,43 @@ export async function recentScripts(limit = 10): Promise<RecentScript[]> {
 }
 
 export const RING_BANK_STORAGE_KEY = KEY;
+
+/**
+ * After a time-zone change (a trip), keep every stocked message on the same
+ * wall-clock time: a ring stored for 7:00 in the old zone becomes 7:00 here.
+ */
+export async function moveRingsToTimeZone(fromZone: string) {
+  return locked(async () => {
+    const bank = await readBank();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: fromZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    let moved = 0;
+    for (const id of Object.keys(bank)) {
+      bank[id] = bank[id].map((m) => {
+        const p = Object.fromEntries(
+          parts.formatToParts(new Date(m.ring)).map((x) => [x.type, x.value])
+        );
+        const local = new Date(
+          Number(p.year),
+          Number(p.month) - 1,
+          Number(p.day),
+          Number(p.hour),
+          Number(p.minute),
+          0,
+          0
+        ).getTime();
+        if (Number.isFinite(local) && local !== m.ring) moved += 1;
+        return Number.isFinite(local) ? { ...m, ring: local } : m;
+      });
+    }
+    await writeBank(bank);
+    return moved;
+  });
+}

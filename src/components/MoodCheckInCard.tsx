@@ -67,7 +67,7 @@ export function MoodCheckInCard({ name }: { name: string }) {
       <Text maxFontSizeMultiplier={1.2} style={styles.title}>
         How are you feeling today?
       </Text>
-      <Text maxFontSizeMultiplier={1.4} style={styles.hint}>
+      <Text maxFontSizeMultiplier={1.3} style={styles.hint}>
         Your words shape tomorrow’s alarm.
       </Text>
 
@@ -135,13 +135,23 @@ export function MoodCheckInCard({ name }: { name: string }) {
       ) : (
         // Same underline field as every onboarding question.
         <View style={styles.field}>
+          {/* The example sits one step below the subtitle, so it reads as a
+              hint, not as text. A real placeholder can't be sized apart from
+              what they type, hence the overlay. */}
+          {text ? null : (
+            <View pointerEvents="none" style={styles.exampleWrap}>
+              <Text maxFontSizeMultiplier={1.2} numberOfLines={2} style={styles.example}>
+                {example}
+              </Text>
+            </View>
+          )}
           <TextInput
-            maxFontSizeMultiplier={1.5}
+            maxFontSizeMultiplier={1.3}
             value={text}
             onChangeText={(v) => setText(v.slice(0, MAX_CHARS))}
             onSubmitEditing={submit}
-            placeholder={example}
-            placeholderTextColor={colors.placeholder}
+            accessibilityLabel="How are you feeling today?"
+            accessibilityHint={example}
             multiline
             submitBehavior="submit"
             returnKeyType="send"
@@ -240,6 +250,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.text,
     minHeight: 48,
+  },
+  exampleWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 48,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  example: {
+    fontFamily: fonts.body,
+    ...typeScale.footnote,
+    color: colors.placeholder,
   },
   input: {
     flex: 1,

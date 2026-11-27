@@ -1,45 +1,34 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useOnboarding, type WakeStruggle } from '../context/OnboardingContext';
-import { colors, fonts, noFakeBold, radii, spacing, typeScale } from '../theme';
-
-const OPTIONS: { value: WakeStruggle; label: string }[] = [
-  { value: 'asleep', label: 'I turn it off and fall back asleep' },
-  { value: 'snooze', label: 'I snooze again and again' },
-  { value: 'phone', label: 'I grab my phone and scroll' },
-  { value: 'low', label: 'I get up, but feel low' },
-  { value: 'fine', label: 'Mornings are fine' },
-];
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StyleSheet, Text, View } from 'react-native';
+import { useOnboarding } from '../context/OnboardingContext';
+import type { RootStackParamList } from '../navigation/types';
+import { colors, fonts, mutedPalette, noFakeBold, radii, spacing, typeScale } from '../theme';
+import { TextArrowButton } from './TextArrowButton';
 
 /**
- * One question, asked once on Home: what goes wrong after the alarm.
- * The answer shapes the wake message, the "are you up?" check and the
- * screen after "I'm up".
+ * New onboarding question, asked once on Home for people who onboarded
+ * before it existed. Opens the same screen as onboarding.
  */
 export function WakeStruggleCard() {
-  const { answers, onboardingComplete, setWakeStruggle } = useOnboarding();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { answers, onboardingComplete } = useOnboarding();
   if (!onboardingComplete || answers.wakeStruggle) return null;
 
   return (
     <View style={styles.card}>
       <Text maxFontSizeMultiplier={1.2} style={styles.title}>
-        One question, so I can wake you better
+        How do your mornings usually go?
       </Text>
       <Text maxFontSizeMultiplier={1.4} style={styles.body}>
-        What usually happens after your alarm?
+        One tap, and future you will know how to wake you.
       </Text>
-      <View style={styles.options}>
-        {OPTIONS.map((o) => (
-          <Pressable
-            key={o.value}
-            accessibilityRole="button"
-            onPress={() => setWakeStruggle(o.value)}
-            style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-          >
-            <Text maxFontSizeMultiplier={1.3} style={styles.chipText}>
-              {o.label}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.action}>
+        <TextArrowButton
+          label="answer"
+          color={colors.bg}
+          onPress={() => navigation.navigate('WakeStruggle')}
+        />
       </View>
     </View>
   );
@@ -47,7 +36,7 @@ export function WakeStruggleCard() {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.chip,
+    backgroundColor: mutedPalette[3],
     borderRadius: radii.card,
     borderCurve: 'continuous',
     padding: spacing.lg,
@@ -63,24 +52,10 @@ const styles = StyleSheet.create({
   body: {
     fontFamily: fonts.body,
     ...typeScale.subhead,
-    color: colors.textMuted,
-  },
-  options: {
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.text,
-    borderRadius: radii.chip,
-    paddingHorizontal: spacing.md,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  chipText: {
-    fontFamily: fonts.body,
-    ...typeScale.subhead,
     color: colors.text,
   },
-  pressed: { opacity: 0.7 },
+  action: {
+    alignItems: 'flex-start',
+    marginTop: spacing.sm,
+  },
 });

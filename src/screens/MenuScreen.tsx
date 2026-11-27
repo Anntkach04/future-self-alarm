@@ -45,7 +45,6 @@ const ROWS: MenuRow[] = ([
   { title: 'Subscription', route: 'Subscription' },
   { title: 'Voice', route: 'VoiceSettings' },
   { title: 'Music & sounds', route: 'MusicSounds' },
-  { title: 'Notifications', route: 'NotificationSettings' },
   // Free beta: nothing to subscribe to, so no Subscription row.
 ] as MenuRow[]).filter((row) => !(BETA_FREE_ACCESS && row.route === 'Subscription'));
 
@@ -253,7 +252,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(26, 26, 26, 0.32)',
+    backgroundColor: 'rgba(26, 26, 26, 0.18)',
   },
   panel: {
     position: 'absolute',
@@ -266,7 +265,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: radii.card,
     borderBottomRightRadius: radii.card,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.06,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,

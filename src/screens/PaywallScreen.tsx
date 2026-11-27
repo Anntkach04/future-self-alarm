@@ -306,7 +306,6 @@ const styles = StyleSheet.create({
     ...typeScale.title1,
     ...opticalLeft(40),
     color: colors.text,
-    marginTop: spacing.md,
     ...noFakeBold,
   },
   plans: { minHeight: 72, justifyContent: 'center', paddingTop: spacing.xs },

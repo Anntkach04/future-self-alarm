@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { moveRingsToTimeZone } from '../services/ringBank';
 import React, {
   createContext,
   useCallback,
@@ -80,6 +81,7 @@ export const WEEKDAYS = [0, 1, 2, 3, 4];
 export const WEEKENDS = [5, 6];
 export const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 
+const TZ_KEY = 'fsa.time_zone.v1';
 const STORAGE_KEY = 'future_self_alarms_v1';
 
 const AlarmsContext = createContext<AlarmsContextValue | null>(null);
@@ -224,12 +226,37 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
     );
     void consumeAlarmKitLaunch(audioByAlarmId).catch(() => {});
 
+    /**
+     * Alarms are fixed moments in iOS, so after a trip a 7:00 alarm would ring
+     * at the old zone's 7:00. When the phone's zone changes, move every
+     * stocked message to the same local time and schedule again right away.
+     */
+    const followTimeZone = async () => {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      try {
+        const last = await AsyncStorage.getItem(TZ_KEY);
+        if (last === zone) return;
+        await AsyncStorage.setItem(TZ_KEY, zone);
+        if (!last) return; // first run: nothing to move
+        await moveRingsToTimeZone(last);
+        const list = alarmsRef.current;
+        await rescheduleAllAlarms(
+          list,
+          Object.fromEntries(list.map((a) => [a.id, a.audioUri ?? null]))
+        );
+      } catch {
+        // next foreground tries again
+      }
+    };
+    void followTimeZone();
+
     // Warm launch: app was already in memory when Stop / Snooze opened it.
     // The intent may set its payload just after we become active — read twice.
     let retry: ReturnType<typeof setTimeout> | null = null;
     let lastTopUp = Date.now();
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
+      void followTimeZone();
       // Notification-path wakes are pre-scheduled only N days ahead — top the
       // window up whenever the app comes back (at most every 30 min).
       if (Date.now() - lastTopUp > 30 * 60 * 1000) {

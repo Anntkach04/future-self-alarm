@@ -771,6 +771,7 @@ const styles = StyleSheet.create({
   },
   readLayer: {
     flex: 1,
+    paddingTop: spacing.webTop + spacing.screenTop,
     paddingHorizontal: spacing.inset,
     paddingBottom: spacing.inset,
   },

@@ -18,7 +18,7 @@ export function HardMorningsScreen({ navigation }: Props) {
       onToggle={toggleHardMorning}
       onAddCustom={addHardMorning}
       addPlaceholder="Your own words"
-      onSubmit={() => navigation.navigate('VoiceStyle')}
+      onSubmit={() => navigation.navigate('WakeStruggle')}
     />
   );
 }
