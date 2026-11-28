@@ -12,6 +12,10 @@ type Props = {
   textColor?: string;
   style?: ViewStyle;
   disabled?: boolean;
+  /** Same pill style without the arrow (e.g. karaoke Continue). */
+  hideArrow?: boolean;
+  /** The screen's main action: full width, taller, centered. */
+  wide?: boolean;
 };
 
 export function TextArrowButton({
@@ -21,6 +25,8 @@ export function TextArrowButton({
   textColor = colors.text,
   style,
   disabled = false,
+  hideArrow = false,
+  wide = false,
 }: Props) {
   return (
     <Pressable
@@ -29,6 +35,8 @@ export function TextArrowButton({
       onPress={onPress}
       style={({ pressed, hovered }: PressState) => [
         styles.btn,
+        hideArrow && styles.btnNoArrow,
+        wide && styles.wide,
         { backgroundColor: color },
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
@@ -37,8 +45,10 @@ export function TextArrowButton({
     >
       {({ pressed, hovered }: PressState) => (
         <>
-          <Text style={[styles.label, { color: textColor }]}>{uiLabel(label)}</Text>
-          <ForwardArrow lifted={Boolean(pressed || hovered)} color={textColor} />
+          <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={[styles.label, wide && styles.labelWide, { color: textColor }]}>{uiLabel(label)}</Text>
+          {hideArrow ? null : (
+            <ForwardArrow lifted={Boolean(pressed || hovered)} color={textColor} />
+          )}
         </>
       )}
     </Pressable>
@@ -51,10 +61,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 8,
-    paddingLeft: 14,
-    paddingRight: 12,
+    paddingLeft: 16,
+    paddingRight: 16,
     paddingVertical: 8,
+    // Apple minimum touch target.
+    minHeight: 44,
     borderRadius: radii.button,
+  },
+  wide: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+  labelWide: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
+  btnNoArrow: {
+    paddingHorizontal: 16,
   },
   pressed: {
     opacity: 0.88,
@@ -65,7 +89,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: fonts.heading,
     fontSize: 17,
-    lineHeight: 21,
+    lineHeight: 24,
     ...noFakeBold,
   },
 });

@@ -26,7 +26,7 @@ export function Screen({ children, style, edges, static: noAnim }: Props) {
           styles.column,
           {
             paddingHorizontal: layout.horizontalPadding,
-            paddingTop: spacing.webTop,
+            paddingTop: spacing.webTop + spacing.screenTop,
             maxWidth: layout.contentMaxWidth,
             alignSelf: 'center',
             width: '100%',

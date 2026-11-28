@@ -8,7 +8,7 @@ import {
   Text,
   ViewStyle,
 } from 'react-native';
-import { colors, fonts, noFakeLight, radii } from '../theme';
+import { chipMetrics, colors, fonts, noFakeLight, radii } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
@@ -23,10 +23,52 @@ type Props = {
   plus?: boolean;
 };
 
+const FLOAT_MS = 2400;
+
 /**
- * Bubble pop: tiny → overshoot spring → soft idle float.
- * Pass increasing `delay` per chip so they appear one by one.
+ * One bob for every chip on screen. Each chip used to start its own loop
+ * after its own entrance (staggered), so rows drifted out of phase and the
+ * vertical gap between them kept changing. Shared value = constant gap.
  */
+const SHARED_FLOAT = new Animated.Value(0);
+let floatUsers = 0;
+let sharedLoop: Animated.CompositeAnimation | null = null;
+
+function acquireSharedFloat() {
+  floatUsers += 1;
+  if (!sharedLoop) {
+    sharedLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(SHARED_FLOAT, {
+          toValue: 1,
+          duration: FLOAT_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(SHARED_FLOAT, {
+          toValue: 0,
+          duration: FLOAT_MS,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    sharedLoop.start();
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    floatUsers = Math.max(0, floatUsers - 1);
+    if (floatUsers === 0 && sharedLoop) {
+      sharedLoop.stop();
+      sharedLoop = null;
+      SHARED_FLOAT.setValue(0);
+    }
+  };
+}
+
+/** Visible immediately; spring + float are motion-only (opacity always 1). */
 export function BubbleChip({
   label = '',
   color,
@@ -38,25 +80,23 @@ export function BubbleChip({
   style,
   plus = false,
 }: Props) {
-  const scale = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const rise = useRef(new Animated.Value(18)).current;
-  const float = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.86)).current;
+  const rise = useRef(new Animated.Value(14)).current;
+  const float = SHARED_FLOAT;
+  const startDelay = Math.min(Math.max(delay, 0), 160);
+  const floatLoop = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    scale.setValue(0.86);
+    rise.setValue(14);
+
     const enter = Animated.sequence([
-      Animated.delay(delay),
+      Animated.delay(startDelay),
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1,
           friction: 5.2,
           tension: 128,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
-          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.spring(rise, {
@@ -68,30 +108,27 @@ export function BubbleChip({
       ]),
     ]);
 
+    const failsafe = setTimeout(() => {
+      scale.setValue(1);
+      rise.setValue(0);
+    }, startDelay + 500);
+
     enter.start(({ finished }) => {
       if (!finished) return;
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(float, {
-            toValue: 1,
-            duration: 2400 + (delay % 400),
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(float, {
-            toValue: 0,
-            duration: 2400 + (delay % 400),
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      scale.setValue(1);
+      rise.setValue(0);
+      floatLoop.current = acquireSharedFloat();
     });
 
     return () => {
+      clearTimeout(failsafe);
       enter.stop();
+      floatLoop.current?.();
+      floatLoop.current = null;
+      scale.setValue(1);
+      rise.setValue(0);
     };
-  }, [delay, float, opacity, rise, scale]);
+  }, [float, rise, scale, startDelay]);
 
   const floatY = float.interpolate({
     inputRange: [0, 1],
@@ -99,10 +136,7 @@ export function BubbleChip({
   });
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.hit, style]}
-    >
+    <Pressable onPress={onPress} style={[styles.hit, style]}>
       <Animated.View
         pointerEvents="none"
         style={[
@@ -110,7 +144,7 @@ export function BubbleChip({
           plus && styles.plusChip,
           {
             backgroundColor: selected ? colors.text : color,
-            opacity,
+            opacity: 1,
             transform: [
               { translateY: Animated.add(rise, floatY) },
               { scale },
@@ -119,7 +153,7 @@ export function BubbleChip({
         ]}
       >
         {plus ? (
-          <Text
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
             style={[
               styles.plus,
               { color: selected ? colors.bg : textColor },
@@ -128,7 +162,7 @@ export function BubbleChip({
             +
           </Text>
         ) : (
-          <Text
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
             numberOfLines={1}
             style={[
               styles.label,
@@ -139,7 +173,7 @@ export function BubbleChip({
           </Text>
         )}
         {caption ? (
-          <Text
+          <Text maxFontSizeMultiplier={1.5} lineBreakStrategyIOS="push-out"
             style={[
               styles.caption,
               { color: selected ? colors.bg : textColor },
@@ -161,8 +195,9 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderRadius: radii.chip,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    // Same density on every chip screen (goals / habits / tone / …).
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
     borderWidth: 0,
     alignSelf: 'flex-start',
     flexShrink: 0,
@@ -179,25 +214,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontFamily: fonts.bodyLight,
-    fontSize: 15,
+    fontFamily: fonts.body,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     flexShrink: 0,
     ...(Platform.OS === 'web'
       ? ({ whiteSpace: 'nowrap' } as object)
       : null),
-    ...noFakeLight,
   },
   plus: {
     fontFamily: fonts.bodyLight,
     fontSize: 28,
-    lineHeight: 30,
+    lineHeight: 32,
     ...noFakeLight,
   },
   caption: {
-    fontFamily: fonts.bodyLight,
+    fontFamily: fonts.body,
     fontSize: 13,
-    opacity: 0.7,
-    marginTop: 2,
-    ...noFakeLight,
+    opacity: 0.8,
+    marginTop: 4,
   },
 });

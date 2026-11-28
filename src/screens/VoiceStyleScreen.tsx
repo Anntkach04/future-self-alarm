@@ -7,17 +7,21 @@ import { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceStyle'>;
 
 export function VoiceStyleScreen({ navigation }: Props) {
-  const { answers, setVoiceStyle } = useOnboarding();
+  const { answers, setVoiceStyle, voice } = useOnboarding();
+  // Came back here after the voice was already cloned: go forward to the
+  // voice you have, not to a new recording (people had to re-record after
+  // tapping back). "re-record" on the next screen still records again.
+  const hasVoice = Boolean(voice.voiceId) && !voice.isDemo;
 
   return (
     <ChipQuestionScreen
-      question={"What tone should\nmornings have?"}
-      subtitle="This shapes how Future You speaks - pick once."
+      question={"How should future\nyou sound?"}
+      subtitle="Pick one tone for your mornings."
       options={VOICE_STYLE_OPTIONS}
       selected={answers.voiceStyle ? [answers.voiceStyle] : []}
       onToggle={setVoiceStyle}
       allowAdd={false}
-      onSubmit={() => navigation.navigate('WakeUpTime')}
+      onSubmit={() => navigation.navigate(hasVoice ? 'VoicePreview' : 'VoiceRecord')}
     />
   );
 }

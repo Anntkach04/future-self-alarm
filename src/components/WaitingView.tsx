@@ -21,7 +21,7 @@ export function WaitingView({
   return (
     <View style={[styles.root, { backgroundColor }, style]}>
       <LogoSpinner />
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {message ? <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.message}>{message}</Text> : null}
       {children}
     </View>
   );
@@ -32,15 +32,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: 24,
   },
   message: {
     fontFamily: fonts.headingRegular,
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 24,
     color: '#1A1A1A',
     textAlign: 'center',
-    opacity: 0.7,
+    opacity: 0.8,
     paddingHorizontal: 40,
     ...noFakeBold,
   },

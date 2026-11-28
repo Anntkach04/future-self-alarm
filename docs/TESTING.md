@@ -65,7 +65,7 @@ npx expo start --dev-client
 | Voice record → mic tap | **Microphone** + **Speech recognition** |
 | Save alarm | Notifications again if denied |
 
-Configured in `app.json` (expo-av, expo-notifications, expo-speech-recognition).
+Configured in `app.json` (expo-audio, expo-notifications, expo-speech-recognition). Min iOS **26.1**.
 
 ## Data & dev tools
 
@@ -82,3 +82,39 @@ To remove reset later, tell Cursor: «Прибери dev reset онбордин�
 - [ ] Mood advice varies (not the same fallback text)
 - [ ] Voice record highlights words when you read the script
 - [ ] Alarm saves and notification is scheduled
+
+## Alarm engine (device — before release)
+
+See **`docs/ALARM_ENGINE.md`**. After adding `assets/sounds/fs_fallback.caf`, rebuild native iOS.
+
+- [ ] Lock screen: custom voice CAF plays (≤~28s), not only default beep
+- [ ] Open app from alert: full MP3 can play; **I'm up** stops further rings
+- [ ] Force-quit → wake → wait ~10 min → second ring without opening app
+- [ ] I'm up → no more rings that morning
+- [ ] Missing AI CAF → bundled fallback chime still plays
+- [ ] Build requires iOS 26.1+ (no install on ≤25)
+
+## Free public beta (TestFlight, no subscription)
+
+The beta build has no subscription anywhere. One switch controls it:
+
+- `src/config/beta.ts` → `BETA_FREE_ACCESS = true`
+  - onboarding skips the paywall (as if subscribed)
+  - lapsed users are never locked to the paywall (`EntitlementGateHost`)
+  - the Subscription row is hidden in the menu
+  - a lilac **Beta** label shows on Home and `Beta · b<build>` on Welcome
+- `ios/FutureSelfAlarm/Info.plist` → `CFBundleDisplayName` = `Future Self Beta`
+  (name under the app icon; `ios/` is generated and not in git)
+
+The server does not require a subscription while `REVENUECAT_SECRET_KEY`
+is unset on Railway (it is unset now), so voice and wake messages work
+for beta testers. Costs (ElevenLabs voice slots and characters, OpenAI)
+are real: cap the number of TestFlight testers.
+
+### Before the App Store release
+
+1. `src/config/beta.ts` → `BETA_FREE_ACCESS = false`
+2. `Info.plist` → `CFBundleDisplayName` back to `Future Self Alarm`
+3. Bump the build number, archive, upload.
+4. Check: Welcome shows `b<build>` without "Beta", Home has no Beta label,
+   onboarding ends on the paywall, Menu shows Subscription.

@@ -8,7 +8,7 @@ import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { MORE_MOODS, type Mood } from '../data/moods';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, headingClipFix, noFakeBold } from '../theme';
+import { colors, fonts, headingClipFix, noFakeBold, opticalLeft } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MoodMore'>;
 
@@ -24,13 +24,15 @@ export function MoodMoreScreen({}: Props) {
         contentContainerStyle={styles.scroll}
       >
         <BackButton style={styles.back} />
-        <Text style={styles.title}>How are you feeling today?</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>How are you feeling today?</Text>
         <View style={styles.grid}>
           {MORE_MOODS.map((mood) => {
             const selected = today?.moodId === mood.id;
             return (
               <Pressable
                 key={mood.id}
+                accessibilityRole="button"
+                accessibilityLabel={`I feel ${mood.label}`}
                 onPress={() => setSheetMood(mood)}
                 style={[
                   styles.mood,
@@ -38,7 +40,7 @@ export function MoodMoreScreen({}: Props) {
                   selected && styles.moodSelected,
                 ]}
               >
-                <Text style={styles.label}>{mood.label}</Text>
+                <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.label}>{mood.label}</Text>
               </Pressable>
             );
           })}
@@ -71,8 +73,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.headingRegular,
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 40,
+    ...opticalLeft(40),
+    lineHeight: 44,
     color: colors.text,
     marginBottom: 24,
     ...noFakeBold,
@@ -81,23 +84,23 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   mood: {
     width: '47%',
     minHeight: 96,
     borderRadius: 20,
-    padding: 12,
+    padding: 16,
     justifyContent: 'flex-end',
     overflow: 'visible',
   },
   moodSelected: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.text,
   },
   label: {
     fontFamily: fonts.headingRegular,
-    fontSize: 18,
+    fontSize: 17,
     lineHeight: 24,
     color: colors.text,
     ...noFakeBold,

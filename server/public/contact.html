@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contact Us · Future Self Alarm</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #fffcf5;
+        --text: #1a1a1a;
+        --muted: rgba(26, 26, 26, 0.62);
+        --card: #ffe08a;
+        --border: #1a1a1a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.55;
+      }
+      main {
+        max-width: 28rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+      }
+      h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+      }
+      label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 0.35rem;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        font: inherit;
+        padding: 0.7rem 0.8rem;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+        margin-bottom: 1rem;
+      }
+      textarea { min-height: 8rem; resize: vertical; }
+      button {
+        width: 100%;
+        font: inherit;
+        font-weight: 600;
+        padding: 0.9rem 1rem;
+        border: 1.5px solid var(--border);
+        border-radius: 999px;
+        background: var(--card);
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.55; cursor: default; }
+      .status {
+        margin-top: 1rem;
+        font-size: 0.95rem;
+        color: var(--muted);
+        display: none;
+      }
+      .status.is-visible { display: block; }
+      .status.is-error { color: #c0392b; }
+      .status.is-ok { color: #1a7a3c; }
+      a { color: inherit; }
+      .links { margin-top: 2rem; font-size: 0.9rem; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Contact Us</h1>
+      <p class="meta">
+        Billing, voice clone, alarms, or privacy? Send a note. Messages are
+        saved on our server so nothing gets lost in spam.
+      </p>
+
+      <form id="contact-form" novalidate>
+        <label for="name">Name</label>
+        <input id="name" name="name" autocomplete="name" required />
+
+        <label for="email">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+        />
+
+        <label for="topic">Topic</label>
+        <select id="topic" name="topic">
+          <option>Voice &amp; alarms</option>
+          <option>Billing &amp; trial</option>
+          <option>Privacy / data request</option>
+          <option>Bug report</option>
+          <option>Something else</option>
+        </select>
+
+        <label for="message">Message</label>
+        <textarea
+          id="message"
+          name="message"
+          required
+          maxlength="4000"
+          placeholder="What happened? What did you expect?"
+        ></textarea>
+
+        <button type="submit" id="submit-btn">Send message</button>
+        <p class="status" id="status" role="status"></p>
+      </form>
+
+      <p class="links">
+        <a href="/privacy">Privacy Policy</a>
+        ·
+        <a href="/terms">Terms of Use</a>
+      </p>
+    </main>
+    <script>
+      (function () {
+        var form = document.getElementById('contact-form');
+        var status = document.getElementById('status');
+        var btn = document.getElementById('submit-btn');
+        if (!form) return;
+        form.addEventListener('submit', function (event) {
+          event.preventDefault();
+          status.className = 'status is-visible';
+          status.textContent = 'Sending…';
+          btn.disabled = true;
+          var data = new FormData(form);
+          fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              name: String(data.get('name') || '').trim(),
+              email: String(data.get('email') || '').trim(),
+              topic: String(data.get('topic') || '').trim(),
+              message: String(data.get('message') || '').trim(),
+            }),
+          })
+            .then(function (res) {
+              return res.json().then(function (body) {
+                return { ok: res.ok, body: body };
+              });
+            })
+            .then(function (result) {
+              if (!result.ok) {
+                throw new Error(
+                  (result.body && result.body.error) || 'Could not send'
+                );
+              }
+              status.className = 'status is-visible is-ok';
+              status.textContent =
+                'Thanks! We got your message and will reply by email.';
+              form.reset();
+            })
+            .catch(function (err) {
+              status.className = 'status is-visible is-error';
+              status.textContent =
+                (err && err.message) || 'Could not send. Please try again.';
+            })
+            .finally(function () {
+              btn.disabled = false;
+            });
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+---
+description: Karaoke / dictaphone auto-advance stuck — user says «та сама фігня» or /karaoke
+alwaysApply: false
+---
+
+# Karaoke stuck (`та сама фігня` / `/karaoke`)
+
+When the user says **«та сама фігня»**, **«знову те саме»**, **`/karaoke`**, or that lines don’t auto-advance after they finished reading:
+
+## Required behavior (do not regress)
+
+1. **Auto-advance** after the current chunk is heard — user must NOT need «Continue →» / «Finish recording →» for a normal read.
+2. Chunks are **comfortable read-aloud phrases** that fill **~1–2 screen lines** — NOT tiny 2–3 word crumbs, NOT 3–4 line paragraphs (`voiceScript.ts`).
+3. **Font** ~30pt on `KaraokeLine` so those phrases still fit in 1–2 lines.
+4. After the **last** chunk: auto `finishReading` → gold **«You’re all set!»** with BubbleEnter-style spring (not blank yellow).
+5. When clone finishes: replay BubbleEnter spring, then **auto** navigate to VoicePreview — no arrow on success.
+6. Auto-advance also on STT **progress stall** / quiet after a real start (and a quiet time failsafe).
+
+## Fix checklist (in order)
+
+1. `doneLineRef` must be set **inside** `advanceLine` only after it actually starts — never before a call that can no-op when `advancingRef` is stuck.
+2. Clear `advancingRef` on finish / watchdog (~600ms) so a stuck flag cannot freeze the whole script.
+3. Auto-advance interval must use **refs** for spoken/quiet/line text and depend only on `recording` + `complete` (do not recreate the interval every metering tick).
+4. Keep chunks short enough for ≤2 wraps at 28pt (`src/data/voiceScript.ts`).
+5. Complete UI: fade gold + title together; force `completeOpacity` / `goldPillOpacity` to 1 within ~500ms if animation glitches.
+
+## Files
+
+- `src/screens/VoiceRecordScreen.tsx`
+- `src/hooks/useSmartDictaphone.ts`
+- `src/services/speechMatch.ts`
+- `src/components/KaraokeLine.tsx`
+- `src/data/voiceScript.ts`
+
+Ship a device Release build after fixing. Do not “fix” by making the manual Continue button the real path.

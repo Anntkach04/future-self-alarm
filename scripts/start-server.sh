@@ -38,9 +38,9 @@ if ! NODE="$(find_node)"; then
   exit 1
 fi
 
-if curl -sf "http://localhost:${PORT}/api/health" >/dev/null 2>&1; then
-  echo "Voice API already running at http://localhost:${PORT}"
-  echo "Health: http://localhost:${PORT}/api/health"
+if curl -sf --max-time 2 "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
+  echo "Voice API already running at http://127.0.0.1:${PORT}"
+  echo "Health: http://127.0.0.1:${PORT}/api/health"
   exit 0
 fi
 
@@ -60,6 +60,16 @@ fi
 
 echo "Starting voice API with: $NODE"
 echo "Project: $ROOT"
+echo "Keepalive on — if the process exits it will restart."
 echo ""
 cd "$ROOT"
-exec "$NODE" server/index.js
+# Restart on crash so the phone does not suddenly lose EL mid-onboarding.
+while true; do
+  "$NODE" server/index.js || true
+  echo "Voice API exited — restarting in 1s…"
+  sleep 1
+  if curl -sf --max-time 1 "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
+    echo "Another process already took port ${PORT}; exiting keepalive."
+    exit 0
+  fi
+done

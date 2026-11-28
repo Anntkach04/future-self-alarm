@@ -4,6 +4,8 @@ import { ArrowUpLeftIcon } from './ArrowUpLeftIcon';
 import { spacing } from '../theme';
 
 export const BACK_SIZE = 28;
+/** Same 40 pt box as Home's menu icon and the menu's ×, so all three sit on one line. */
+export const BACK_BOX = 40;
 export const BACK_INSET = spacing.inset;
 
 /** Top padding for screens without a back button (e.g. Home). */
@@ -45,12 +47,13 @@ export function BackButton({ onPress, style }: Props) {
 
 const styles = StyleSheet.create({
   hit: {
-    width: BACK_SIZE,
-    height: BACK_SIZE,
-    alignItems: 'center',
+    width: BACK_BOX,
+    height: BACK_BOX,
+    // Icon flush left like the menu icon; box only adds height + tap area.
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    marginTop: BACK_INSET,
-    marginBottom: 16,
+    marginTop: 0,
+    marginBottom: 8,
     alignSelf: 'flex-start',
   },
   pressed: {
