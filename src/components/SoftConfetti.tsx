@@ -8,7 +8,7 @@ const COLORS = [
   accents.sky,
   accents.lime,
   accents.mist,
-  '#FF7FB5',
+  '#D6AEB1',
   '#FFFFFF',
 ];
 

@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: fonts.body,
     fontSize: 15,
-    color: '#C0392B',
+    color: '#C46B5D',
     textAlign: 'center',
   },
   playRow: {

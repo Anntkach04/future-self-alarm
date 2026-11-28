@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   cardActive: {
     borderWidth: 2,
     borderColor: colors.text,
-    backgroundColor: '#FFF4D6',
+    backgroundColor: '#F1E9D5',
   },
   pressed: { transform: [{ scale: 0.98 }] },
   radio: {

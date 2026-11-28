@@ -167,7 +167,7 @@ export function VoiceSettingsScreen({ navigation }: Props) {
         <TextArrowButton
           wide
           label="re-record voice"
-          color={colors.chip}
+          color={accents.lilac}
           onPress={() => navigation.navigate('VoiceRecord')}
         />
       </View>

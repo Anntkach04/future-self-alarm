@@ -6,11 +6,13 @@ import { Platform } from 'react-native';
 const LINE = require('../../assets/sounds/ui_line.wav');
 /** Warm chord for Got it. / You’re all set / congrats. */
 const SUCCESS = require('../../assets/sounds/ui_success.wav');
+/** Onboarding finished: a fuller, celebratory chime (synthesised in-house, scripts not needed at runtime). */
+const CONGRATS = require('../../assets/sounds/congrats-3-kalimba.m4a');
 
 async function playAsset(
   asset: number,
   volume: number,
-  opts?: { touchAudioMode?: boolean }
+  opts?: { touchAudioMode?: boolean; holdMs?: number }
 ) {
   if (Platform.OS === 'web') return;
   try {
@@ -30,7 +32,7 @@ async function playAsset(
       } catch {
         /* already gone */
       }
-    }, 1200);
+    }, opts?.holdMs ?? 1200);
   } catch {
     /* sound optional */
   }
@@ -60,7 +62,10 @@ export async function playAllSetSound() {
   await playAsset(SUCCESS, 0.55, { touchAudioMode: true });
 }
 
-/** Alias — same soft success chord as Got it. */
+/** Onboarding congrats: its own celebratory chime, longer than Got it. */
 export async function playCongratsSound() {
-  await playAllSetSound();
+  if (Platform.OS !== 'web') {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  }
+  await playAsset(CONGRATS, 0.7, { touchAudioMode: true, holdMs: 2600 });
 }

@@ -150,7 +150,7 @@ export function EditProfileScreen({ navigation }: Props) {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
         <BackButton style={styles.back} />
-        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>About you</Text>
+        <Text maxFontSizeMultiplier={1.2} lineBreakStrategyIOS="push-out" style={styles.title}>About me</Text>
         <View style={styles.block}>
           <Section
             title="name"

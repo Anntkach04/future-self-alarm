@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#3FA36B',
+    backgroundColor: '#A8C294',
   },
   meta: {
     fontFamily: fonts.body,

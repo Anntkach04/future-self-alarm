@@ -22,41 +22,41 @@ function bubble(
 
 /** Mood-matched — max ~6, staggered for cloud layout. */
 export const MORNING_FEELING_OPTIONS: BubbleOption[] = [
-  bubble('Calm & grounded', '#8FBDB7', { align: 'left', nudge: 0 }),
-  bubble('Light & happy', '#FEC554', { align: 'right', nudge: -8 }),
-  bubble('Strong & focused', '#E98D73', { align: 'left', nudge: 36 }),
-  bubble('Loved & safe', '#E8A8C0', { align: 'right', nudge: 0 }),
-  bubble('Proud of myself', '#B9ADD9', { align: 'left', nudge: 12 }),
-  bubble('Soft & unhurried', '#EDB28C', { align: 'right', nudge: -20 }),
+  bubble('Calm & grounded', '#9CC0B5', { align: 'left', nudge: 0 }),
+  bubble('Light & happy', '#E8C276', { align: 'right', nudge: -8 }),
+  bubble('Strong & focused', '#DFA07C', { align: 'left', nudge: 36 }),
+  bubble('Loved & safe', '#D6AEB1', { align: 'right', nudge: 0 }),
+  bubble('Proud of myself', '#B8AFD3', { align: 'left', nudge: 12 }),
+  bubble('Soft & unhurried', '#DFA07C', { align: 'right', nudge: -20 }),
 ];
 
 export const FUTURE_SELF_OPTIONS: BubbleOption[] = [
-  bubble('Build a morning routine', '#8FBDB7', { align: 'left', nudge: 0 }),
-  bubble('Have more energy', '#ADDEFF', { align: 'right', nudge: 0 }),
-  bubble('Work on my own project', '#FEC554', { align: 'left', nudge: 28 }),
-  bubble('Move my body', '#B9F34A', { align: 'right', nudge: -12 }),
-  bubble('Have quiet time for myself', '#FF7FB5', { align: 'left', nudge: 8 }),
-  bubble('Feel less rushed', '#D8C29E', { align: 'right', nudge: -4 }),
+  bubble('Build a morning routine', '#9CC0B5', { align: 'left', nudge: 0 }),
+  bubble('Have more energy', '#A9C3D8', { align: 'right', nudge: 0 }),
+  bubble('Work on my own project', '#E8C276', { align: 'left', nudge: 28 }),
+  bubble('Move my body', '#A8C294', { align: 'right', nudge: -12 }),
+  bubble('Have quiet time for myself', '#D6AEB1', { align: 'left', nudge: 8 }),
+  bubble('Feel less rushed', '#CBB792', { align: 'right', nudge: -4 }),
 ];
 
 /** Morning rituals — remind what they set out to do after waking. */
 export const MORNING_HABIT_OPTIONS: BubbleOption[] = [
-  bubble('Morning workout', '#B9F34A', { align: 'left', nudge: 0 }),
-  bubble('Protein breakfast', '#FEC554', { align: 'right', nudge: -8 }),
-  bubble('Journaling', '#ADDEFF', { align: 'left', nudge: 28 }),
-  bubble('Drink water first', '#8FBDB7', { align: 'right', nudge: 0 }),
-  bubble('Make the bed', '#EDB28C', { align: 'left', nudge: 12 }),
-  bubble('No phone for 20 min', '#B9ADD9', { align: 'right', nudge: -16 }),
+  bubble('Morning workout', '#A8C294', { align: 'left', nudge: 0 }),
+  bubble('Protein breakfast', '#E8C276', { align: 'right', nudge: -8 }),
+  bubble('Journaling', '#A9C3D8', { align: 'left', nudge: 28 }),
+  bubble('Drink water first', '#9CC0B5', { align: 'right', nudge: 0 }),
+  bubble('Make the bed', '#DFA07C', { align: 'left', nudge: 12 }),
+  bubble('No phone for 20 min', '#B8AFD3', { align: 'right', nudge: -16 }),
 ];
 
 /** What gets you out of bed (stored as `hardMornings`, kept for old data). */
 export const HARD_MORNING_OPTIONS: BubbleOption[] = [
-  bubble('Coffee or tea', '#EDB28C', { align: 'left', nudge: 0 }),
-  bubble('Music', '#ADDEFF', { align: 'right', nudge: -8 }),
-  bubble('Sunlight', '#FEC554', { align: 'left', nudge: 32 }),
-  bubble('A plan for the day', '#8FBDB7', { align: 'right', nudge: 0 }),
-  bubble('People I love', '#B9ADD9', { align: 'left', nudge: 16 }),
-  bubble('Something to look forward to', '#B9F34A', {
+  bubble('Coffee or tea', '#DFA07C', { align: 'left', nudge: 0 }),
+  bubble('Music', '#A9C3D8', { align: 'right', nudge: -8 }),
+  bubble('Sunlight', '#E8C276', { align: 'left', nudge: 32 }),
+  bubble('A plan for the day', '#9CC0B5', { align: 'right', nudge: 0 }),
+  bubble('People I love', '#B8AFD3', { align: 'left', nudge: 16 }),
+  bubble('Something to look forward to', '#A8C294', {
     align: 'right',
     nudge: -4,
   }),
@@ -64,37 +64,37 @@ export const HARD_MORNING_OPTIONS: BubbleOption[] = [
 
 /** After the alarm goes off (stored as `wakeStruggle`). Single choice. */
 export const WAKE_STRUGGLE_OPTIONS: (BubbleOption & { value: WakeStruggleValue })[] = [
-  { ...bubble('I fall back asleep', '#B9ADD9', { align: 'left', nudge: 0 }), value: 'asleep' },
-  { ...bubble('I snooze again and again', '#EDB28C', { align: 'right', nudge: -8 }), value: 'snooze' },
-  { ...bubble('I grab my phone', '#8FBDB7', { align: 'left', nudge: 24 }), value: 'phone' },
-  { ...bubble('I get up but feel low', '#ADDEFF', { align: 'right', nudge: 0 }), value: 'low' },
-  { ...bubble('Mornings are fine', '#AFC9A8', { align: 'left', nudge: 12 }), value: 'fine' },
+  { ...bubble('I fall back asleep', '#B8AFD3', { align: 'left', nudge: 0 }), value: 'asleep' },
+  { ...bubble('I snooze again and again', '#DFA07C', { align: 'right', nudge: -8 }), value: 'snooze' },
+  { ...bubble('I grab my phone', '#9CC0B5', { align: 'left', nudge: 24 }), value: 'phone' },
+  { ...bubble('I get up but feel low', '#A9C3D8', { align: 'right', nudge: 0 }), value: 'low' },
+  { ...bubble('Mornings are fine', '#A8C294', { align: 'left', nudge: 12 }), value: 'fine' },
 ];
 
 type WakeStruggleValue = 'asleep' | 'snooze' | 'phone' | 'low' | 'fine';
 
 export const VOICE_STYLE_OPTIONS: BubbleOption[] = [
-  bubble('Warm, almost a whisper', '#EDB28C', { align: 'left', nudge: 0 }),
-  bubble('Calm & confident', '#ADDEFF', { align: 'right', nudge: 0 }),
-  bubble('Like my best friend', '#FEC554', { align: 'left', nudge: 24 }),
-  bubble('Gentle coach', '#AFC9A8', { align: 'right', nudge: -12 }),
-  bubble('Bright & smiling', '#B9F34A', { align: 'left', nudge: 8 }),
-  bubble('Wise & unhurried', '#B9ADD9', { align: 'right', nudge: 0 }),
+  bubble('Warm, almost a whisper', '#DFA07C', { align: 'left', nudge: 0 }),
+  bubble('Calm & confident', '#A9C3D8', { align: 'right', nudge: 0 }),
+  bubble('Like my best friend', '#E8C276', { align: 'left', nudge: 24 }),
+  bubble('Gentle coach', '#A8C294', { align: 'right', nudge: -12 }),
+  bubble('Bright & smiling', '#A8C294', { align: 'left', nudge: 8 }),
+  bubble('Wise & unhurried', '#B8AFD3', { align: 'right', nudge: 0 }),
 ];
 
 export const MESSAGE_LENGTH_OPTIONS: BubbleOption[] = [
-  bubble('About 30 seconds', '#ADDEFF', { caption: 'one calm morning letter' }),
+  bubble('About 30 seconds', '#A9C3D8', { caption: 'one calm morning letter' }),
 ];
 
 export const MUSIC_BED_OPTIONS: BubbleOption[] = [
-  bubble('Soft calm', '#AFC9A8', {
+  bubble('Soft calm', '#A8C294', {
     caption: 'quiet modern pad',
     id: 'soft-calm',
   }),
 ];
 
 /** Brighter plus chip */
-export const ADD_CHIP_COLOR = '#FFD84D';
+export const ADD_CHIP_COLOR = '#E8C276';
 
 /** What it is, what it does, what you get. Titles 2 lines, bodies 2 short lines. */
 export const INTRO_SLIDES = [

@@ -2,7 +2,7 @@
 
 Usage (from the repo root):
   set -a; . ./.env; set +a
-  python3 scripts/generate-sounds.py server/assets/beds music   # or: sounds
+  python3 scripts/generate-sounds.py server/assets/beds music   # or: sounds [ids...]
 Reads ELEVENLABS_API_KEY from the environment. Writes <id>.mp3 into out_dir.
 """
 import json
@@ -26,6 +26,10 @@ SOUNDS = {
     "sound-birds": "Gentle early morning birdsong in a quiet garden, a few small songbirds chirping softly at a distance, calm, no people, no traffic, continuous",
     "sound-waves": "Soft calm ocean waves rolling slowly onto a sandy beach at dawn, gentle and steady, no wind gusts, no people, continuous",
     "sound-rain": "Light gentle rain falling steadily on leaves and a window, soft and cosy, no thunder, continuous",
+    "sound-bowl": "Tibetan singing bowl struck softly every few seconds, long warm resonant hum, calm yoga studio, no voices, continuous",
+    "sound-stream": "Small clear forest stream gently babbling over stones, soft and steady, a few distant birds, no people, continuous",
+    "sound-chimes": "Soft bamboo and metal wind chimes moving in a light warm breeze on a tropical terrace, gentle and sparse, continuous",
+    "sound-forest": "Calm tropical forest at sunrise, soft insects, distant exotic birds, light leaves rustling, peaceful, no people, continuous",
 }
 
 
@@ -75,6 +79,9 @@ def make(item):
 
 
 items = MUSIC if KIND == "music" else SOUNDS
+# Optional ids after the kind: only make those.
+if len(sys.argv) > 3:
+    items = {k: v for k, v in items.items() if k in sys.argv[3:]}
 with ThreadPoolExecutor(max_workers=4) as pool:
     for line in pool.map(make, items.items()):
         print(line)

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     width: CIRCLE,
     height: CIRCLE,
     borderRadius: CIRCLE / 2,
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#C46B5D',
     alignItems: 'center',
     justifyContent: 'center',
   },

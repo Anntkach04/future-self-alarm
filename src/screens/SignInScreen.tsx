@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 20,
-    color: '#C0392B',
+    color: '#C46B5D',
     textAlign: 'center',
   },
   actions: {

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   updateBanner: {
-    borderColor: '#8FBDB7',
+    borderColor: '#9CC0B5',
   },
   text: {
     fontFamily: fonts.body,

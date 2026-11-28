@@ -6,98 +6,75 @@ type Props = {
   delay?: number;
   style?: StyleProp<ViewStyle>;
   fromY?: number;
+  /** @deprecated no scale any more; ignored. */
   fromScale?: number;
 };
 
 /**
- * Motion only — opacity stays 1 forever.
- * Stalled springs must never hide fields/buttons.
+ * Gentle entrance: a soft fade with a small rise, no spring and no scale
+ * (the bouncy version felt jumpy between screens). Chips keep their own
+ * bubble pop (BubbleChip).
+ * A failsafe drops the animated style, so a stalled animation can never
+ * leave fields or buttons hidden.
  */
 export function BubbleEnter({
   children,
   delay = 0,
   style,
   fromY = 16,
-  fromScale = 0.92,
 }: Props) {
-  const translateY = useRef(new Animated.Value(fromY)).current;
-  const scale = useRef(new Animated.Value(fromScale)).current;
+  // Half the old travel: the rise should be felt, not seen.
+  const startY = Math.round(fromY * 0.5);
+  const translateY = useRef(new Animated.Value(startY)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
   const startDelay = Math.min(Math.max(delay, 0), 120);
-  /**
-   * Delayed items (the input pill) used to stay at fromScale — 92% and off
-   * the text column — when the JS-timer delay never fired. Once the entrance
-   * is over the transform is dropped entirely.
-   */
   const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    translateY.setValue(fromY);
-    scale.setValue(fromScale);
+    translateY.setValue(startY);
+    opacity.setValue(0);
     setSettled(false);
 
-    // Delay as a native no-op timing (not Animated.delay / spring `delay`,
-    // which wait on a JS timer). Springs then chain on the native end event.
-    const hold = new Animated.Value(0);
-    const springs = Animated.parallel([
-      Animated.spring(translateY, {
+    const easing = Easing.bezier(0.22, 1, 0.36, 1);
+    const enter = Animated.parallel([
+      Animated.timing(translateY, {
         toValue: 0,
-        friction: 7,
-        tension: 90,
+        duration: 360,
+        delay: startDelay,
+        easing,
         useNativeDriver: true,
       }),
-      Animated.spring(scale, {
+      Animated.timing(opacity, {
         toValue: 1,
-        friction: 5.2,
-        tension: 128,
+        duration: 280,
+        delay: startDelay,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
     ]);
-    const enter =
-      startDelay > 0
-        ? Animated.sequence([
-            Animated.timing(hold, {
-              toValue: 1,
-              duration: startDelay,
-              useNativeDriver: true,
-            }),
-            springs,
-          ])
-        : springs;
 
-    const failsafe = setTimeout(() => {
+    const settle = () => {
       translateY.setValue(0);
-      scale.setValue(1);
+      opacity.setValue(1);
       setSettled(true);
-    }, startDelay + 700);
-
+    };
+    const failsafe = setTimeout(settle, startDelay + 600);
     enter.start(({ finished }) => {
-      if (finished) {
-        translateY.setValue(0);
-        scale.setValue(1);
-        setSettled(true);
-      }
+      if (finished) settle();
     });
 
     return () => {
       clearTimeout(failsafe);
       enter.stop();
       translateY.setValue(0);
-      scale.setValue(1);
+      opacity.setValue(1);
     };
-  }, [fromScale, fromY, scale, startDelay, translateY]);
+  }, [opacity, startDelay, startY, translateY]);
 
   return (
     <Animated.View
       pointerEvents="box-none"
-      style={[
-        style,
-        settled
-          ? null
-          : {
-              opacity: 1,
-              transform: [{ translateY }, { scale }],
-            },
-      ]}
+      style={[style, settled ? null : { opacity, transform: [{ translateY }] }]}
     >
       {children}
     </Animated.View>

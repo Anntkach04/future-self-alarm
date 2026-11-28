@@ -12,6 +12,9 @@ const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg)$/i;
  */
 const BEDS = [
   { id: 'soft-calm', file: 'soft-calm.m4a', label: 'Soft calm' },
+  { id: 'bali-morning', file: 'bali-morning.m4a', label: 'Bali morning' },
+  { id: 'yoga-air', file: 'yoga-air.m4a', label: 'Yoga air' },
+  { id: 'warm-earth', file: 'warm-earth.m4a', label: 'Warm earth' },
   { id: 'music-soft-morning', file: 'music-soft-morning.mp3', label: 'Soft morning' },
   { id: 'music-sunrise', file: 'music-sunrise.mp3', label: 'Sunrise' },
   { id: 'music-ocean-calm', file: 'music-ocean-calm.mp3', label: 'Ocean calm' },
@@ -23,6 +26,10 @@ const SOUNDS = [
   { id: 'sound-birds', file: 'sound-birds.mp3', label: 'Birds' },
   { id: 'sound-waves', file: 'sound-waves.mp3', label: 'Waves' },
   { id: 'sound-rain', file: 'sound-rain.mp3', label: 'Rain' },
+  { id: 'sound-bowl', file: 'sound-bowl.mp3', label: 'Singing bowl' },
+  { id: 'sound-stream', file: 'sound-stream.mp3', label: 'Forest stream' },
+  { id: 'sound-chimes', file: 'sound-chimes.mp3', label: 'Wind chimes' },
+  { id: 'sound-forest', file: 'sound-forest.mp3', label: 'Jungle sunrise' },
 ];
 
 const DEFAULT_BED = 'soft-calm';

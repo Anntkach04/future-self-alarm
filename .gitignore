@@ -47,6 +47,11 @@ server/assets/beds/*.ogg
 # Our own ElevenLabs-generated sounds/music are small and ours: keep them in git
 !server/assets/beds/sound-*.mp3
 !server/assets/beds/music-*.mp3
+# CC0 music beds (docs/music/SOURCES.md): small enough, keep every laptop in sync
+!server/assets/beds/soft-calm.m4a
+!server/assets/beds/bali-morning.m4a
+!server/assets/beds/yoga-air.m4a
+!server/assets/beds/warm-earth.m4a
 
 # local user store when DATABASE_URL is unset
 server/data/

@@ -35,7 +35,7 @@ import { accents, colors, fonts, noFakeBold, spacing, opticalLeft } from '../the
 type Props = NativeStackScreenProps<RootStackParamList, 'VoiceRecord'>;
 
 /** Sage green for "Voice cloned": success reads green, and it breaks up the yellow. */
-const COMPLETE_COLOR = "#AFC9A8";
+const COMPLETE_COLOR = "#A8C294";
 /** Brief hold on "You’re all set", then leave. Animation is cosmetic only. */
 const SUCCESS_HOLD_MS = 2800;
 /** Pause on a finished line before the next one appears. */
@@ -87,9 +87,9 @@ export function VoiceRecordScreen({ navigation }: Props) {
     outputRange: [SHEET_RADIUS, SHEET_RADIUS, 0],
     extrapolate: 'clamp',
   });
-  /** Same enter motion as BubbleEnter (spring from below + scale). */
-  const completeEnterY = useRef(new Animated.Value(16)).current;
-  const completeEnterScale = useRef(new Animated.Value(0.92)).current;
+  /** Same enter motion as BubbleEnter (gentle rise). */
+  const completeEnterY = useRef(new Animated.Value(8)).current;
+  const completeEnterScale = useRef(new Animated.Value(1)).current;
   const readOpacity = useRef(new Animated.Value(1)).current;
   /** State (not ref) so advance gate opens after line change. */
   const [lineReady, setLineReady] = useState(false);
@@ -175,30 +175,19 @@ export function VoiceRecordScreen({ navigation }: Props) {
     sheetFullH,
   ]);
 
-  /** BubbleEnter twin: spring from below + scale (opacity stays visible). */
+  /** BubbleEnter twin: gentle rise, no spring or scale. */
   const playBubbleSpring = useCallback(() => {
     completeEnterY.stopAnimation();
     completeEnterScale.stopAnimation();
-    completeEnterY.setValue(16);
-    completeEnterScale.setValue(0.92);
-    Animated.parallel([
-      Animated.spring(completeEnterY, {
-        toValue: 0,
-        friction: 7,
-        tension: 90,
-        useNativeDriver: true,
-      }),
-      Animated.spring(completeEnterScale, {
-        toValue: 1,
-        friction: 5.2,
-        tension: 128,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (finished) {
-        completeEnterY.setValue(0);
-        completeEnterScale.setValue(1);
-      }
+    completeEnterY.setValue(8);
+    completeEnterScale.setValue(1);
+    Animated.timing(completeEnterY, {
+      toValue: 0,
+      duration: 360,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) completeEnterY.setValue(0);
     });
   }, [completeEnterScale, completeEnterY]);
 
@@ -811,7 +800,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     height: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(185, 173, 217, 0.3)',
+    backgroundColor: 'rgba(184, 175, 211, 0.3)',
     overflow: 'hidden',
     marginBottom: 8,
   },

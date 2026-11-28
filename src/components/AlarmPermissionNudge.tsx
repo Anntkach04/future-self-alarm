@@ -14,7 +14,7 @@ import {
   ensureAlarmKitReady,
   hasAlarmKitPermission,
 } from '../services/alarmScheduler';
-import { accents, colors, fonts, noFakeBold, spacing } from '../theme';
+import { accents, colors, earth, fonts, noFakeBold, spacing } from '../theme';
 import { TextArrowButton } from './TextArrowButton';
 
 type Props = {
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   },
   /** Soft sky card, no outline: reads as a friendly next step, not an error. */
   sheet: {
-    backgroundColor: accents.mist,
+    backgroundColor: earth.teal,
     borderRadius: 24,
     padding: 16,
     gap: 16,
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   btn: {
-    backgroundColor: accents.sky,
+    backgroundColor: colors.bg,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,

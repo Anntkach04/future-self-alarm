@@ -625,7 +625,7 @@ async function scheduleWithAlarmKit(
         launchAppOnSnooze: true,
         snoozePayload: kitPayload('snooze', alarm.id, ringMs),
         snoozeDuration: snoozeSec,
-        tintColor: '#BADFFF',
+        tintColor: '#A9C3D8',
         stopButtonLabel: "I'm up",
         snoozeButtonLabel: 'Snooze 10 min',
       };
@@ -812,7 +812,7 @@ export async function scheduleTestAlarmInSeconds(params: {
           dismissPayload: kitPayload('dismiss', params.alarmId),
           stopButtonLabel: "I'm up",
           snoozeButtonLabel: 'Snooze 10 min',
-          tintColor: '#BADFFF',
+          tintColor: '#A9C3D8',
           doSnoozeIntent: true,
           launchAppOnSnooze: true,
           snoozePayload: kitPayload('snooze', params.alarmId),

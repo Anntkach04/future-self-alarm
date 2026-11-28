@@ -30,7 +30,7 @@ import {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Intro'>;
 
-const WELCOME_BLUE = '#BADFFF';
+const WELCOME_BLUE = '#A9C3D8';
 const LAST = INTRO_SLIDES.length - 1;
 const RETRACT_MS = 850;
 

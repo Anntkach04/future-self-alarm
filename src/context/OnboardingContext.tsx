@@ -184,14 +184,11 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
                 (v) => !OLD_HARD_MORNING_ANSWERS.has(String(v).trim().toLowerCase())
               );
             }
-            // bali bed removed — never keep it as the active under-voice track
+            // Retired beds (Bali morning, Yoga air and Warm earth are back).
             if (
-              next.musicBedId === 'bali-morning' ||
               next.musicBedId === 'bali' ||
-              next.musicBedId === 'yoga-air' ||
               next.musicBedId === 'soft-massage' ||
-              next.musicBedId === 'light-water' ||
-              next.musicBedId === 'warm-earth'
+              next.musicBedId === 'light-water'
             ) {
               next.musicBedId = 'soft-calm';
             }

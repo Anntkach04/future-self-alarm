@@ -17,7 +17,7 @@ type Props = {
   style?: TextStyle;
 };
 
-const SPOKEN = '#E23D28';
+const SPOKEN = '#C46B5D';
 
 /** Long dashes read as robotic copy; the script uses commas and full stops. */
 export function cleanScript(text: string) {

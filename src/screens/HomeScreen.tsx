@@ -30,6 +30,7 @@ import { RootStackParamList } from '../navigation/types';
 import {
   accents,
   colors,
+  earth,
   fonts,
   headingClipFix,
   noFakeBold,
@@ -249,9 +250,7 @@ const styles = StyleSheet.create({
   block: {
     borderRadius: radii.card,
     borderCurve: 'continuous',
-    // Soft sky: ~35% of the mist accent on the cream page. Full mist read
-    // as a loud flat blue block.
-    backgroundColor: '#E2F0F4',
+    backgroundColor: earth.blue,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     overflow: 'hidden',

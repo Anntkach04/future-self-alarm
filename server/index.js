@@ -561,12 +561,11 @@ app.post('/api/mood-advice', requireAuth, limitText, async (req, res) => {
 
 app.post('/api/tts', requireAuth, limitSpeech, async (req, res) => {
   try {
-    const { voiceId, skipMix, withTimestamps } = req.body || {};
+    const { voiceId, withTimestamps } = req.body || {};
     assertVoiceAccess(req, voiceId, authEnforced());
     const text = cappedText(req.body?.text);
     // Model is server-chosen; clients cannot pick pricier models.
     const modelId = undefined;
-    // Timestamps must match the audio we return — skip bed mix for karaoke preview.
     const wantTimes = Boolean(withTimestamps);
     const result = await synthesizeSpeech({
       voiceId,
@@ -574,25 +573,13 @@ app.post('/api/tts', requireAuth, limitSpeech, async (req, res) => {
       modelId,
       withTimestamps: wantTimes,
     });
-    if (skipMix || wantTimes) {
-      // Raw TTS is very quiet (~-37 LUFS): bring it to a normal level.
-      const loud = await normalizeLoudness(Buffer.from(result.base64, 'base64'), -16);
-      return res.json({
-        mimeType: 'audio/mpeg',
-        base64: loud.toString('base64'),
-        words: result.words || null,
-      });
-    }
-    const raw = Buffer.from(result.base64, 'base64');
-    const colored = await mixVoiceWithBed(raw, 'soft-calm', {
-      voiceLevel: 0.85,
-      bedLevel: 0.4,
-    });
+    // Voice previews are voice only: no music, no sounds.
+    // Raw TTS is very quiet (~-37 LUFS): bring it to a normal level.
+    const loud = await normalizeLoudness(Buffer.from(result.base64, 'base64'), -16);
     return res.json({
       mimeType: 'audio/mpeg',
-      base64: colored.buffer.toString('base64'),
-      mixed: Boolean(colored.mixed),
-      mixReason: colored.reason || null,
+      base64: loud.toString('base64'),
+      words: result.words || null,
     });
   } catch (error) {
     console.error('tts error', error);
@@ -637,7 +624,7 @@ app.get('/api/sounds/:id/preview', (req, res) => {
 });
 
 app.get('/api/beds/:id/preview', (req, res) => {
-  // Legacy bali-morning → soft-massage (calm); findBedFile remaps.
+  // Unknown / retired ids fall back to the default bed (findBedFile).
   const file = findBedFile(req.params.id);
   if (!file) {
     return res.status(404).json({ error: 'Music bed not found' });

@@ -34,55 +34,72 @@ export const noFakeLight =
       } as const)
     : ({ fontWeight: '300' as const } as const);
 
-/** Named accents still used for intro cards, splash, inputs */
-export const accents = {
-  sky: '#6B91FF',
-  gold: '#FEC554',
-  coral: '#E98D73',
-  royal: '#4F7CFF',
-  sage: '#8FBDB7',
-  lime: '#B9F34A',
-  sand: '#D8C29E',
-  mist: '#ADDEFF',
-  ink: '#1A1A1A',
-  /** Delete / destructive actions only — never a normal CTA. */
-  danger: '#FF5A4E',
-  /** Tonal buttons: one shade deeper than the card they sit on, ink label. */
-  goldDeep: '#F2AE3D',
-  mistDeep: '#7FC6F4',
-  /** Soft lilac: progress bars. */
-  lilac: '#B9ADD9',
+/**
+ * THE palette. Calm, earthy, one colour per hue: never add a second orange,
+ * a lighter blue, etc. Every fill in the app comes from here
+ * (docs/palette.md shows them all).
+ */
+export const earth = {
+  blue: '#A9C3D8',
+  teal: '#9CC0B5',
+  /** Positive / success. */
+  green: '#A8C294',
+  /** Primary buttons. */
+  gold: '#E8C276',
+  orange: '#DFA07C',
+  /** Delete / cancel / destructive only. */
+  red: '#C46B5D',
+  rose: '#D6AEB1',
+  lilac: '#B8AFD3',
+  tan: '#CBB792',
+  /** The one beige for neutral fills (chips, inputs, "None", cards). */
+  beige: '#F1E9D5',
 } as const;
 
-/** Soft chips / bubbles — Figma muted + extras that fit cream UI */
+/** Named accents (old names kept so screens did not have to change). */
+export const accents = {
+  sky: earth.blue,
+  gold: earth.gold,
+  coral: earth.orange,
+  royal: earth.blue,
+  sage: earth.green,
+  lime: earth.green,
+  sand: earth.tan,
+  mist: earth.blue,
+  ink: '#1A1A1A',
+  /** Delete / destructive actions only — never a normal CTA. */
+  danger: earth.red,
+  /** Buttons that sit on a coloured card: a cream pill (no darker shades). */
+  goldDeep: '#FFFAEE',
+  mistDeep: '#FFFAEE',
+  lilac: earth.lilac,
+} as const;
+
+/** Soft chips / bubbles / tiles: the coloured hues of `earth`. */
 export const mutedPalette = [
-  '#ADDEFF', // pale sky
-  '#8FBDB7', // dusty teal
-  '#AFC9A8', // sage olive
-  '#B9ADD9', // soft lilac
-  '#D8C29E', // sand
-  '#E98D73', // terracotta
-  '#EDB28C', // peach
-  '#C9B8A8', // warm taupe (extra)
-  '#A8B8D0', // dusty periwinkle (extra)
-  '#CDB5C4', // muted rose (extra)
-  '#B5C9BE', // mist green (extra)
-  '#D4C4A8', // soft oat (extra)
+  earth.blue,
+  earth.teal,
+  earth.green,
+  earth.lilac,
+  earth.tan,
+  earth.orange,
+  earth.rose,
+  earth.gold,
 ] as const;
 
-/** Bright accents — FABs / primary buttons */
+/** Old "bright" slots, now the same earth hues (no neon). */
 export const brightPalette = [
-  '#4F7CFF',
-  '#FEC554',
-  '#B9F34A',
-  '#2FD6C8',
-  '#6FE7C8',
-  '#7E6BFF',
-  '#FF6B5E',
-  '#FF7FB5',
-  '#FF9A3C',
-  '#FFD84D',
-  '#AEE1FF',
+  earth.blue,
+  earth.gold,
+  earth.green,
+  earth.teal,
+  earth.teal,
+  earth.lilac,
+  earth.red,
+  earth.rose,
+  earth.orange,
+  earth.gold,
+  earth.blue,
 ] as const;
 
 /** @deprecated prefer mutedPalette — kept for any leftover imports */
@@ -112,20 +129,20 @@ export const colors = {
   textMuted: 'rgba(26, 26, 26, 0.8)',
   textSoft: 'rgba(26, 26, 26, 0.8)',
   border: inkStroke,
-  chip: '#F3EBD3',
+  chip: earth.beige,
   chipSelected: accents.ink,
   chipSelectedText: '#FFFAEE',
   inputBg: '#FFFFFF',
   placeholder: '#B0A894',
   overlay: 'rgba(255,250,238,0.82)',
-  imagePlaceholder: '#E8E0C8',
+  imagePlaceholder: earth.beige,
   dot: accents.ink,
   dotInactive: 'transparent',
   dotBorder: inkStroke,
   stage: '#FFFAEE',
   stroke: inkStroke,
   arrow: inkStroke,
-  fab: '#AEE1FF',
+  fab: earth.blue,
 };
 
 /**

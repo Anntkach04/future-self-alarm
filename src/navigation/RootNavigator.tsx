@@ -54,7 +54,9 @@ export function RootNavigator() {
         initialRouteName="Welcome"
         screenOptions={{
           headerShown: false,
-          animation: 'none',
+          // Soft cross-fade between screens; content then rises gently (BubbleEnter).
+          animation: 'fade',
+          animationDuration: 220,
           contentStyle: { backgroundColor: colors.bg, overflow: 'visible' },
         }}
       >
@@ -63,7 +65,7 @@ export function RootNavigator() {
           component={WelcomeScreen}
           options={{
             animation: 'none',
-            contentStyle: { backgroundColor: '#BADFFF' },
+            contentStyle: { backgroundColor: '#A9C3D8' },
           }}
         />
         <Stack.Screen
@@ -98,7 +100,7 @@ export function RootNavigator() {
           component={OnboardingCongratsScreen}
           options={{
             animation: 'none',
-            contentStyle: { backgroundColor: '#FEC554' },
+            contentStyle: { backgroundColor: '#E8C276' },
           }}
         />
         <Stack.Screen name="Home" component={HomeScreen} />

@@ -198,6 +198,7 @@ Content:
 - Use ONLY the one theme you are given. Do not try to fit in all their habits and goals.
 - Never invent facts about the person, their plans, people or events. You cannot see them: do not describe their room, bed, light, window, weather, objects or what they dreamed. Never add plans or things that are not in their answers (no walks, sketchbooks, meetings, trips).
 - Everyday spoken words, like a voice note from a close friend who believes in them. Heartfelt is good; poetic imagery, wellness jargon and exclamation marks are not.
+- Keep it simple: short sentences and plain, common words a 12-year-old would use ("get up", not "lace up and see where those legs can take you"). Many listeners are not native English speakers and are half asleep. One idea per sentence, no metaphors that need a second thought.
 - Mention the weekday only if it is given AND it adds something.
 - Banned words and phrases: "best version of yourself", "future self", "lean into", "hold space", "journey", "manifest", "rise and shine", "seize the day", "new day", "embrace", "unfold", "magic", "tranquil", "savor", "cozy", "radiant", "vibrant", "take on the day", "let's get moving", "fresh start".
 

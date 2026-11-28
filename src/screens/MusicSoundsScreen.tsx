@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { BackButton } from '../components/BackButton';
 import { Screen } from '../components/Screen';
 import { useOnboarding } from '../context/OnboardingContext';
@@ -18,7 +18,7 @@ import {
   accents,
   colors,
   fonts,
-  mutedPalette,
+  earth,
   noFakeBold,
   opticalLeft,
   radii,
@@ -29,19 +29,28 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, 'MusicSounds'>;
 
 type Kind = 'beds' | 'sounds';
-type Motif = 'calm' | 'morning' | 'sunrise' | 'ocean' | 'lofi' | 'birds' | 'waves' | 'rain' | 'none';
+type Motif =
+  | 'calm' | 'morning' | 'sunrise' | 'ocean' | 'lofi' | 'lotus' | 'hills'
+  | 'birds' | 'waves' | 'rain' | 'bowl' | 'stream' | 'chimes' | 'leaves' | 'none';
 type Option = { id: string; label: string };
 
-/** Each tile gets its own soft colour and a simple drawing. */
+/** Each tile: one hue from the earth palette (theme.ts) and a simple drawing. */
 const LOOK: Record<string, { color: string; motif: Motif }> = {
-  'soft-calm': { color: mutedPalette[1], motif: 'calm' },
-  'music-soft-morning': { color: mutedPalette[6], motif: 'morning' },
-  'music-sunrise': { color: mutedPalette[5], motif: 'sunrise' },
-  'music-ocean-calm': { color: mutedPalette[8], motif: 'ocean' },
-  'music-lofi-morning': { color: mutedPalette[9], motif: 'lofi' },
-  'sound-birds': { color: mutedPalette[2], motif: 'birds' },
-  'sound-waves': { color: mutedPalette[10], motif: 'waves' },
-  'sound-rain': { color: mutedPalette[3], motif: 'rain' },
+  'soft-calm': { color: earth.lilac, motif: 'calm' },
+  'bali-morning': { color: earth.orange, motif: 'sunrise' },
+  'yoga-air': { color: earth.blue, motif: 'lotus' },
+  'warm-earth': { color: earth.tan, motif: 'hills' },
+  'music-soft-morning': { color: earth.gold, motif: 'morning' },
+  'music-sunrise': { color: earth.orange, motif: 'sunrise' },
+  'music-ocean-calm': { color: earth.teal, motif: 'ocean' },
+  'music-lofi-morning': { color: earth.rose, motif: 'lofi' },
+  'sound-birds': { color: earth.green, motif: 'birds' },
+  'sound-waves': { color: earth.teal, motif: 'waves' },
+  'sound-rain': { color: earth.lilac, motif: 'rain' },
+  'sound-bowl': { color: earth.rose, motif: 'bowl' },
+  'sound-stream': { color: earth.blue, motif: 'stream' },
+  'sound-chimes': { color: earth.gold, motif: 'chimes' },
+  'sound-forest': { color: earth.orange, motif: 'leaves' },
   none: { color: colors.chip, motif: 'none' },
 };
 
@@ -52,6 +61,10 @@ const FALLBACK_SOUNDS: Option[] = [
   { id: 'sound-birds', label: 'Birds' },
   { id: 'sound-waves', label: 'Waves' },
   { id: 'sound-rain', label: 'Rain' },
+  { id: 'sound-bowl', label: 'Singing bowl' },
+  { id: 'sound-stream', label: 'Forest stream' },
+  { id: 'sound-chimes', label: 'Wind chimes' },
+  { id: 'sound-forest', label: 'Jungle sunrise' },
 ];
 
 const INK = 'rgba(26, 26, 26, 0.55)';
@@ -101,6 +114,60 @@ function MotifArt({ motif, size }: { motif: Motif; size: number }) {
         <Svg width={s} height={s} viewBox="0 0 100 100">
           <Path d="M24 46 q8 -10 16 0 q8 -10 16 0" {...stroke} />
           <Path d="M50 64 q6 -8 12 0 q6 -8 12 0" {...stroke} />
+        </Svg>
+      );
+    case 'lotus':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 100 100">
+          <Path d="M50 70 C40 58 40 42 50 28 C60 42 60 58 50 70 Z" {...stroke} />
+          <Path d="M50 70 C36 66 26 56 24 44 C36 46 46 56 50 70 Z" {...stroke} />
+          <Path d="M50 70 C64 66 74 56 76 44 C64 46 54 56 50 70 Z" {...stroke} />
+          <Path d="M28 78 H72" {...stroke} />
+        </Svg>
+      );
+    case 'hills':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 100 100">
+          <Circle cx={66} cy={34} r={8} {...stroke} />
+          <Path d="M12 70 Q32 44 52 62 T88 58" {...stroke} />
+          <Path d="M12 80 H88" {...stroke} />
+        </Svg>
+      );
+    case 'bowl':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 100 100">
+          <Path d="M26 54 H74 C72 68 62 76 50 76 C38 76 28 68 26 54 Z" {...stroke} />
+          <Path d="M38 40 q12 -8 24 0" {...stroke} />
+          <Path d="M32 30 q18 -12 36 0" {...stroke} />
+        </Svg>
+      );
+    case 'stream':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 100 100">
+          <Path d="M30 18 C50 34 30 50 50 64 S56 80 64 86" {...stroke} />
+          <Path d="M46 18 C66 34 46 50 66 64 S72 80 80 86" {...stroke} />
+          <Circle cx={30} cy={70} r={4} {...stroke} />
+          <Circle cx={76} cy={36} r={3} {...stroke} />
+        </Svg>
+      );
+    case 'chimes':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 100 100">
+          <Path d="M24 22 H76" {...stroke} />
+          {[[32, 52], [44, 64], [56, 58], [68, 46]].map(([x, y]) => (
+            <G key={x}>
+              <Path d={`M${x} 22 V${y - 18}`} {...stroke} strokeWidth={1.5} />
+              <Path d={`M${x} ${y - 16} V${y}`} {...stroke} strokeWidth={4} />
+            </G>
+          ))}
+        </Svg>
+      );
+    case 'leaves':
+      return (
+        <Svg width={s} height={s} viewBox="0 0 100 100">
+          <Path d="M50 82 V40" {...stroke} />
+          <Path d="M50 56 C36 56 26 46 24 32 C38 32 48 42 50 56 Z" {...stroke} />
+          <Path d="M50 46 C64 46 74 36 76 22 C62 22 52 32 50 46 Z" {...stroke} />
         </Svg>
       );
     case 'rain':

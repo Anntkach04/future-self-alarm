@@ -310,7 +310,7 @@ function nextRingText(alarms: Alarm[]) {
 
 const styles = StyleSheet.create({
   mic: {
-    backgroundColor: colors.chip,
+    backgroundColor: accents.gold,
   },
   micOn: {
     backgroundColor: accents.coral,

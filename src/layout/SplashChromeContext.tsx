@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 
-export const WELCOME_BLUE = '#BADFFF';
+export const WELCOME_BLUE = '#A9C3D8';
 
 type SplashChromeValue = {
   splashActive: boolean;

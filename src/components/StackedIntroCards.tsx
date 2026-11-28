@@ -21,9 +21,9 @@ export type IntroCardData = {
 };
 
 export const CARD_COLORS: Record<IntroCardTone, string> = {
-  sky: '#FF9A3C',
-  coral: '#6B91FF',
-  gold: '#FEC554',
+  sky: '#DFA07C',
+  coral: '#A9C3D8',
+  gold: '#E8C276',
 };
 
 const SLOT = [

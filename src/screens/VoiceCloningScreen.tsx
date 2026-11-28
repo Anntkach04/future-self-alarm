@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   error: {
     fontSize: 13,
-    color: '#C0392B',
+    color: '#C46B5D',
     textAlign: 'center',
     lineHeight: 16,
   },

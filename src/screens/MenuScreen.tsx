@@ -40,7 +40,7 @@ type MenuRow = {
 };
 
 const ROWS: MenuRow[] = ([
-  { title: 'About you', route: 'EditProfile' },
+  { title: 'About me', route: 'EditProfile' },
   { title: 'Subscription', route: 'Subscription' },
   { title: 'Voice', route: 'VoiceSettings' },
   { title: 'Music & sounds', route: 'MusicSounds' },

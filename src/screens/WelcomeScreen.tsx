@@ -17,7 +17,7 @@ import { markIntroSplashFinished, resetIntroSplashGate } from './introSplashGate
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Welcome'>;
 
-const WELCOME_BLUE = '#BADFFF';
+const WELCOME_BLUE = '#A9C3D8';
 const HOLD_MS = 1900;
 const RETRACT_MS = 900;
 
@@ -34,9 +34,9 @@ export function WelcomeScreen({ navigation }: Props) {
   const [fullW, setFullW] = useState(0);
   const blueHeight = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(1)).current;
-  /** BubbleEnter twin — opacity stays 1; spring from below + scale. */
-  const enterY = useRef(new Animated.Value(16)).current;
-  const enterScale = useRef(new Animated.Value(0.92)).current;
+  /** BubbleEnter twin — opacity stays 1; gentle rise. */
+  const enterY = useRef(new Animated.Value(8)).current;
+  const enterScale = useRef(new Animated.Value(1)).current;
   const started = useRef(false);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -55,22 +55,15 @@ export function WelcomeScreen({ navigation }: Props) {
     setSplashActive(true);
     const chromeTimer = setTimeout(() => setSplashActive(false), HOLD_MS);
 
-    enterY.setValue(16);
-    enterScale.setValue(0.92);
-    const enter = Animated.parallel([
-      Animated.spring(enterY, {
-        toValue: 0,
-        friction: 7,
-        tension: 90,
-        useNativeDriver: true,
-      }),
-      Animated.spring(enterScale, {
-        toValue: 1,
-        friction: 5.2,
-        tension: 128,
-        useNativeDriver: true,
-      }),
-    ]);
+    enterY.setValue(8);
+    enterScale.setValue(1);
+    // Gentle rise, no spring (matches BubbleEnter).
+    const enter = Animated.timing(enterY, {
+      toValue: 0,
+      duration: 360,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: true,
+    });
     enter.start(({ finished }) => {
       if (finished) {
         enterY.setValue(0);
