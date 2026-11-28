@@ -34,7 +34,7 @@ import { DeferredMount } from './src/components/DeferredMount';
 import { AlarmAudioRepairHost } from './src/components/AlarmAudioRepairHost';
 import { EveningRegenHost } from './src/components/EveningRegenHost';
 import { NudgeHost } from './src/components/NudgeHost';
-import { PauseAlarmsHost } from './src/components/PauseAlarmsHost';
+import { CheckInReplyHost } from './src/components/CheckInReplyHost';
 import { ProfileSyncHost } from './src/components/ProfileSyncHost';
 
 export default function App() {
@@ -104,7 +104,7 @@ export default function App() {
                     <AlarmAudioRepairHost />
                     <EveningRegenHost />
                     <NudgeHost />
-                    <PauseAlarmsHost />
+                    <CheckInReplyHost />
                     <ProfileSyncHost />
                     <SessionRefreshHost />
                   </DeferredMount>

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { deleteWakeSound } from './alarmSoundFile';
+import { offsetAt, sameWallClockHere } from './timeZone';
 
 /**
  * Ready-made wake messages, one per upcoming ring.
@@ -18,6 +19,8 @@ const KEY = 'fsa.ring_bank.v1';
 export type RingMessage = {
   /** Ring time, epoch ms. */
   ring: number;
+  /** UTC offset (minutes) the ring was planned in, so a trip can move it. */
+  offsetMin?: number;
   text: string;
   /** Full MP3 for the in-app wake screen. */
   mp3Uri: string;
@@ -92,7 +95,8 @@ export function putRingMessage(alarmId: string, message: RingMessage) {
     const bank = await readBank();
     const list = bank[alarmId] ?? [];
     const prev = list.find((m) => m.ring === message.ring) ?? null;
-    bank[alarmId] = [...list.filter((m) => m.ring !== message.ring), message];
+    const stamped = { ...message, offsetMin: message.offsetMin ?? offsetAt(message.ring) };
+    bank[alarmId] = [...list.filter((m) => m.ring !== message.ring), stamped];
     await writeBank(bank);
     return prev;
   });
@@ -198,37 +202,21 @@ export const RING_BANK_STORAGE_KEY = KEY;
 
 /**
  * After a time-zone change (a trip), keep every stocked message on the same
- * wall-clock time: a ring stored for 7:00 in the old zone becomes 7:00 here.
+ * wall-clock time: a ring planned for 7:00 in the old zone becomes 7:00 here.
+ * `legacyOffsetMin` is used for messages stored before offsets were kept.
  */
-export async function moveRingsToTimeZone(fromZone: string) {
+export async function moveRingsToCurrentZone(legacyOffsetMin: number | null) {
   return locked(async () => {
     const bank = await readBank();
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: fromZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    });
     let moved = 0;
     for (const id of Object.keys(bank)) {
       bank[id] = bank[id].map((m) => {
-        const p = Object.fromEntries(
-          parts.formatToParts(new Date(m.ring)).map((x) => [x.type, x.value])
-        );
-        const local = new Date(
-          Number(p.year),
-          Number(p.month) - 1,
-          Number(p.day),
-          Number(p.hour),
-          Number(p.minute),
-          0,
-          0
-        ).getTime();
-        if (Number.isFinite(local) && local !== m.ring) moved += 1;
-        return Number.isFinite(local) ? { ...m, ring: local } : m;
+        const from = m.offsetMin ?? legacyOffsetMin;
+        if (from == null) return m;
+        const ring = sameWallClockHere(m.ring, from);
+        const offsetMin = offsetAt(ring);
+        if (ring !== m.ring) moved += 1;
+        return { ...m, ring, offsetMin };
       });
     }
     await writeBank(bank);

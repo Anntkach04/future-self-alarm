@@ -1,5 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import { authHeaders } from './apiAuth';
+import { wallClock } from './timeZone';
 
 const DEFAULT_API_URL = 'http://localhost:8787';
 const API_PORT = 8787;
@@ -435,7 +436,15 @@ export async function generateMorningAlarm(params: {
     musicBedId?: string;
   };
   /** Yesterday/today mood — server uses for THIS wake only. */
-  mood?: { label: string; note?: string; intention?: string | null; followUp?: string | null };
+  mood?: {
+    label: string;
+    note?: string;
+    intention?: string | null;
+    followUp?: string | null;
+    /** Their evening voice note (local file) + what it says: plays first. */
+    voiceNoteUri?: string | null;
+    voiceNoteText?: string | null;
+  };
   voiceLevel?: number;
   bedLevel?: number;
   /** When set, server speaks this text instead of generating a new script. */
@@ -457,6 +466,10 @@ export async function generateMorningAlarm(params: {
   // otherwise the server uses the fixed template.
   const { hasAiConsent } = await import('./aiConsent');
   const aiScript = await hasAiConsent();
+  // Their own evening voice note plays first in this ring.
+  const voiceNote = params.mood?.voiceNoteUri
+    ? await readVoiceNote(params.mood.voiceNoteUri, params.mood.voiceNoteText ?? '')
+    : null;
   const response = await apiFetch('/api/alarm/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -466,7 +479,7 @@ export async function generateMorningAlarm(params: {
         ...params.answers,
         weekday,
         // "Good morning" only for rings before noon.
-        isMorning: (params.forDate ?? new Date()).getHours() < 12,
+        isMorning: wallClock((params.forDate ?? new Date()).getTime()).hour < 12,
         ...(params.recentScripts?.length
           ? { recentScripts: params.recentScripts.slice(0, 10) }
           : {}),
@@ -486,6 +499,7 @@ export async function generateMorningAlarm(params: {
           : {}),
       },
       ...(params.text ? { text: params.text } : {}),
+      ...(voiceNote ? { voiceNote } : {}),
       aiScript,
     }),
   }, 180000);
@@ -510,4 +524,40 @@ export function isPaidPlanCloneError(message: string) {
 export function buildPreviewLine(name: string) {
   const who = name.trim() || 'friend';
   return `Good morning, ${who}. This is you from the future. Get up. Today matters. Start with one clear step.`;
+}
+
+
+/** Voice note file → upload shape. Null if the file is gone. */
+async function readVoiceNote(uri: string, text: string) {
+  try {
+    const FileSystem = await import('expo-file-system/legacy');
+    const info = await FileSystem.getInfoAsync(uri);
+    if (!info.exists) return null;
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return { base64, mimeType: 'audio/m4a', text };
+  } catch {
+    return null;
+  }
+}
+
+/** What a short voice note says (server transcribes it). '' if unclear. */
+export async function transcribeVoiceNote(uri: string): Promise<string> {
+  const FileSystem = await import('expo-file-system/legacy');
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const response = await apiFetch(
+    '/api/transcribe',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64, mimeType: 'audio/m4a' }),
+    },
+    45000
+  );
+  if (!response.ok) throw new Error(await readError(response));
+  const data = (await response.json()) as { text?: string };
+  return String(data.text || '').trim();
 }

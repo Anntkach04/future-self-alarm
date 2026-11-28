@@ -14,7 +14,7 @@ const {
   deleteVoice,
   getElevenKey,
 } = require('./lib/elevenlabs');
-const { generateMorningScript, generateMoodAdvice, getOpenAiKey } = require('./lib/openai');
+const { generateMorningScript, generateMoodAdvice, getOpenAiKey, transcribeAudio } = require('./lib/openai');
 const { withCountdown } = require('./lib/prompt');
 const {
   mixVoiceWithBed,
@@ -22,6 +22,7 @@ const {
   mp3BufferToAlarmCaf,
   getFfmpegPath,
   listBeds,
+  prependVoiceNote,
 } = require('./lib/mix');
 const { findBedFile, findSoundFile, listSounds } = require('./lib/beds');
 const {
@@ -122,6 +123,8 @@ app.use(
 // is small JSON, so a tight default limit blunts memory abuse.
 const LARGE_JSON_PATHS = new Set([
   '/api/voices/clone-json',
+  '/api/transcribe',
+  '/api/alarm/generate',
   '/api/audio/to-alarm-sound',
 ]);
 const jsonLarge = express.json({ limit: '64mb' });
@@ -513,6 +516,25 @@ app.post('/api/script', requireAuth, limitText, async (req, res) => {
   }
 });
 
+/** Short voice note → text (the evening "tell tomorrow-you" recording). */
+app.post('/api/transcribe', requireAuth, limitText, async (req, res) => {
+  try {
+    const { base64, mimeType } = req.body || {};
+    if (!base64 || typeof base64 !== 'string') {
+      return res.status(400).json({ error: 'base64 audio is required' });
+    }
+    const buffer = Buffer.from(base64, 'base64');
+    if (!buffer.length || buffer.length > 3 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Voice note is too long' });
+    }
+    const text = await transcribeAudio(buffer, String(mimeType || 'audio/m4a'));
+    return res.json({ text });
+  } catch (error) {
+    console.error('transcribe error', error);
+    return sendError(res, error);
+  }
+});
+
 app.post('/api/mood-advice', requireAuth, limitText, async (req, res) => {
   try {
     const { mood, note, name, goals, feelings } = req.body || {};
@@ -626,9 +648,23 @@ app.get('/api/beds/:id/preview', (req, res) => {
 
 app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, async (req, res) => {
   try {
-    const { voiceId, answers, skipMix } = req.body || {};
+    const { voiceId, skipMix, voiceNote } = req.body || {};
+    let answers = req.body?.answers || {};
     if (!voiceId) {
       return res.status(400).json({ error: 'voiceId is required' });
+    }
+    // Their own evening voice note plays first; the AI answers it.
+    let noteBuffer = null;
+    if (voiceNote && typeof voiceNote.base64 === 'string') {
+      const buf = Buffer.from(voiceNote.base64, 'base64');
+      if (buf.length && buf.length <= 3 * 1024 * 1024) {
+        noteBuffer = buf;
+        const noteText =
+          String(voiceNote.text || '').trim() ||
+          (await transcribeAudio(buf, String(voiceNote.mimeType || 'audio/m4a')).catch(() => ''));
+        if (noteText) answers = { ...answers, voiceNoteText: noteText.slice(0, 400) };
+        else noteBuffer = null; // can't tell what it says: skip it rather than answer blindly
+      }
     }
     assertVoiceAccess(req, voiceId, authEnforced());
     const providedText = cappedText(req.body?.text);
@@ -679,6 +715,10 @@ app.post('/api/alarm/generate', requireAuth, limitSpeech, requireEntitlement, as
       voiceId,
       text: script.text,
     });
+    if (noteBuffer) {
+      const ext = /webm/.test(String(voiceNote?.mimeType)) ? 'webm' : 'm4a';
+      spoken.buffer = await prependVoiceNote(spoken.buffer, noteBuffer, ext);
+    }
 
     // Voice + vintage landline EQ/hiss + quiet modern calm pad (not bali/yoga).
     const mixed = skipMix

@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMoodCheckIn } from '../context/MoodCheckInContext';
 import { useOnboarding } from '../context/OnboardingContext';
 import { dailyMoodExample } from '../data/moodExample';
 import { useAlarms, type Alarm } from '../context/AlarmsContext';
 import { nextAlarmOccurrences } from '../services/alarmScheduler';
+import { instantOn, timeLabel, upcomingZoneDays, wallClock } from '../services/timeZone';
 import {
   accents,
   colors,
@@ -12,12 +14,18 @@ import {
   noFakeBold,
   radii,
   spacing,
-  typeScale,
-} from '../theme';
+  typeScale, chipMetrics } from '../theme';
 import { ForwardArrow } from './ForwardArrow';
+import { MicIcon } from './MicRecordButton';
+import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
+import { onCheckIn } from '../services/checkInBridge';
+import { transcribeVoiceNote } from '../services/elevenlabs';
+import { userFacingError } from '../services/userFacingError';
 import { MoodWhySheet } from './MoodWhySheet';
 
 const MAX_CHARS = 160;
+/** A voice note to tomorrow-you: short, so the whole alarm fits in 28 s. */
+const NOTE_MAX_MS = 10_000;
 
 /**
  * "How are you feeling today?" as the user's own words. Future You answers
@@ -32,6 +40,46 @@ export function MoodCheckInCard({ name }: { name: string }) {
   const [editing, setEditing] = useState(false);
   // The old bottom sheet answers: `words` = just sent, `reopen` = saved one.
   const [sheet, setSheet] = useState<{ words: string; reopen: boolean } | null>(null);
+  // Voice note to tomorrow-you: recorded here, plays first in the next alarm.
+  const recorder = useVoiceRecorder();
+  const [note, setNote] = useState<{ uri: string; text: string } | null>(null);
+  const [noteBusy, setNoteBusy] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+  const recording = recorder.status === 'recording';
+
+  // A reply typed into the evening notification arrives here.
+  useEffect(() => onCheckIn((words) => setSheet({ words, reopen: false })), []);
+
+  const finishNote = async () => {
+    const tmp = await recorder.stop();
+    if (!tmp) return;
+    setNoteBusy(true);
+    setNoteError(null);
+    try {
+      // Keep it past cache clean-ups: it has to survive until the morning.
+      const dir = `${FileSystem.documentDirectory}voice-notes/`;
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
+      const uri = `${dir}${Date.now()}.m4a`;
+      await FileSystem.copyAsync({ from: tmp, to: uri });
+      const words = await transcribeVoiceNote(uri);
+      if (!words) {
+        setNoteError('I couldn’t hear that. Try again a little closer, or type it.');
+        return;
+      }
+      setNote({ uri, text: words });
+      setSheet({ words, reopen: false });
+    } catch (e) {
+      setNoteError(userFacingError(e, 'Couldn’t save your voice note. Try again.'));
+    } finally {
+      setNoteBusy(false);
+    }
+  };
+
+  // Stop by itself at 10 s.
+  useEffect(() => {
+    if (recording && recorder.durationMs >= NOTE_MAX_MS) void finishNote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recording, recorder.durationMs]);
 
   // A short example in their own terms; changes every day.
   const example = useMemo(
@@ -109,6 +157,11 @@ export function MoodCheckInCard({ name }: { name: string }) {
           <Text maxFontSizeMultiplier={1.4} style={styles.said}>
             “{today.moodLabel}”
           </Text>
+          {today.voiceNoteUri ? (
+            <Text maxFontSizeMultiplier={1.4} style={styles.tomorrow}>
+              Your voice note plays first in your next alarm.
+            </Text>
+          ) : null}
           {today.intention ? (
             <Text maxFontSizeMultiplier={1.4} style={styles.tomorrow}>
               {nextRingLabel ?? 'Next alarm:'} I’ll remind you to {today.intention}.
@@ -170,9 +223,29 @@ export function MoodCheckInCard({ name }: { name: string }) {
             >
               <ForwardArrow size={18} color={colors.text} />
             </Pressable>
-          ) : null}
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={recording ? 'Finish voice note' : 'Record a voice note for tomorrow'}
+              onPress={() => void (recording ? finishNote() : recorder.start())}
+              disabled={noteBusy}
+              hitSlop={12}
+              style={[styles.send, styles.mic, recording && styles.micOn]}
+            >
+              <MicIcon color={colors.text} size={20} />
+            </Pressable>
+          )}
         </View>
       )}
+      {recording || noteBusy || noteError || recorder.error ? (
+        <Text maxFontSizeMultiplier={1.3} style={[styles.noteStatus, (noteError || recorder.error) && styles.noteError]}>
+          {recording
+            ? `Recording for tomorrow-you · ${Math.ceil((NOTE_MAX_MS - recorder.durationMs) / 1000)} s left · tap to finish`
+            : noteBusy
+              ? 'Listening…'
+              : noteError || 'Allow the microphone in Settings to record a voice note.'}
+        </Text>
+      ) : null}
 
       <MoodWhySheet
         visible={Boolean(sheet)}
@@ -189,15 +262,20 @@ export function MoodCheckInCard({ name }: { name: string }) {
         nextRingLabel={nextRingLabel}
         onAddGoal={addFutureSelf}
         onClose={() => setSheet(null)}
-        onSaved={({ mood, advice, intention }) =>
+        onSaved={({ mood, advice, intention }) => {
+          // A note only counts for the check-in it was recorded for.
+          const voice = note && note.text === mood.label ? note : null;
           saveCheckIn({
             moodId: 'own-words',
             moodLabel: mood.label,
             note: '',
             advice,
             intention,
-          })
-        }
+            voiceNoteUri: voice?.uri ?? null,
+            voiceNoteText: voice?.text ?? null,
+          });
+          setNote(null);
+        }}
       />
     </View>
   );
@@ -218,17 +296,34 @@ function nextRingText(alarms: Alarm[]) {
     .filter((d): d is Date => Boolean(d))
     .sort((a, b) => a.getTime() - b.getTime())[0];
   if (!next) return null;
-  const now = new Date();
-  const time = `${next.getHours()}:${String(next.getMinutes()).padStart(2, '0')}`;
-  const sameDay = next.toDateString() === now.toDateString();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  if (sameDay) return `Today at ${time}`;
-  if (next.toDateString() === tomorrow.toDateString()) return `Tomorrow at ${time}`;
-  return `On ${next.toLocaleDateString('en-US', { weekday: 'long' })} at ${time}`;
+  // Phone's current zone (timeZone.ts), not the JS engine's launch-time zone.
+  const days = upcomingZoneDays(2);
+  const ms = next.getTime();
+  const time = timeLabel(ms);
+  const inDay = (i: number) =>
+    days[i] && ms >= instantOn(days[i], 0, 0) && ms < instantOn(days[i], 0, 0) + 86_400_000;
+  if (inDay(0)) return `Today at ${time}`;
+  if (inDay(1)) return `Tomorrow at ${time}`;
+  const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return `On ${WEEKDAYS[wallClock(ms).weekday]} at ${time}`;
 }
 
 const styles = StyleSheet.create({
+  mic: {
+    backgroundColor: colors.chip,
+  },
+  micOn: {
+    backgroundColor: accents.coral,
+  },
+  noteStatus: {
+    fontFamily: fonts.body,
+    ...typeScale.footnote,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  noteError: {
+    color: accents.danger,
+  },
   wrap: { marginBottom: spacing.xl },
   title: {
     fontFamily: fonts.headingRegular,
@@ -321,13 +416,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.text,
     borderRadius: radii.chip,
-    paddingHorizontal: spacing.sm,
-    minHeight: 36,
+    // Same size as onboarding chips.
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
     justifyContent: 'center',
   },
   followUpChipText: {
     fontFamily: fonts.body,
-    ...typeScale.subhead,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     color: colors.text,
   },
   pressed: { opacity: 0.7 },

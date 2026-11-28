@@ -22,14 +22,19 @@ const LENGTH_WITH_COUNTDOWN = {
 /** Spoken after the script when the person turned the countdown on. */
 const COUNTDOWN_LINE = "I'm counting now. Five. Four. Three. Two. One. Up.";
 
+/** Their own voice note (up to 10 s) plays first: keep ours short. */
+const LENGTH_AFTER_NOTE = { words: '24 to 32 words', max: 36, seconds: 'about 12 seconds' };
+
 function lengthGuide(answers = {}) {
+  if (answers.voiceNoteText) return LENGTH_AFTER_NOTE;
   return answers.countdownEnding ? LENGTH_WITH_COUNTDOWN : LENGTH;
 }
 
 /** Add the countdown once (replayed texts may already end with it). */
 function withCountdown(text, answers = {}) {
   const body = String(text || '').trim();
-  if (!answers.countdownEnding || !body || body.endsWith(COUNTDOWN_LINE)) {
+  // No countdown after a voice note: note + message + countdown won't fit 28 s.
+  if (!answers.countdownEnding || answers.voiceNoteText || !body || body.endsWith(COUNTDOWN_LINE)) {
     return body;
   }
   return `${body} ${COUNTDOWN_LINE}`;
@@ -207,7 +212,8 @@ Rhythm reference (for pace and pauses ONLY, never copy its words or structure): 
     : 'Recent scripts: none yet.';
 
   const moodText = String(answers.moodForTomorrow || '').trim();
-  const moodLine = moodText
+  // A voice note says it in their own words already (noteLine below).
+  const moodLine = moodText && !answers.voiceNoteText
     ? plan.crisis
       ? 'They had a very hard day. Be especially calm, soft and kind. Do not quote or name what they wrote. No urgency.'
       : `Last night they told you how they felt, in their own words: ${moodText}${answers.moodNoteForTomorrow ? `; note: ${answers.moodNoteForTomorrow}` : ''}. Right after the opening, refer to it once, briefly and in fresh words, like you remember last night (for example "Last night was a lot." or "You went to bed hopeful."). Do not quote them word for word, never repeat harsh words about themselves, never say "check-in". Then turn it toward this morning and let it shape the tone of the whole message.`
@@ -218,8 +224,8 @@ Rhythm reference (for pace and pauses ONLY, never copy its words or structure): 
       ? `Last night they asked you to remind them this morning: "${intention}". Say it clearly in the message (you may rephrase lightly, keep the meaning), and make it feel worth doing and very doable today. This counts as the message's theme.`
       : null;
   const STRUGGLE = {
-    asleep: 'They often switch the alarm off and fall back asleep. Grab them in the first two sentences and ask them to sit up right now, warmly but clearly.',
-    snooze: 'They tend to snooze again and again. Make this the one they get up for: why this morning is worth it, and that snoozing will not make them feel better.',
+    asleep: 'They often switch the alarm off and fall back asleep. Grab them in the first two sentences and ask them to sit up right now, warmly but clearly. Never suggest they can take their time.',
+    snooze: 'They tend to snooze again and again. Make this the one they get up for: why this morning is worth it, and that snoozing will not make them feel better. Never tell them to take their time or to get up "when you are ready": they should get up now.',
     phone: 'They tend to grab the phone and scroll first thing. Ask them, kindly, to give the first minutes to themselves, not to the phone.',
     low: 'They often get up but feel low. Be extra warm, lift them up, remind them what is good about them and about today.',
   };
@@ -235,6 +241,11 @@ Rhythm reference (for pace and pauses ONLY, never copy its words or structure): 
     win && !plan.crisis
       ? `They just reached a goal: "${String(win.goal).slice(0, 80)}". Tell them, in one or two warm sentences, how proud you are.`
       : null;
+  const note = String(answers.voiceNoteText || '').trim();
+  const noteLine =
+    note && !plan.crisis
+      ? `Your message plays RIGHT AFTER their own voice recording from last night, where they told themselves: "${note.slice(0, 300)}". Do not open with a greeting. Start by answering it, as if you both just heard it (for example "You heard yourself." or "That was you, last night."). Do not repeat their words back. Then lift them up and get them out of bed.`
+      : null;
   const followUp = String(answers.yesterdayFollowUp || '').trim();
   const followUpLine =
     followUp && !plan.crisis
@@ -249,8 +260,11 @@ Rhythm reference (for pace and pauses ONLY, never copy its words or structure): 
     plan.theme
       ? `Theme (the only one to use): ${THEME_LABEL[plan.theme.kind]}: "${plan.theme.value}"`
       : 'Theme: simply getting up gently this morning.',
-    `Opening: ${OPENINGS[plan.opening].replace('{name}', name || 'you')}`,
+    answers.voiceNoteText
+      ? 'Opening: none (their own recording plays first; see below).'
+      : `Opening: ${OPENINGS[plan.opening].replace('{name}', name || 'you')}`,
     moodLine,
+    noteLine,
     intentionLine,
     followUpLine,
     winLine,

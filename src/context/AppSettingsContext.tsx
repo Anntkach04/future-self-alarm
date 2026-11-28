@@ -98,7 +98,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (!cancelled && raw) {
           const parsed = JSON.parse(raw) as Partial<AppSettings>;
-          setSettings({ ...defaults, ...parsed });
+          // Pausing alarms was removed: drop any pause saved before, or
+          // those alarms would stay silent with no way to resume.
+          setSettings({ ...defaults, ...parsed, pauseUntil: null });
         }
       } catch {
         // ignore
@@ -117,9 +119,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings)).catch(() => {});
   }, [settings, ready]);
 
-  const isPaused = Boolean(
-    settings.pauseUntil && settings.pauseUntil > todayKey()
-  );
+  // The pause feature is gone; kept as a constant for the schedulers.
+  const isPaused = false;
 
   const value = useMemo<AppSettingsContextValue>(
     () => ({

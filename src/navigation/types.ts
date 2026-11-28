@@ -38,5 +38,4 @@ export type RootStackParamList = {
   Subscription: undefined;
   VoiceSettings: undefined;
   MusicSounds: undefined;
-  NotificationSettings: undefined;
 };

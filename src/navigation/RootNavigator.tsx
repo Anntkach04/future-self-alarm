@@ -30,7 +30,6 @@ import { EditProfileNameScreen } from '../screens/EditProfileNameScreen';
 import { ProfileFieldEditScreen } from '../screens/ProfileFieldEditScreen';
 import { SubscriptionScreen } from '../screens/SubscriptionScreen';
 import { VoiceSettingsScreen } from '../screens/VoiceSettingsScreen';
-import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
 import { navigationRef } from './navigationRef';
 import { RootStackParamList } from './types';
 import { WaitingView } from '../components/WaitingView';
@@ -121,10 +120,6 @@ export function RootNavigator() {
         <Stack.Screen name="Subscription" component={SubscriptionScreen} />
         <Stack.Screen name="VoiceSettings" component={VoiceSettingsScreen} />
         <Stack.Screen name="MusicSounds" component={MusicSoundsScreen} />
-        <Stack.Screen
-          name="NotificationSettings"
-          component={NotificationSettingsScreen}
-        />
       </Stack.Navigator>
     </NavigationContainer>
   );

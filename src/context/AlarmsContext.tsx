@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { moveRingsToTimeZone } from '../services/ringBank';
+import { moveRingsToCurrentZone } from '../services/ringBank';
+import { offsetAt, refreshTimeZone, wallClock } from '../services/timeZone';
 import React, {
   createContext,
   useCallback,
@@ -82,6 +83,8 @@ export const WEEKENDS = [5, 6];
 export const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
 
 const TZ_KEY = 'fsa.time_zone.v1';
+/** Offset at the last check: moves messages stored before offsets were kept. */
+const TZ_OFFSET_KEY = 'fsa.time_zone_offset.v1';
 const STORAGE_KEY = 'future_self_alarms_v1';
 
 const AlarmsContext = createContext<AlarmsContextValue | null>(null);
@@ -101,9 +104,9 @@ function sameDays(a: number[], b: number[]) {
 function pickNext(alarms: Alarm[]) {
   const enabled = alarms.filter((a) => a.enabled);
   if (!enabled.length) return null;
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const jsDay = now.getDay();
+  const now = wallClock(Date.now());
+  const nowMinutes = now.hour * 60 + now.minute;
+  const jsDay = now.weekday;
   const today = jsDay === 0 ? 6 : jsDay - 1;
   const sorted = [...enabled].sort((a, b) => alarmSortKey(a) - alarmSortKey(b));
 
@@ -232,13 +235,16 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
      * stocked message to the same local time and schedule again right away.
      */
     const followTimeZone = async () => {
-      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Ask iOS (not the JS engine, which keeps its launch-time zone).
+      const zone = await refreshTimeZone();
       try {
         const last = await AsyncStorage.getItem(TZ_KEY);
+        const lastOffset = await AsyncStorage.getItem(TZ_OFFSET_KEY);
+        await AsyncStorage.setItem(TZ_OFFSET_KEY, String(offsetAt(Date.now())));
         if (last === zone) return;
         await AsyncStorage.setItem(TZ_KEY, zone);
         if (!last) return; // first run: nothing to move
-        await moveRingsToTimeZone(last);
+        await moveRingsToCurrentZone(lastOffset != null ? Number(lastOffset) : null);
         const list = alarmsRef.current;
         await rescheduleAllAlarms(
           list,
@@ -256,17 +262,19 @@ export function AlarmsProvider({ children }: { children: React.ReactNode }) {
     let lastTopUp = Date.now();
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'active') return;
-      void followTimeZone();
-      // Notification-path wakes are pre-scheduled only N days ahead — top the
-      // window up whenever the app comes back (at most every 30 min).
-      if (Date.now() - lastTopUp > 30 * 60 * 1000) {
-        lastTopUp = Date.now();
-        const list = alarmsRef.current;
-        void rescheduleAllAlarms(
-          list,
-          Object.fromEntries(list.map((a) => [a.id, a.audioUri ?? null]))
-        ).catch(() => {});
-      }
+      // Zone first, so any scheduling below uses the phone's current zone.
+      void followTimeZone().then(() => {
+        // Notification-path wakes are pre-scheduled only N days ahead — top the
+        // window up whenever the app comes back (at most every 30 min).
+        if (Date.now() - lastTopUp > 30 * 60 * 1000) {
+          lastTopUp = Date.now();
+          const list = alarmsRef.current;
+          void rescheduleAllAlarms(
+            list,
+            Object.fromEntries(list.map((a) => [a.id, a.audioUri ?? null]))
+          ).catch(() => {});
+        }
+      });
       const consume = () => {
         const byId = Object.fromEntries(
           alarmsRef.current.map((a) => [a.id, a.audioUri ?? null])

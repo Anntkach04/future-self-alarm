@@ -18,6 +18,9 @@ export type MoodCheckIn = {
   advice: string;
   /** What they want to be reminded of next morning (from their words). */
   intention?: string | null;
+  /** Evening voice note to tomorrow-them (local m4a) and what it says. */
+  voiceNoteUri?: string | null;
+  voiceNoteText?: string | null;
   /** Next evening: did they do it? Feeds the following morning's message. */
   outcome?: 'yes' | 'partly' | 'no' | null;
 };

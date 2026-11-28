@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useOnboarding } from '../context/OnboardingContext';
 import type { RootStackParamList } from '../navigation/types';
-import { colors, fonts, noFakeBold, radii, spacing, typeScale } from '../theme';
+import { colors, fonts, noFakeBold, radii, spacing, typeScale, chipMetrics } from '../theme';
 
 /** Ask about each goal again after this long. */
 const RECHECK_DAYS = 14;
@@ -141,13 +141,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.text,
     borderRadius: radii.chip,
-    paddingHorizontal: spacing.sm,
-    minHeight: 36,
+    // Same size as onboarding chips.
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
     justifyContent: 'center',
   },
   chipText: {
     fontFamily: fonts.body,
-    ...typeScale.subhead,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     color: colors.text,
   },
   pressed: { opacity: 0.7 },

@@ -241,4 +241,35 @@ async function extractPlans({ mood, note, goals = [] }) {
   }
 }
 
-module.exports = { generateMorningScript, generateMoodAdvice, getOpenAiKey };
+/**
+ * Text of a short voice note (the person talking to tomorrow-them).
+ * Returns '' when it can't be understood; throws only on missing key.
+ */
+async function transcribeAudio(buffer, mimeType = 'audio/m4a') {
+  const apiKey = getOpenAiKey();
+  if (!apiKey) {
+    const error = new Error('Missing OPENAI_API_KEY');
+    error.status = 500;
+    throw error;
+  }
+  const ext = /webm/.test(mimeType) ? 'webm' : /wav/.test(mimeType) ? 'wav' : /mpeg|mp3/.test(mimeType) ? 'mp3' : 'm4a';
+  for (const model of ['gpt-4o-mini-transcribe', 'whisper-1']) {
+    const form = new FormData();
+    form.append('file', new Blob([buffer], { type: mimeType }), `note.${ext}`);
+    form.append('model', model);
+    // Node's own fetch: node-fetch (used above) can't send a standard FormData.
+    const response = await globalThis.fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return String(data?.text || '').trim().slice(0, 400);
+    }
+    console.warn('[transcribe]', model, response.status);
+  }
+  return '';
+}
+
+module.exports = { generateMorningScript, generateMoodAdvice, getOpenAiKey, transcribeAudio };

@@ -10,7 +10,15 @@ export async function buildAlarmAudioForId(params: {
   voiceId: string;
   answers: OnboardingAnswers;
   /** Today's mood — shapes tomorrow morning only. */
-  mood?: { label: string; note?: string; intention?: string | null; followUp?: string | null } | null;
+  mood?: {
+    label: string;
+    note?: string;
+    intention?: string | null;
+    followUp?: string | null;
+    /** Their evening voice note (local file) + what it says: plays first. */
+    voiceNoteUri?: string | null;
+    voiceNoteText?: string | null;
+  } | null;
   /** @deprecated Mix is fixed server-side; ignored. */
   voiceLevel?: number;
   /** @deprecated Mix is fixed server-side; ignored. */

@@ -12,9 +12,9 @@ const IDLE = brightPalette[2];
 const RECORDING = brightPalette[6];
 
 /** Crisp vector mic — larger viewBox, no tiny bitmap scaling. */
-function MicIcon({ color }: { color: string }) {
+export function MicIcon({ color, size = 36 }: { color: string; size?: number }) {
   return (
-    <Svg width={36} height={36} viewBox="0 0 48 48" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       <Rect x="18" y="6" width="12" height="22" rx="6" fill={color} />
       <Path
         d="M14 22c0 5.523 4.477 10 10 10s10-4.477 10-10"

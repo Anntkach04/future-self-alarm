@@ -36,8 +36,7 @@ type MenuRow = {
     | 'EditProfile'
     | 'Subscription'
     | 'VoiceSettings'
-    | 'MusicSounds'
-    | 'NotificationSettings';
+    | 'MusicSounds';
 };
 
 const ROWS: MenuRow[] = ([

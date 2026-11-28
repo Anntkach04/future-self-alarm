@@ -83,4 +83,38 @@ RCT_EXPORT_METHOD(clearFutureSelfAlarmSounds:(RCTPromiseResolveBlock)resolve
   resolve(@(removed));
 }
 
+
+/**
+ * The phone's time zone right now, plus the next `days` calendar days in it.
+ * resetSystemTimeZone drops iOS's cached zone, so a trip is seen at once even
+ * while the app stayed in memory (the JS engine keeps the launch-time zone).
+ */
+RCT_EXPORT_METHOD(zoneInfo:(nonnull NSNumber *)days
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  [NSTimeZone resetSystemTimeZone];
+  NSTimeZone *tz = [NSTimeZone systemTimeZone];
+  NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+  cal.timeZone = tz;
+  NSDate *start = [cal startOfDayForDate:[NSDate date]];
+  NSMutableArray *out = [NSMutableArray array];
+  NSInteger count = MAX(1, MIN(days.integerValue, 60));
+  for (NSInteger i = 0; i < count; i++) {
+    NSDate *day = [cal dateByAddingUnit:NSCalendarUnitDay value:i toDate:start options:0];
+    NSDateComponents *c = [cal components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitWeekday)
+                                 fromDate:day];
+    NSDate *noon = [day dateByAddingTimeInterval:12 * 3600];
+    [out addObject:@{
+      @"y": @(c.year),
+      @"m": @(c.month),
+      @"d": @(c.day),
+      // NSCalendar: 1 = Sunday … 7 = Saturday → JS getDay(): 0 = Sunday.
+      @"weekday": @(c.weekday - 1),
+      @"offsetMin": @([tz secondsFromGMTForDate:noon] / 60),
+    }];
+  }
+  resolve(@{ @"zone": tz.name ?: @"", @"days": out });
+}
+
 @end

@@ -7,6 +7,9 @@ export type AlarmMood = {
   intention?: string | null;
   /** How the last plan went: "wanted to go for a run; did it: yes". */
   followUp?: string | null;
+  /** Their evening voice note: plays first, the AI answers it. */
+  voiceNoteUri?: string | null;
+  voiceNoteText?: string | null;
 };
 
 const OUTCOME_TEXT = {
@@ -33,5 +36,7 @@ export function moodForAlarm(
     note: today?.note ?? '',
     intention: today?.intention ?? null,
     followUp,
+    voiceNoteUri: today?.voiceNoteUri ?? null,
+    voiceNoteText: today?.voiceNoteText ?? null,
   };
 }

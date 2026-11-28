@@ -696,7 +696,62 @@ async function denoiseVoiceBuffer(inputBuffer, ext = 'm4a') {
   }
 }
 
+/**
+ * The person's own voice note first, a short breath, then Future You.
+ * Both are levelled so the note is as loud as the generated voice.
+ */
+async function prependVoiceNote(voiceBuffer, noteBuffer, noteExt = 'm4a') {
+  if (!getFfmpegPath() || !noteBuffer?.length) return voiceBuffer;
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const notePath = path.join(os.tmpdir(), `fs-note-${stamp}.${noteExt}`);
+  const voicePath = path.join(os.tmpdir(), `fs-note-voice-${stamp}.mp3`);
+  const outPath = path.join(os.tmpdir(), `fs-note-out-${stamp}.mp3`);
+  fs.writeFileSync(notePath, noteBuffer);
+  fs.writeFileSync(voicePath, voiceBuffer);
+  try {
+    await runFfmpeg([
+      '-y',
+      '-t',
+      String(VOICE_NOTE_MAX_SECONDS),
+      '-i',
+      notePath,
+      '-i',
+      voicePath,
+      '-filter_complex',
+      [
+        '[0:a]aformat=sample_fmts=fltp:channel_layouts=mono:sample_rates=44100,highpass=f=70,loudnorm=I=-18:TP=-2:LRA=11,apad=pad_dur=0.6[n]',
+        '[1:a]aformat=sample_fmts=fltp:channel_layouts=mono:sample_rates=44100[v]',
+        '[n][v]concat=n=2:v=0:a=1[out]',
+      ].join(';'),
+      '-map',
+      '[out]',
+      '-c:a',
+      'libmp3lame',
+      '-b:a',
+      '192k',
+      outPath,
+    ]);
+    return fs.readFileSync(outPath);
+  } catch (error) {
+    console.warn('[mix] voice note prepend failed', error?.message || error);
+    return voiceBuffer;
+  } finally {
+    for (const f of [notePath, voicePath, outPath]) {
+      try {
+        fs.unlinkSync(f);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+/** A voice note longer than this is cut, so the whole ring fits in 28 s. */
+const VOICE_NOTE_MAX_SECONDS = 10;
+
 module.exports = {
+  prependVoiceNote,
+  VOICE_NOTE_MAX_SECONDS,
   normalizeLoudness,
   measureLufs,
   assessCloneTake,

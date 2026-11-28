@@ -5,7 +5,7 @@ import {
   WEEKDAYS,
   WEEKENDS,
 } from '../context/AlarmsContext';
-import { colors, fonts, noFakeBold, radii } from '../theme';
+import { colors, fonts, noFakeBold, radii, chipMetrics } from '../theme';
 import { uiLabel } from '../utils/labels';
 
 type Props = {
@@ -111,8 +111,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.text,
     borderRadius: radii.chip,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    // Same size as onboarding chips.
+    paddingHorizontal: chipMetrics.paddingHorizontal,
+    paddingVertical: chipMetrics.paddingVertical,
     backgroundColor: 'transparent',
   },
   presetOn: {
@@ -120,7 +121,8 @@ const styles = StyleSheet.create({
   },
   presetText: {
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: chipMetrics.fontSize,
+    lineHeight: chipMetrics.lineHeight,
     color: colors.text,
   },
   presetTextOn: {

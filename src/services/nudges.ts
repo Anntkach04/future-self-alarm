@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { Alarm } from '../context/AlarmsContext';
 import { hasNotificationPermissions, nextAlarmOccurrences } from './alarmScheduler';
+import { instantOn, timeLabel, upcomingZoneDays } from './timeZone';
 
 /**
  * Gentle evening nudges, so nobody has to remember to open the app:
@@ -13,27 +14,37 @@ import { hasNotificationPermissions, nextAlarmOccurrences } from './alarmSchedul
  * One nudge per evening at most. Never asks for notification permission.
  */
 const PREFIX = 'fsa-nudge-';
+/** Category with a text field on the check-in nudge (no ':' or '-' allowed). */
+export const CHECKIN_CATEGORY = 'fsaCheckin';
+export const CHECKIN_REPLY_ACTION = 'reply';
+
+let categoryReady = false;
+async function ensureCheckInCategory() {
+  if (categoryReady) return;
+  categoryReady = true;
+  try {
+    await Notifications.setNotificationCategoryAsync(CHECKIN_CATEGORY, [
+      {
+        identifier: CHECKIN_REPLY_ACTION,
+        buttonTitle: 'Reply',
+        textInput: {
+          submitButtonTitle: 'Send',
+          placeholder: 'How was today? Anything for tomorrow?',
+        },
+        // Opens the app so Future You can answer in the usual sheet.
+        options: { opensAppToForeground: true },
+      },
+    ]);
+  } catch {
+    categoryReady = false;
+  }
+}
 const DAYS_AHEAD = 7;
 const NO_ALARM_DAYS = 3;
 const CHECKIN_HOUR = 20;
 const CHECKIN_MINUTE = 30;
 const NO_ALARM_HOUR = 21;
 const NO_ALARM_MINUTE = 0;
-
-function sameDay(a: Date, b: Date) {
-  return a.toDateString() === b.toDateString();
-}
-
-function at(base: Date, dayOffset: number, hour: number, minute: number) {
-  const d = new Date(base);
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, minute, 0, 0);
-  return d;
-}
-
-function timeLabel(d: Date) {
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 export async function refreshNudges(params: {
   alarms: Alarm[];
@@ -55,38 +66,43 @@ export async function refreshNudges(params: {
         )
     );
     if (params.paused || !(await hasNotificationPermissions())) return;
+    await ensureCheckInCategory();
 
     await scheduleAreYouUp(params);
     if (params.eveningNudges === false) return;
 
-    const now = new Date();
+    // Days in the phone's real zone (timeZone.ts), not the JS engine's.
+    const now = Date.now();
+    const zoneDays = upcomingZoneDays(DAYS_AHEAD + 1);
     const rings = params.alarms
       .filter((a) => a.enabled)
-      .flatMap((a) => nextAlarmOccurrences(a, DAYS_AHEAD + 2));
+      .flatMap((a) => nextAlarmOccurrences(a, DAYS_AHEAD + 2))
+      .map((d) => d.getTime());
 
     let noAlarmCount = 0;
-    for (let day = 0; day < DAYS_AHEAD; day += 1) {
-      const tomorrow = at(now, day + 1, 0, 0);
+    for (let day = 0; day < DAYS_AHEAD && day + 1 < zoneDays.length; day += 1) {
+      const tomorrowStart = instantOn(zoneDays[day + 1], 0, 0);
       const firstRing = rings
-        .filter((r) => sameDay(r, tomorrow))
-        .sort((a, b) => a.getTime() - b.getTime())[0];
+        .filter((r) => r >= tomorrowStart && r < tomorrowStart + 86_400_000)
+        .sort((a, b) => a - b)[0];
 
       if (firstRing) {
         if (day === 0 && params.checkedInToday) continue;
-        const when = at(now, day, CHECKIN_HOUR, CHECKIN_MINUTE);
-        if (when <= now) continue;
+        const when = new Date(instantOn(zoneDays[day], CHECKIN_HOUR, CHECKIN_MINUTE));
+        if (when.getTime() <= now) continue;
         await Notifications.scheduleNotificationAsync({
           identifier: `${PREFIX}checkin-${day}`,
           content: {
             title: 'How was today?',
-            body: `Tell me, and I’ll bring it to your alarm at ${timeLabel(firstRing)}.`,
+            body: `Hold to reply. I’ll bring it to your alarm at ${timeLabel(firstRing)}.`,
+            categoryIdentifier: CHECKIN_CATEGORY,
             data: { type: 'fsa-nudge', kind: 'checkin' },
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when },
         });
       } else if (noAlarmCount < NO_ALARM_DAYS) {
-        const when = at(now, day, NO_ALARM_HOUR, NO_ALARM_MINUTE);
-        if (when <= now) continue;
+        const when = new Date(instantOn(zoneDays[day], NO_ALARM_HOUR, NO_ALARM_MINUTE));
+        if (when.getTime() <= now) continue;
         noAlarmCount += 1;
         await Notifications.scheduleNotificationAsync({
           identifier: `${PREFIX}noalarm-${day}`,

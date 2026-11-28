@@ -315,9 +315,10 @@ export function CreateAlarmScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // No extra top padding: Screen already sets it, so the back arrow lines
+  // up with every other screen.
   page: {
     flex: 1,
-    paddingTop: spacing.md,
   },
   back: {},
   title: {

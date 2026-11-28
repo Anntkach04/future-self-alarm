@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { instantOn, upcomingZoneDays } from './timeZone';
 import type { Alarm } from '../context/AlarmsContext';
 import {
   alarmSoundFileName,
@@ -231,19 +232,17 @@ export function nextAlarmOccurrences(
   windowDays = 28
 ) {
   const out: Date[] = [];
-  const now = new Date();
+  const now = Date.now();
   const days = alarmDays(alarm);
 
-  for (let offset = 0; offset <= windowDays && out.length < count; offset += 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() + offset);
-    const alarmDay = jsDayToAlarmDay(day.getDay());
-    if (!days.includes(alarmDay)) continue;
-
-    const fire = new Date(day);
-    fire.setHours(alarm.hour, alarm.minute, 0, 0);
-    if (fire.getTime() <= now.getTime()) continue;
-    out.push(fire);
+  // Days in the phone's real current zone (see timeZone.ts): the JS engine's
+  // own local time can be the zone the app was launched in, hours off.
+  for (const day of upcomingZoneDays(windowDays + 1)) {
+    if (out.length >= count) break;
+    if (!days.includes(jsDayToAlarmDay(day.weekday))) continue;
+    const fire = instantOn(day, alarm.hour, alarm.minute);
+    if (fire <= now) continue;
+    out.push(new Date(fire));
   }
 
   return out.slice(0, count);
