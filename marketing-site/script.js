@@ -50,6 +50,38 @@
     });
   });
 
+  const waitlist = document.querySelector("[data-waitlist]");
+  const waitlistError = document.querySelector("[data-waitlist-error]");
+  const waitlistDone = document.querySelector("[data-waitlist-done]");
+  if (waitlist && waitlistDone) {
+    waitlist.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(waitlist);
+      const name = String(data.get("name") || "").trim();
+      const email = String(data.get("email") || "").trim();
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      if (!name || !emailOk) {
+        if (waitlistError) {
+          waitlistError.textContent = !name
+            ? "Add your name."
+            : "That email doesn’t look right.";
+        }
+        return;
+      }
+      if (waitlistError) waitlistError.textContent = "";
+      try {
+        const existing = JSON.parse(localStorage.getItem("fsa-waitlist") || "[]");
+        const list = Array.isArray(existing) ? existing : [];
+        list.push({ name, email, at: new Date().toISOString() });
+        localStorage.setItem("fsa-waitlist", JSON.stringify(list));
+      } catch {
+        // The confirmation still shows if storage is blocked.
+      }
+      waitlist.hidden = true;
+      waitlistDone.hidden = false;
+    });
+  }
+
   const form = document.querySelector("[data-contact-form]");
   const status = document.querySelector("[data-form-status]");
   if (form) {
